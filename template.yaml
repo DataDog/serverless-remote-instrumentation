@@ -1,0 +1,291 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: >
+  Datadog Lambda Auto-Instrument App
+
+# All version values except L12 are double-quoted on purpose since publish.sh is searching for
+# version string and replace the value with new version. All other version values should be
+# double-quoted.
+Mappings:
+  Constants:
+    DatadogAutoInstrumentDemoApp:
+      Version: 0.1.0
+
+Parameters:
+  DdApiKey:
+    Type: String
+    Description: >-
+      The Datadog API key, which can be found from the APIs page
+      (/organization-settings/api-keys).
+    NoEcho: true
+  DdSite:
+    Type: String
+    Default: datadoghq.com
+    Description: >-
+      Define your Datadog Site to send data to. Possible values are
+      `datadoghq.com`, `datadoghq.eu`, `us3.datadoghq.com`, `us5.datadoghq.com`
+      and `ddog-gov.com`.
+    AllowedPattern: .+
+    ConstraintDescription: DdSite is required
+  LambdaFunctionName:
+    Type: String
+    Default: datadog-auto-instrument
+    Description: >-
+      Define the Lambda function name which is auto instrumenting the other Lambda functions.
+  BucketName:
+    Type: String
+    Default: datadog-auto-instrument-1
+  TrailName:
+    Type: String
+    Default: datadog-auto-instrument-trail
+  DdAwsAccountNumber:
+    Type: String
+    Default: '425362996713'
+  DdAutoInstrumentFunctions:
+    Type: String
+    Default: test-auto-instrument-node,test-auto-instrument-another-node,test-auto-instrument-does-not-exist,test-auto-instrument-python,test-auto-instrument-to-be-uninstrumented
+  DdAutoInstrumentLambdaTags:
+    Type: String
+    Default: DD_AUTO_INSTRUMENT_ENABLED:true
+  DdAutoUninstrumentFunctions:
+    Type: String
+    Default: test-auto-instrument-to-be-uninstrumented
+  DdExtensionLayerVersion:
+    Type: String
+    Default: '50'
+  DdPythonLayerVersion:
+    Type: String
+    Default: '70'
+  DdNodeLayerVersion:
+    Type: String
+    Default: '100'
+  DdJavaLayerVersion:
+    Type: String
+    Default: ''
+  DdDotnetLayerVersion:
+    Type: String
+    Default: ''
+  DdRubyLayerVersion:
+    Type: String
+    Default: ''
+
+Resources:
+  CloudFormationLifeCycle:
+    Type: 'AWS::CloudFormation::CustomResource'
+    Version: '1.0'
+    Properties:
+      ServiceToken: !GetAtt LambdaFunction.Arn
+      FunctionName: !Ref LambdaFunctionName
+  LambdaFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: !Ref LambdaFunctionName
+      Architectures:
+      - arm64
+      Runtime: nodejs18.x
+      Timeout: 840
+      MemorySize: 512
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Handler: /opt/nodejs/node_modules/datadog-lambda-js/handler.handler
+      Layers:
+        - !Sub 'arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Extension-ARM:50'
+        - !Sub 'arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Node18-x:99'
+        - 'arn:aws:lambda:sa-east-1:425362996713:layer:KimiAutoInstument:1'
+      #  mkdir -p nodejs && cp -r node_modules nodejs/ && zip -r  kimi-layer.zip nodejs
+      Environment:
+        Variables:
+          DD_LAMBDA_HANDLER: index.handler
+          DD_TRACE_ENABLED: true
+          DD_API_KEY: !Ref DdApiKey
+          DD_LOG_LEVEL: DEBUG
+          DD_TRACE_DEBUG: false
+          DD_SERVICE: demo-auto-instrument
+          DD_ENV: dev
+          DD_VERSION: 0.1.0
+          DD_SITE: !Ref DdSite
+          DD_AWS_ACCOUNT_NUMBER: !Ref DdAwsAccountNumber
+          DD_AUTO_INSTRUMENT_FUNCTIONS: !Ref DdAutoInstrumentFunctions
+          DD_AUTO_INSTRUMENT_LAMBDA_TAGS: !Ref DdAutoInstrumentLambdaTags
+          DD_AUTO_UNINSTRUMENT_FUNCTIONS: !Ref DdAutoUninstrumentFunctions
+          DD_EXTENSION_LAYER_VERSION: !Ref DdExtensionLayerVersion
+          DD_PYTHON_LAYER_VERSION: !Ref DdPythonLayerVersion
+          DD_NODE_LAYER_VERSION: !Ref DdNodeLayerVersion
+          DD_JAVA_LAYER_VERSION: !Ref DdJavaLayerVersion
+          DD_DOTNET_LAYER_VERSION: !Ref DdDotnetLayerVersion
+          DD_RUBY_LAYER_VERSION: !Ref DdRubyLayerVersion
+
+      Code:
+        ZipFile: |
+          INJECT_ENTRY_FUNCTION_CODE_PLACEHOLDER
+
+  LambdaExecutionRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      Path: "/"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Policies:
+      - PolicyName: root
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+          - Effect: Allow
+            Action:
+            - logs:CreateLogStream
+            - logs:CreateLogGroup
+            - logs:PutLogEvents
+            Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
+          - Effect: Allow
+            Action:
+              - lambda:InvokeFunction
+              - lambda:*   # TODO
+#            Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*
+            Resource: !Sub arn:aws:lambda:*:${AWS::AccountId}:function:*  # test ci run against other regions
+          - Effect: Allow
+            Action:
+              - lambda:*
+            Resource: !Sub arn:aws:lambda:${AWS::Region}:464622532012:layer:*
+          - Effect: Allow
+            Action:
+              - lambda:ListTags
+              # https://docs.aws.amazon.com/lambda/latest/dg/access-control-resource-based.html
+            Resource: 'arn:aws:lambda:*:*:function:*'
+          - Effect: Allow
+            Action:
+              - tag:GetResources
+              - tag:TagResources
+              - tag:UntagResources
+            Resource: '*'
+            # 'arn:aws:lambda:*:*:function:*' doesn't work
+
+
+  CloudTrail:
+    Type: AWS::CloudTrail::Trail
+    DependsOn:
+      - S3Bucket
+    Properties:
+      S3BucketName: !Ref BucketName
+      IsLogging: true
+      TrailName: !Ref TrailName
+      EnableLogFileValidation: false
+      IncludeGlobalServiceEvents: false
+      IsMultiRegionTrail: false
+      Tags:
+        - Key: "env"
+          Value: "dev"
+      AdvancedEventSelectors:
+        - Name: "Lambda Management Events"
+          FieldSelectors:
+            - Field: "eventCategory"
+              Equals: [ "Management" ]
+            - Field: "eventSource"
+              NotEquals:
+                - kms.amazonaws.com
+                - rdsdata.amazonaws.com
+            - Field: "readOnly"
+              Equals:
+                - "false"
+  S3Bucket:
+    Type: 'AWS::S3::Bucket'
+    DeletionPolicy: Delete
+    Properties:
+      BucketName: !Ref BucketName
+  S3BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref BucketName
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AWSCloudTrailAclCheck20150319
+            Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action: s3:GetBucketAcl
+            Resource: !Sub "arn:aws:s3:::${BucketName}"
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub "arn:aws:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/${TrailName}"
+          - Sid: AWSCloudTrailWrite20150319
+            Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action: s3:PutObject
+            Resource: !Sub "arn:aws:s3:::${BucketName}/*"
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub "arn:aws:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/${TrailName}"
+                s3:x-amz-acl: bucket-owner-full-control
+  LambdaEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "EventRule for piping lambda management events to Datadog lambda remote instrumenter"
+      EventPattern:
+        source:
+          - aws.lambda
+        detail:
+          eventSource:
+            - lambda.amazonaws.com
+          requestParameters:
+            functionName:
+              - prefix: test-auto-instrument
+      State: "ENABLED"
+      Targets:
+        - Arn: !GetAtt LambdaFunction.Arn
+          Id: "DatadogInstrumentingLambdaTarget"
+  LambdaTagResourceEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "EventRule for piping lambda TagResource20170331v2 management events to Datadog lambda instrumenter"
+      EventPattern:
+        source:
+          - aws.lambda
+        detail:
+          eventSource:
+            - lambda.amazonaws.com
+          requestParameters:
+            functionName:
+              - prefix: test-auto-instrument
+      State: "ENABLED"
+      Targets:
+        - Arn: !GetAtt LambdaFunction.Arn
+          Id: "DatadogInstrumentingLambdaTarget"
+  StackUpdateEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "EventRule for piping stack update management events to Datadog lambda"
+      State: "ENABLED"
+      Targets:
+        - Arn: !GetAtt LambdaFunction.Arn
+          Id: "DatadogInstrumentingLambdaTarget"
+      EventPattern:
+        source:
+          - aws.cloudformation
+        detail-type:
+          - CloudFormation Stack Status Change
+        resources:
+          # stack name is hardcoded (need to be updated if we rename the stack)
+          - wildcard: arn:aws:cloudformation:*:*:stack/datadog-auto-instrument/*
+        detail:
+          status-details:
+            status:
+              - UPDATE_COMPLETE
+  EventBridgeLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref LambdaFunctionName
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt LambdaEventRule.Arn
+  EventBridgeLambdaPermission2:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref LambdaFunctionName
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt StackUpdateEventRule.Arn

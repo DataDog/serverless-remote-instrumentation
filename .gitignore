@@ -1,0 +1,12 @@
+.DS_Store
+.layers
+.idea
+existing_layers
+scripts/.cache
+scripts/.src
+
+*.zip
+yarn.lock
+nodejs/*
+node_modules/*
+dist/*
