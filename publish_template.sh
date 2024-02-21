@@ -3,9 +3,10 @@
 # Unless explicitly stated otherwise all files in this repository are licensed
 # under the Apache License Version 2.0.
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
-# Copyright 2023 Datadog, Inc.
+# Copyright 2024 Datadog, Inc.
 
-# Usage: ./publish.sh <Desired Version> <Account [serverless-sandbox|prod]>
+# Usage: ./publish_template.sh <Desired Version> <Account [serverless-sandbox|prod]>
+# e.g.  ./publish_cf_template.sh 0.5.1 serverless-sandbox
 # When publishing to serverless-sandbox, the template version number is NOT updated and no github release is created!
 
 set -e
