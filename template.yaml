@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: "2010-09-09"
 
 Description: >
-  Datadog Lambda Auto-Instrument App
+  Datadog Lambda Remote Instrumentation App
 
 # All version values except L12 are double-quoted on purpose since publish.sh is searching for
 # version string and replace the value with new version. All other version values should be
@@ -82,7 +82,7 @@ Resources:
       FunctionName: !Ref LambdaFunctionName
       Architectures:
       - arm64
-      Runtime: nodejs18.x
+      Runtime: nodejs20.x
       Timeout: 840
       MemorySize: 512
       Role: !GetAtt LambdaExecutionRole.Arn
@@ -90,7 +90,7 @@ Resources:
       Layers:
         - !Sub 'arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Extension-ARM:50'
         - !Sub 'arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Node18-x:99'
-        - !Sub 'arn:aws:lambda:${AWS::Region}:425362996713:layer:Datadog-Serverless-Remote-Instrumentation-ARM:4'
+        - !Sub 'arn:aws:lambda:${AWS::Region}:425362996713:layer:Datadog-Serverless-Remote-Instrumentation-ARM:6'
 #        - !Sub 'arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Serverless-Remote-Instrumentation-ARM:2'   # for prod
 #        - 'arn:aws:lambda:sa-east-1:425362996713:layer:KimiAutoInstument:1'
 #        mkdir -p nodejs && cp -r node_modules nodejs/ && zip -r  kimi-layer.zip nodejs
