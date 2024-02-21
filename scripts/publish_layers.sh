@@ -24,7 +24,7 @@ if [ "$ARCHITECTURE" == "amd64" ]; then
 fi
 
 echo "Publishing arm64 layer"
-LAYER_PATHS=(".layers/datadog_serverless_remote_instrumentation-arm64.zip")
+LAYER_PATHS=(".layers/datadog_serverless_remote_instrumentation_arm64.zip")
 LAYER_NAMES=("Datadog-Serverless-Remote-Instrumentation-ARM")
 #fi
 
@@ -112,11 +112,13 @@ publish_layer() {
             --description "Datadog Serverless Remote Instrumentation ARM" \
             $architecture \
             --zip-file "fileb://${file}" \
+            --compatible-architectures arm64 \
             --region $region | jq -r '.Version')
     else
         version_nbr=$(aws lambda publish-layer-version --layer-name "${layer}" \
             --description "Datadog Serverless Remote Instrumentation ARM" \
             --zip-file "fileb://${file}" \
+            --compatible-architectures arm64 \
             --region $region | jq -r '.Version')
     fi
     permission=$(aws lambda add-layer-version-permission --layer-name $layer \
