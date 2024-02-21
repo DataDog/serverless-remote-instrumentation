@@ -146,8 +146,7 @@ Resources:
             Action:
               - lambda:InvokeFunction
               - lambda:*   # TODO
-#            Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*
-            Resource: !Sub arn:aws:lambda:*:${AWS::AccountId}:function:*  # test ci run against other regions
+            Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*
           - Effect: Allow
             Action:
               - lambda:*
@@ -156,13 +155,14 @@ Resources:
             Action:
               - lambda:ListTags
               # https://docs.aws.amazon.com/lambda/latest/dg/access-control-resource-based.html
-            Resource: 'arn:aws:lambda:*:*:function:*'
+            Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*
+#            Resource: 'arn:aws:lambda:*:*:function:*'
           - Effect: Allow
             Action:
               - tag:GetResources
               - tag:TagResources
               - tag:UntagResources
-            Resource: '*'
+            Resource: '*'  # TODO
             # 'arn:aws:lambda:*:*:function:*' doesn't work
 
 
