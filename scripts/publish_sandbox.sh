@@ -5,10 +5,13 @@
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
 # Copyright 2024 Datadog, Inc.
 
-# Usage: VERSION=1 ./scripts/publish_sandbox.sh
+# Running from the repo root directory, this script installs all packages, zip them locally, and
+# then publish the zip file via AWS CLI
+# Usage: VERSION=2 ./scripts/publish_sandbox.sh
 
 # Optional environment variables:
 # VERSION - Use a specific version number. By default, increment the version by 1.
+# The architecture built is ARM only.
 
 set -e
 
@@ -17,17 +20,7 @@ if [ -z $ARCHITECTURE ]; then
     ARCHITECTURE="arm64"
 fi
 
-#if [ "$ARCHITECTURE" != "amd64" -a "$ARCHITECTURE" != "arm64" ]; then
-#    echo "ERROR: Invalid architecture (must be amd64 OR arm64 for sandbox deploys)"
-#    exit 1
-#fi
-
-#if [ "$ARCHITECTURE" == "amd64" ]; then
-#    LAYER_NAME="Datadog-Extension"
-#fi
-#if [ "$ARCHITECTURE" == "arm64" ]; then
-    LAYER_NAME="Datadog-Serverless-Remote-Instrumentation-ARM"
-#fi
+LAYER_NAME="Datadog-Serverless-Remote-Instrumentation-ARM"
 
 if [ ! -z "$SUFFIX" ]; then
    LAYER_NAME+="-$SUFFIX"
@@ -58,5 +51,5 @@ fi
 SCRIPTS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 cd $SCRIPTS_DIR/..
 
-VERSION=$VERSION ARCHITECTURE=$ARCHITECTURE ./scripts/build_layer_on_mac_m1.sh
+VERSION=$VERSION ARCHITECTURE=$ARCHITECTURE ./scripts/build_layer.sh
 VERSION=$VERSION ARCHITECTURE=$ARCHITECTURE REGIONS=$REGION aws-vault exec sso-serverless-sandbox-account-admin-8h -- ./scripts/publish_layers.sh

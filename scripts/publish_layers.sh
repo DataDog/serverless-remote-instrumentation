@@ -22,15 +22,7 @@ if [ "$ARCHITECTURE" == "amd64" ]; then
   echo "ARCHITECTURE should not be amd64. The remote instrumenter only works for amd64."
   exit 1
 fi
-#if [ "$ARCHITECTURE" == "amd64" ]; then
-#    echo "Publishing for amd64 only"
-#    LAYER_PATHS=(".layers/datadog_serverless_remote_instrumentation-amd64.zip")
-#    LAYER_NAMES=("Datadog-Serverless-Remote-Instrumentation")
-#elif [ "$ARCHITECTURE" == "arm64" ]; then
-#    echo "Publishing for arm64 only"
-#    LAYER_PATHS=(".layers/datadog_serverless_remote_instrumentation-arm64.zip")
-#    LAYER_NAMES=("Datadog-Serverless-Remote-Instrumentation-ARM")
-#else
+
 echo "Publishing arm64 layer"
 LAYER_PATHS=(".layers/datadog_serverless_remote_instrumentation-arm64.zip")
 LAYER_NAMES=("Datadog-Serverless-Remote-Instrumentation-ARM")
