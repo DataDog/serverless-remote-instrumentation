@@ -91,7 +91,7 @@ Resources:
         - !Sub 'arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Extension-ARM:50'
         - !Sub 'arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Node20-x:99'
         - !Sub 'arn:aws:lambda:${AWS::Region}:425362996713:layer:Datadog-Serverless-Remote-Instrumentation-ARM:6'
-#        - !Sub 'arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Serverless-Remote-Instrumentation-ARM:2'   # for prod aws account id
+#        - !Sub 'arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Serverless-Remote-Instrumentation-ARM:2'   # TODO: for prod aws account id
       Environment:
         Variables:
           DD_LAMBDA_HANDLER: index.handler
@@ -156,7 +156,6 @@ Resources:
             Action:
               - lambda:ListTags
             Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*
-#            Resource: 'arn:aws:lambda:*:*:function:*'
           - Effect: Allow
             Action:
               - tag:GetResources
