@@ -145,7 +145,10 @@ Resources:
           - Effect: Allow
             Action:
               - lambda:InvokeFunction
-              - lambda:*   # TODO
+              - lambda:GetFunction
+              - lambda:UpdateFunctionConfiguration
+              - lambda:TagResource
+              - lambda:UntagResource
             Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*
           - Effect: Allow
             Action:
@@ -154,7 +157,6 @@ Resources:
           - Effect: Allow
             Action:
               - lambda:ListTags
-              # https://docs.aws.amazon.com/lambda/latest/dg/access-control-resource-based.html
             Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*
 #            Resource: 'arn:aws:lambda:*:*:function:*'
           - Effect: Allow
