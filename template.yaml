@@ -99,7 +99,7 @@ Resources:
           DD_API_KEY: !Ref DdApiKey
           DD_LOG_LEVEL: DEBUG
           DD_TRACE_DEBUG: false
-          DD_SERVICE: demo-auto-instrument
+          DD_SERVICE: Datadog-Remote-Instrument
           DD_ENV: dev
           DD_VERSION: 0.1.0
           DD_SITE: !Ref DdSite
@@ -161,9 +161,9 @@ Resources:
               - tag:GetResources
               - tag:TagResources
               - tag:UntagResources
-            Resource: '*'  # TODO
-            # 'arn:aws:lambda:*:*:function:*' doesn't work
-
+            Resource: '*'
+#            Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*  # doesn't work
+#            Resource: 'arn:aws:lambda:*'  # doesn't work
 
   CloudTrail:
     Type: AWS::CloudTrail::Trail
