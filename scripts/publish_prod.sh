@@ -5,7 +5,7 @@
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
 # Copyright 2024 Datadog, Inc.
 
-# Use with `VERSION=<DESIRED_VERSION> ./publish_prod.sh`
+# Use with `VERSION=<DESIRED_VERSION> ./scripts/publish_prod.sh`
 
 set -e
 
