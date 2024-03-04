@@ -92,40 +92,13 @@ publish_layer() {
     region=$1
     layer=$2
     file=$3
-#    if [ "$layer" == "Datadog-Serverless-Remote-Instrumentation-ARM" ]; then
-      architecture="--compatible-architectures arm64"
-#    else
-#      architecture="--compatible-architectures x86_64"
-#    fi
-    if [ "$region" == "ap-south-1" ] || \
-         [ "$region" == "ap-southeast-1" ] || \
-         [ "$region" == "ap-southeast-2" ] || \
-         [ "$region" == "ap-northeast-1" ] || \
-         [ "$region" == "eu-central-1" ] || \
-         [ "$region" == "eu-central-1" ] || \
-         [ "$region" == "eu-west-1" ] || \
-         [ "$region" == "eu-west-2" ] || \
-         [ "$region" == "us-east-1" ] || \
-         [ "$region" == "us-east-2" ] || \
-         [ "$region" == "us-west-2" ]; then
-        version_nbr=$(aws lambda publish-layer-version --layer-name "${layer}" \
-            --description "Datadog Serverless Remote Instrumentation ARM" \
-            $architecture \
-            --zip-file "fileb://${file}" \
-            --compatible-architectures arm64 \
-            --region $region | jq -r '.Version')
-    else
-        version_nbr=$(aws lambda publish-layer-version --layer-name "${layer}" \
-            --description "Datadog Serverless Remote Instrumentation ARM" \
-            --zip-file "fileb://${file}" \
-            --compatible-architectures arm64 \
-            --region $region | jq -r '.Version')
-    fi
-    permission=$(aws lambda add-layer-version-permission --layer-name $layer \
-        --version-number $version_nbr \
-        --statement-id "release-$version_nbr" \
-        --action lambda:GetLayerVersion --principal "*" \
-        --region $region)
+    architecture="--compatible-architectures arm64"
+    version_nbr=$(aws lambda publish-layer-version --layer-name "${layer}" \
+        --description "Datadog Serverless Remote Instrumentation ARM" \
+        $architecture \
+        --zip-file "fileb://${file}" \
+        --compatible-architectures arm64 \
+        --region $region | jq -r '.Version')
 
     echo $version_nbr
 }
