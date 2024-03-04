@@ -18,7 +18,7 @@ if [ -z "$VERSION" ]; then
 fi
 
 # Ensure there are no uncommitted changes
-cd ~/dd/Serverless-Remote-Instrumentation
+cd ~/dd/Serverless-Remote-Instrumentation/scripts
 if [[ `git status --porcelain` ]]; then
     echo "Detected uncommitted changes, aborting"
     exit 1
