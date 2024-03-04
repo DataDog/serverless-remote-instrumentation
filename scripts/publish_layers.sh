@@ -151,7 +151,7 @@ do
         index=$(index_of_layer $layer_name)
         layer_path="${LAYER_PATHS[$index]}"
         while [ $latest_version -lt $VERSION ]; do
-            echo $layer_path
+            # echo $layer_path
             latest_version=$(publish_layer $region $layer_name $layer_path)
             echo "Published version $latest_version for layer $layer_name in region $region"
 
