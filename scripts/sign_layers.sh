@@ -41,7 +41,8 @@ do
     echo "-------------------------"
 
     LAYER_LOCAL_PATH="${LAYER_DIR}/${LAYER_FILE}"
-
+    echo "pwd:"
+    pwd
     # Upload the layer to S3 for signing
     echo "Uploading layer to S3 for signing..."
     UUID=$(uuidgen)
