@@ -91,9 +91,7 @@ Resources:
         - !Sub 'arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Extension-ARM:50'
         - !Sub 'arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Node20-x:99'
         - !Sub 'arn:aws:lambda:${AWS::Region}:425362996713:layer:Datadog-Serverless-Remote-Instrumentation-ARM:6'
-#        - !Sub 'arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Serverless-Remote-Instrumentation-ARM:2'   # for prod aws account id
-#        - 'arn:aws:lambda:sa-east-1:425362996713:layer:KimiAutoInstument:1'
-#        mkdir -p nodejs && cp -r node_modules nodejs/ && zip -r  kimi-layer.zip nodejs
+#        - !Sub 'arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Serverless-Remote-Instrumentation-ARM:2'   # TODO: for prod aws account id
       Environment:
         Variables:
           DD_LAMBDA_HANDLER: index.handler
@@ -101,7 +99,7 @@ Resources:
           DD_API_KEY: !Ref DdApiKey
           DD_LOG_LEVEL: DEBUG
           DD_TRACE_DEBUG: false
-          DD_SERVICE: demo-auto-instrument
+          DD_SERVICE: Datadog-Remote-Instrument
           DD_ENV: dev
           DD_VERSION: 0.1.0
           DD_SITE: !Ref DdSite
@@ -145,26 +143,27 @@ Resources:
           - Effect: Allow
             Action:
               - lambda:InvokeFunction
-              - lambda:*   # TODO
-#            Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*
-            Resource: !Sub arn:aws:lambda:*:${AWS::AccountId}:function:*  # test ci run against other regions
+              - lambda:GetFunction
+              - lambda:UpdateFunctionConfiguration
+              - lambda:TagResource
+              - lambda:UntagResource
+            Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*
           - Effect: Allow
             Action:
-              - lambda:*
+              - lambda:GetLayerVersion
             Resource: !Sub arn:aws:lambda:${AWS::Region}:464622532012:layer:*
           - Effect: Allow
             Action:
               - lambda:ListTags
-              # https://docs.aws.amazon.com/lambda/latest/dg/access-control-resource-based.html
-            Resource: 'arn:aws:lambda:*:*:function:*'
+            Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*
           - Effect: Allow
             Action:
               - tag:GetResources
               - tag:TagResources
               - tag:UntagResources
             Resource: '*'
-            # 'arn:aws:lambda:*:*:function:*' doesn't work
-
+#            Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*  # doesn't work
+#            Resource: 'arn:aws:lambda:*'  # doesn't work
 
   CloudTrail:
     Type: AWS::CloudTrail::Trail
