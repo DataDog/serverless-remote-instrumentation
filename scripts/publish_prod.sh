@@ -18,7 +18,7 @@ if [ -z "$VERSION" ]; then
 fi
 
 # Ensure there are no uncommitted changes
-cd ~/dd/Serverless-Remote-Instrumentation/scripts
+cd ~/dd/Serverless-Remote-Instrumentation
 if [[ `git status --porcelain` ]]; then
     echo "Detected uncommitted changes, aborting"
     exit 1
@@ -42,6 +42,8 @@ cd $SCRIPTS_DIR/..
 
 echo "Checking that you have access to the commercial AWS account"
 aws-vault exec sso-prod-engineering -- aws sts get-caller-identity
+
+VERSION=$VERSION ARCHITECTURE=$ARCHITECTURE ./scripts/build_layer.sh
 
 echo "Signing the layer"
 aws-vault exec sso-prod-engineering -- ./scripts/sign_layers.sh prod
