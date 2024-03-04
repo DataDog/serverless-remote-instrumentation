@@ -20,11 +20,10 @@ fi
 # Ensure there are no uncommitted changes
 cd ~/dd/Serverless-Remote-Instrumentation
 
-### disable for dev
-#if [[ `git status --porcelain` ]]; then
-#    echo "Detected uncommitted changes, aborting"
-#    exit 1
-#fi
+if [[ `git status --porcelain` ]]; then
+    echo "Detected uncommitted changes, aborting"
+    exit 1
+fi
 
 CURRENT_SHA=$(git rev-parse HEAD)
 COMMIT_MESSAGE=$(git log -1 --pretty=%B)
