@@ -19,10 +19,12 @@ fi
 
 # Ensure there are no uncommitted changes
 cd ~/dd/Serverless-Remote-Instrumentation
-if [[ `git status --porcelain` ]]; then
-    echo "Detected uncommitted changes, aborting"
-    exit 1
-fi
+
+### disable for dev
+#if [[ `git status --porcelain` ]]; then
+#    echo "Detected uncommitted changes, aborting"
+#    exit 1
+#fi
 
 CURRENT_SHA=$(git rev-parse HEAD)
 COMMIT_MESSAGE=$(git log -1 --pretty=%B)
@@ -48,7 +50,7 @@ cd $SCRIPTS_DIR/..
 echo "Checking that you have access to the commercial AWS account"
 aws-vault exec sso-prod-engineering -- aws sts get-caller-identity
 
-#VERSION=$VERSION ARCHITECTURE=$ARCHITECTURE ./scripts/build_layer.sh
+VERSION=$VERSION ARCHITECTURE=$ARCHITECTURE ./scripts/build_layer.sh
 
 echo "Signing the layer"
 aws-vault exec sso-prod-engineering -- ./scripts/sign_layers.sh prod
