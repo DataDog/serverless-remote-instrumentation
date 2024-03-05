@@ -162,6 +162,7 @@ Resources:
               - tag:TagResources
               - tag:UntagResources
             Resource: '*'
+#            Resource: arn:aws:lambda:*:*:function:*
 #            Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*  # doesn't work
 #            Resource: 'arn:aws:lambda:*'  # doesn't work
 
