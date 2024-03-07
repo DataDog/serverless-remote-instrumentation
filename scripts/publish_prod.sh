@@ -5,7 +5,7 @@
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
 # Copyright 2024 Datadog, Inc.
 
-# Use with `VERSION=<DESIRED_VERSION> ./publish_prod.sh`
+# From repo root, execute the script with `VERSION=<DESIRED_VERSION> ./scripts/publish_prod.sh`
 
 set -e
 
@@ -19,6 +19,7 @@ fi
 
 # Ensure there are no uncommitted changes
 cd ~/dd/Serverless-Remote-Instrumentation
+
 if [[ `git status --porcelain` ]]; then
     echo "Detected uncommitted changes, aborting"
     exit 1
@@ -36,12 +37,19 @@ if [ "$CONT" != "y" ]; then
 fi
 cd -
 
+if [ -z $ARCHITECTURE ]; then
+    echo "No architecture specified, defaulting to arm64"
+    ARCHITECTURE="arm64"
+fi
+
 # Move into the root directory
 SCRIPTS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 cd $SCRIPTS_DIR/..
 
 echo "Checking that you have access to the commercial AWS account"
 aws-vault exec sso-prod-engineering -- aws sts get-caller-identity
+
+VERSION=$VERSION ARCHITECTURE=$ARCHITECTURE ./scripts/build_layer.sh
 
 echo "Signing the layer"
 aws-vault exec sso-prod-engineering -- ./scripts/sign_layers.sh prod
