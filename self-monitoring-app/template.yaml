@@ -1,0 +1,156 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: >
+  Self Monitoring App for Remote Instrumentation
+
+# All version values except L12 are double-quoted on purpose since publish.sh is searching for
+# version string and replace the value with new version. All other version values should be
+# double-quoted.
+Mappings:
+  Constants:
+    SelfMonitorRemoteInstrumentApp:
+      Version: 0.1.0
+
+Parameters:
+  DdApiKey:
+    Type: String
+    Description: >-
+      The Datadog API key, which can be found from the APIs page
+      (/organization-settings/api-keys).
+    NoEcho: true
+  DdSite:
+    Type: String
+    Default: datadoghq.com
+    Description: >-
+      Define your Datadog Site to send data to. Possible values are
+      `datadoghq.com`, `datadoghq.eu`, `us3.datadoghq.com`, `us5.datadoghq.com`
+      and `ddog-gov.com`.
+    AllowedPattern: .+
+    ConstraintDescription: DdSite is required
+  ModifierLambdaFunctionName:
+    Type: String
+    Default: remote-instrument-self-monitoring-modifier
+    Description: >-
+      Define the Lambda function name which is auto instrumenting the other Lambda functions.
+  SelfMonitorTargetFunctionNamePrefix:
+    Type: String
+    Default: remote-instrument-self-monitoring
+    Description: >-
+      Function name prefix for target functions
+#  BucketName:
+#    Type: String
+#    Default: datadog-auto-instrument-1
+#  TrailName:
+#    Type: String
+#    Default: datadog-auto-instrument-trail
+#  DdAwsAccountNumber:
+#    Type: String
+#    Default: '425362996713'
+
+Resources:
+#  CloudFormationLifeCycle:
+#    Type: 'AWS::CloudFormation::CustomResource'
+#    Version: '1.0'
+#    Properties:
+#      ServiceToken: !GetAtt ModifierLambdaFunction.Arn
+#      FunctionName: !Ref ModifierLambdaFunctionName
+  ModifierLambdaFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: !Ref ModifierLambdaFunctionName
+      Architectures:
+      - arm64
+      Runtime: nodejs20.x
+      Timeout: 900
+      MemorySize: 512
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Handler: /opt/nodejs/node_modules/datadog-lambda-js/handler.handler
+      Layers:
+        - !Sub 'arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Extension-ARM:55'
+        - !Sub 'arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Node20-x:106'
+        - !Sub 'arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Serverless-Remote-Instrumentation-ARM:1'
+      Environment:
+        Variables:
+          DD_LAMBDA_HANDLER: index.handler
+          DD_TRACE_ENABLED: true
+          DD_API_KEY: !Ref DdApiKey
+          DD_LOG_LEVEL: DEBUG
+          DD_TRACE_DEBUG: false
+          DD_SERVICE: Datadog-Remote-Instrument
+          DD_ENV: dev
+          DD_VERSION: 0.1.0
+          DD_SITE: !Ref DdSite
+
+      Code:
+        ZipFile: |
+          INJECT_ENTRY_FUNCTION_CODE_PLACEHOLDER
+
+  LambdaExecutionRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      Path: "/"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Policies:
+      - PolicyName: root
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+          - Effect: Allow
+            Action:
+            - logs:CreateLogStream
+            - logs:CreateLogGroup
+            - logs:PutLogEvents
+            Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
+          - Effect: Allow
+            Action:
+              - lambda:InvokeFunction
+              - lambda:GetFunction
+              - lambda:UpdateFunctionConfiguration
+              - lambda:TagResource
+              - lambda:UntagResource
+            Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*
+          - Effect: Allow
+            Action:
+              - lambda:GetLayerVersion
+            Resource: !Sub arn:aws:lambda:${AWS::Region}:464622532012:layer:*
+#          - Effect: Allow
+#            Action:
+#              - lambda:ListTags
+#            Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*
+#  LambdaEventRule:
+#    Type: AWS::Events::Rule
+#    Properties:
+#      Description: "EventRule for piping lambda management events to Datadog lambda remote instrumenter"
+#      EventPattern:
+#        source:
+#          - aws.lambda
+#        detail:
+#          eventSource:
+#            - lambda.amazonaws.com
+#          requestParameters:
+#            functionName:
+#              - prefix: test-auto-instrument
+#      State: "ENABLED"
+#      Targets:
+#        - Arn: !GetAtt ModifierLambdaFunction.Arn
+#          Id: "DatadogInstrumentingLambdaTarget"
+#  EventBridgeLambdaPermission:
+#    Type: AWS::Lambda::Permission
+#    Properties:
+#      FunctionName: !Ref ModifierLambdaFunctionName
+#      Action: lambda:InvokeFunction
+#      Principal: events.amazonaws.com
+#      SourceArn: !GetAtt LambdaEventRule.Arn
+#  EventBridgeLambdaPermission2:
+#    Type: AWS::Lambda::Permission
+#    Properties:
+#      FunctionName: !Ref ModifierLambdaFunctionName
+#      Action: lambda:InvokeFunction
+#      Principal: events.amazonaws.com
+#      SourceArn: !GetAtt StackUpdateEventRule.Arn
