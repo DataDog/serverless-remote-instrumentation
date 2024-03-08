@@ -37,23 +37,43 @@ Parameters:
     Default: remote-instrument-self-monitoring
     Description: >-
       Function name prefix for target functions
-#  BucketName:
-#    Type: String
-#    Default: datadog-auto-instrument-1
-#  TrailName:
-#    Type: String
-#    Default: datadog-auto-instrument-trail
-#  DdAwsAccountNumber:
-#    Type: String
-#    Default: '425362996713'
-
+  SelfMonitorBucketName:
+    Type: String
+    Default: remote-instrument-self-monitor-1
+  DdAutoInstrumentFunctions:
+    Type: String
+    Default: test-auto-instrument-node
+  DdAutoInstrumentLambdaTags:
+    Type: String
+    Default: DD_AUTO_INSTRUMENT_ENABLED:true
+  DdAutoUninstrumentFunctions:
+    Type: String
+    Default: test-auto-instrument-to-be-uninstrumented
+  DdExtensionLayerVersion:
+    Type: String
+    Default: '50'
+  DdPythonLayerVersion:
+    Type: String
+    Default: '70'
+  DdNodeLayerVersion:
+    Type: String
+    Default: '100'
 Resources:
-#  CloudFormationLifeCycle:
-#    Type: 'AWS::CloudFormation::CustomResource'
-#    Version: '1.0'
-#    Properties:
-#      ServiceToken: !GetAtt ModifierLambdaFunction.Arn
-#      FunctionName: !Ref ModifierLambdaFunctionName
+  RemoteInstrumentStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/auto-instrument-dev/0.5.1.yaml
+      Parameters:
+        DdApiKey: !Ref DdApiKey
+        DdSite: !Ref DdSite
+        BucketName: !Ref SelfMonitorBucketName
+        DdAwsAccountNumber: '425362996713'
+        DdAutoInstrumentFunctions: !Ref DdAutoInstrumentFunctions
+        DdAutoInstrumentLambdaTags: !Ref DdAutoInstrumentLambdaTags
+        DdAutoUninstrumentFunctions: !Ref DdAutoUninstrumentFunctions
+        DdExtensionLayerVersion: !Ref DdExtensionLayerVersion
+        DdPythonLayerVersion: !Ref DdPythonLayerVersion
+        DdNodeLayerVersion: !Ref DdNodeLayerVersion
   ModifierLambdaFunction:
     Type: 'AWS::Lambda::Function'
     Properties:
