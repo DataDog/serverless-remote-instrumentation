@@ -113,7 +113,9 @@ Resources:
           DD_JAVA_LAYER_VERSION: !Ref DdJavaLayerVersion
           DD_DOTNET_LAYER_VERSION: !Ref DdDotnetLayerVersion
           DD_RUBY_LAYER_VERSION: !Ref DdRubyLayerVersion
-
+      Tags:
+        - Key: "dd_serverless_service"
+          Value: "remote_instrumenter"
       Code:
         ZipFile: |
           INJECT_ENTRY_FUNCTION_CODE_PLACEHOLDER
