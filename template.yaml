@@ -31,7 +31,7 @@ Parameters:
     Type: String
     Default: datadog-instrumenter
     Description: >-
-      Define the Lambda function name which is auto instrumenting the other Lambda functions.
+      Define the Lambda function name which is instrumenting the other Lambda functions.
   BucketName:
     Type: String
     Default: datadog-serverless-instrumentation
