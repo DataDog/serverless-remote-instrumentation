@@ -34,7 +34,7 @@ Parameters:
       Define the Lambda function name which is instrumenting the other Lambda functions.
   BucketName:
     Type: String
-    Default: datadog-serverless-instrumentation
+    Default: datadog-serverless-instrumentation-5
   TrailName:
     Type: String
     Default: datadog-serverless-instrumentation-trail
@@ -234,9 +234,6 @@ Resources:
         detail:
           eventSource:
             - lambda.amazonaws.com
-#          requestParameters:
-#            functionName:
-#              - prefix: test-auto-instrument
       State: "ENABLED"
       Targets:
         - Arn: !GetAtt LambdaFunction.Arn
@@ -251,9 +248,6 @@ Resources:
         detail:
           eventSource:
             - lambda.amazonaws.com
-#          requestParameters:
-#            functionName:
-#              - prefix: test-auto-instrument
       State: "ENABLED"
       Targets:
         - Arn: !GetAtt LambdaFunction.Arn
