@@ -6,6 +6,7 @@ dist/*
 existing_layers
 nodejs/*
 node_modules/*
+self-monitoring-app/dist/*
 scripts/.cache
 scripts/.layers
 scripts/.src
