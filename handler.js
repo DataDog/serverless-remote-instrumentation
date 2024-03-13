@@ -128,7 +128,7 @@ async function getConfig() {
 
         // instrumentation and uninstrumentation
         AllowList: process.env.AllowList,
-        TagRules: process.env.TagRules,
+        TagRule: process.env.TagRule,
         DenyList: process.env.DenyList,
 
         // layer version
@@ -169,7 +169,7 @@ async function uninstrumentFunctions(functionNamesToUninstrument, config) {
 }
 
 function getAutoInstrumentTagsFromConfig(config) {
-    const ddAutoInstrumentLambdaTags = config.TagRules
+    const ddAutoInstrumentLambdaTags = config.TagRule
     const tags = ddAutoInstrumentLambdaTags.split(',')
     console.log(`tags from env var are: ${JSON.stringify(tags)}`);
     return tags
