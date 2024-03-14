@@ -27,6 +27,11 @@ Parameters:
       and `ddog-gov.com`.
     AllowedPattern: .+
     ConstraintDescription: DdSite is required
+  StackName:
+    Type: String
+    Default: datadog-remote-instrument
+    Description: >-
+      Define the Lambda fulnction name which is instrumenting the other Lambda functions.
   InstrumenterFunctionName:
     Type: String
     Default: datadog-remote-instrumenter
@@ -227,7 +232,7 @@ Resources:
   LambdaEventRule:
     Type: AWS::Events::Rule
     Properties:
-      Description: "EventRule for piping lambda management events to Datadog lambda remote instrumenter"
+      Description: "EventRule for piping lambda management events to Datadog lambda instrumenter"
       EventPattern:
         source:
           - aws.lambda
@@ -255,7 +260,7 @@ Resources:
   StackUpdateEventRule:
     Type: AWS::Events::Rule
     Properties:
-      Description: "EventRule for piping stack update management events to Datadog lambda"
+      Description: "EventRule for piping stack update management events to Datadog lambda instrumenter"
       State: "ENABLED"
       Targets:
         - Arn: !GetAtt LambdaFunction.Arn
@@ -266,7 +271,9 @@ Resources:
         detail-type:
           - CloudFormation Stack Status Change
         resources:
-          - wildcard: !Sub "arn:aws:cloudformation:*:*:stack/{InstrumenterFunctionName}/*"
+#          - wildcard: !Sub "arn:aws:cloudformation:*:*:stack/${StackName}*/*"  -> does not work
+          # Hardcoded stack name so the customer cannot change their stack name until RC integration is released
+          - wildcard: arn:aws:cloudformation:*:*:stack/datadog-remote-instrument*/*
         detail:
           status-details:
             status:
