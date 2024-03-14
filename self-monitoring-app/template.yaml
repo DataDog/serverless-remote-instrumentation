@@ -350,8 +350,6 @@ Resources:
       Tags:
         - Key: "service"
           Value: "datadog-remote-instrumentation"
-        - Key: "another-tag"
-          Value: "true"
       Code:
         ZipFile: |
           exports.handler = async (event, context, callback) => {
