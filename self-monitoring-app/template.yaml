@@ -27,6 +27,9 @@ Parameters:
       and `ddog-gov.com`.
     AllowedPattern: .+
     ConstraintDescription: DdSite is required
+  StackName:
+    Type: String
+    Default: remote-instrument-self-monitor
   ModifierLambdaFunctionName:
     Type: String
     Default: remote-instrument-self-monitoring-modifier
@@ -69,6 +72,7 @@ Resources:
       Parameters:
         DdApiKey: !Ref DdApiKey
         DdSite: !Ref DdSite
+        StackName: !Ref StackName
         BucketName: !Ref BucketName
         DdAwsAccountNumber: '425362996713'
         AllowList: !Ref AllowList
