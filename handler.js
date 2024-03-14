@@ -26,7 +26,7 @@ exports.handler = async (event, context, callback) => {
     console.log(`\n process: ${JSON.stringify(process.env)}`)
 
     const config = await getConfig();
-    const functionNamesToInstrument = getFunctionNamesFromString(config.DD_AUTO_INSTRUMENT_FUNCTIONS)
+    const functionNamesToInstrument = getFunctionNamesFromString(config.AllowList)
 
     const span = tracer.scope().active();
     if (span !== null) {
@@ -70,8 +70,8 @@ exports.handler = async (event, context, callback) => {
     }
 
     // *** Uninstrument ***
-    if (config.DD_AUTO_UNINSTRUMENT_FUNCTIONS !== '') {
-        const functionNamesToUninstrument = getFunctionNamesFromString(config.DD_AUTO_UNINSTRUMENT_FUNCTIONS)
+    if (config.DenyList !== '') {
+        const functionNamesToUninstrument = getFunctionNamesFromString(config.DenyList)
         await uninstrumentFunctions_withTrace(functionNamesToUninstrument, config);
         return `✅↩ Lambda uninstrument already-auto-instrumented function(s) finished without failing.`;
     }
@@ -127,9 +127,9 @@ async function getConfig() {
         DD_AWS_ACCOUNT_NUMBER: process.env.DD_AWS_ACCOUNT_NUMBER,
 
         // instrumentation and uninstrumentation
-        DD_AUTO_INSTRUMENT_FUNCTIONS: process.env.DD_AUTO_INSTRUMENT_FUNCTIONS,
-        DD_AUTO_INSTRUMENT_LAMBDA_TAGS: process.env.DD_AUTO_INSTRUMENT_LAMBDA_TAGS,
-        DD_AUTO_UNINSTRUMENT_FUNCTIONS: process.env.DD_AUTO_UNINSTRUMENT_FUNCTIONS,
+        AllowList: process.env.AllowList,
+        TagRule: process.env.TagRule,
+        DenyList: process.env.DenyList,
 
         // layer version
         DD_EXTENSION_LAYER_VERSION: process.env.DD_EXTENSION_LAYER_VERSION,
@@ -169,7 +169,7 @@ async function uninstrumentFunctions(functionNamesToUninstrument, config) {
 }
 
 function getAutoInstrumentTagsFromConfig(config) {
-    const ddAutoInstrumentLambdaTags = config.DD_AUTO_INSTRUMENT_LAMBDA_TAGS
+    const ddAutoInstrumentLambdaTags = config.TagRule
     const tags = ddAutoInstrumentLambdaTags.split(',')
     console.log(`tags from env var are: ${JSON.stringify(tags)}`);
     return tags
