@@ -74,7 +74,7 @@ if [ "$ACCOUNT" = "prod" ]; then
 
     # Confirm to proceed
     echo
-    read -p "About to bump the version from ${CURRENT_VERSION} to ${SAMPLE_APP_VERSION}, create a release of v${SAMPLE_APP_VERSION} on GitHub, upload the template.yaml to s3://${BUCKET}/aws/auto-instrument/${SAMPLE_APP_VERSION}.yaml. Continue (y/n)?" CONT
+    read -p "About to bump the version from ${CURRENT_VERSION} to ${SAMPLE_APP_VERSION}, create a release of v${SAMPLE_APP_VERSION} on GitHub, upload the template.yaml to s3://${BUCKET}/aws/remote-instrument/${SAMPLE_APP_VERSION}.yaml. Continue (y/n)?" CONT
     if [ "$CONT" != "y" ]; then
         echo "Exiting..."
         exit 1
@@ -98,15 +98,15 @@ if [ "$ACCOUNT" = "prod" ]; then
 
     git push origin v${SAMPLE_APP_VERSION}
 
-    aws-login aws s3 cp dist/template.yaml s3://${BUCKET}/aws/auto-instrument/${SAMPLE_APP_VERSION}.yaml \
+    aws-login aws s3 cp dist/template.yaml s3://${BUCKET}/aws/remote-instrument/${SAMPLE_APP_VERSION}.yaml \
         --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers
-    aws-login aws s3 cp dist/template.yaml s3://${BUCKET}/aws/auto-instrument/latest.yaml \
+    aws-login aws s3 cp dist/template.yaml s3://${BUCKET}/aws/remote-instrument/latest.yaml \
         --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers
-    TEMPLATE_URL="https://${BUCKET}.s3.amazonaws.com/aws/auto-instrument/latest.yaml"
+    TEMPLATE_URL="https://${BUCKET}.s3.amazonaws.com/aws/remote-instrument/latest.yaml"
 else
-    aws-login aws s3 cp dist/template.yaml s3://${BUCKET}/aws/auto-instrument-dev/${SAMPLE_APP_VERSION}.yaml
-    aws-login aws s3 cp dist/template.yaml s3://${BUCKET}/aws/auto-instrument-dev/latest.yaml
-    TEMPLATE_URL="https://${BUCKET}.s3.amazonaws.com/aws/auto-instrument-dev/latest.yaml"
+    aws-login aws s3 cp dist/template.yaml s3://${BUCKET}/aws/remote-instrument-dev/${SAMPLE_APP_VERSION}.yaml
+    aws-login aws s3 cp dist/template.yaml s3://${BUCKET}/aws/remote-instrument-dev/latest.yaml
+    TEMPLATE_URL="https://${BUCKET}.s3.amazonaws.com/aws/remote-instrument-dev/latest.yaml"
     echo "CURRENT_VERSION: $CURRENT_VERSION"
     echo "SAMPLE_APP_VERSION: $SAMPLE_APP_VERSION"
     echo "ACCOUNT: $ACCOUNT"
@@ -117,7 +117,7 @@ fi
 echo "Done uploading the CloudFormation template!"
 echo
 echo "Here is the CloudFormation quick launch URL:"
-echo "https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?stackName=datadog-auto-instrument&templateURL=${TEMPLATE_URL}"
+echo "https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?stackName=datadog-remote-instrument&templateURL=${TEMPLATE_URL}"
 echo
 echo "Serverless Sample App release process complete!"
 

@@ -8,7 +8,7 @@ Description: >
 # double-quoted.
 Mappings:
   Constants:
-    DatadogAutoInstrumentDemoApp:
+    DatadogRemoteInstrumentDemoApp:
       Version: 0.1.0
 
 Parameters:
@@ -27,27 +27,27 @@ Parameters:
       and `ddog-gov.com`.
     AllowedPattern: .+
     ConstraintDescription: DdSite is required
-  LambdaFunctionName:
+  InstrumenterFunctionName:
     Type: String
-    Default: datadog-auto-instrument
+    Default: datadog-remote-instrumenter
     Description: >-
-      Define the Lambda function name which is auto instrumenting the other Lambda functions.
+      Define the Lambda fulnction name which is instrumenting the other Lambda functions.
   BucketName:
     Type: String
-    Default: datadog-auto-instrument-1
+    Default: datadog-serverless-instrumentation-5
   TrailName:
     Type: String
-    Default: datadog-auto-instrument-trail
+    Default: datadog-serverless-instrumentation-trail
   DdAwsAccountNumber:
     Type: String
     Default: '425362996713'
-  DdAutoInstrumentFunctions:
+  AllowList:
     Type: String
     Default: test-auto-instrument-node,test-auto-instrument-another-node,test-auto-instrument-does-not-exist,test-auto-instrument-python,test-auto-instrument-to-be-uninstrumented
-  DdAutoInstrumentLambdaTags:
+  TagRule:
     Type: String
-    Default: DD_AUTO_INSTRUMENT_ENABLED:true
-  DdAutoUninstrumentFunctions:
+    Default: DD_REMOTE_INSTRUMENT_ENABLED:true
+  DenyList:
     Type: String
     Default: test-auto-instrument-to-be-uninstrumented
   DdExtensionLayerVersion:
@@ -59,15 +59,15 @@ Parameters:
   DdNodeLayerVersion:
     Type: String
     Default: '100'
-  DdJavaLayerVersion:
-    Type: String
-    Default: ''
-  DdDotnetLayerVersion:
-    Type: String
-    Default: ''
-  DdRubyLayerVersion:
-    Type: String
-    Default: ''
+#  DdJavaLayerVersion:
+#    Type: String
+#    Default: ''
+#  DdDotnetLayerVersion:
+#    Type: String
+#    Default: ''
+#  DdRubyLayerVersion:
+#    Type: String
+#    Default: ''
 
 Resources:
   CloudFormationLifeCycle:
@@ -75,11 +75,11 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !GetAtt LambdaFunction.Arn
-      FunctionName: !Ref LambdaFunctionName
+      FunctionName: !Ref InstrumenterFunctionName
   LambdaFunction:
     Type: 'AWS::Lambda::Function'
     Properties:
-      FunctionName: !Ref LambdaFunctionName
+      FunctionName: !Ref InstrumenterFunctionName
       Architectures:
       - arm64
       Runtime: nodejs20.x
@@ -99,20 +99,20 @@ Resources:
           DD_API_KEY: !Ref DdApiKey
           DD_LOG_LEVEL: DEBUG
           DD_TRACE_DEBUG: false
-          DD_SERVICE: Datadog-Remote-Instrument
+          DD_SERVICE: Datadog-Instrument
           DD_ENV: dev
           DD_VERSION: 0.1.0
           DD_SITE: !Ref DdSite
           DD_AWS_ACCOUNT_NUMBER: !Ref DdAwsAccountNumber
-          DD_AUTO_INSTRUMENT_FUNCTIONS: !Ref DdAutoInstrumentFunctions
-          DD_AUTO_INSTRUMENT_LAMBDA_TAGS: !Ref DdAutoInstrumentLambdaTags
-          DD_AUTO_UNINSTRUMENT_FUNCTIONS: !Ref DdAutoUninstrumentFunctions
+          AllowList: !Ref AllowList
+          TagRule: !Ref TagRule
+          DenyList: !Ref DenyList
           DD_EXTENSION_LAYER_VERSION: !Ref DdExtensionLayerVersion
           DD_PYTHON_LAYER_VERSION: !Ref DdPythonLayerVersion
           DD_NODE_LAYER_VERSION: !Ref DdNodeLayerVersion
-          DD_JAVA_LAYER_VERSION: !Ref DdJavaLayerVersion
-          DD_DOTNET_LAYER_VERSION: !Ref DdDotnetLayerVersion
-          DD_RUBY_LAYER_VERSION: !Ref DdRubyLayerVersion
+#          DD_JAVA_LAYER_VERSION: !Ref DdJavaLayerVersion
+#          DD_DOTNET_LAYER_VERSION: !Ref DdDotnetLayerVersion
+#          DD_RUBY_LAYER_VERSION: !Ref DdRubyLayerVersion
       Tags:
         - Key: "dd_serverless_service"
           Value: "remote_instrumenter"
@@ -234,9 +234,6 @@ Resources:
         detail:
           eventSource:
             - lambda.amazonaws.com
-          requestParameters:
-            functionName:
-              - prefix: test-auto-instrument
       State: "ENABLED"
       Targets:
         - Arn: !GetAtt LambdaFunction.Arn
@@ -251,9 +248,6 @@ Resources:
         detail:
           eventSource:
             - lambda.amazonaws.com
-          requestParameters:
-            functionName:
-              - prefix: test-auto-instrument
       State: "ENABLED"
       Targets:
         - Arn: !GetAtt LambdaFunction.Arn
@@ -272,8 +266,7 @@ Resources:
         detail-type:
           - CloudFormation Stack Status Change
         resources:
-          # stack name is hardcoded (need to be updated if we rename the stack)
-          - wildcard: arn:aws:cloudformation:*:*:stack/datadog-auto-instrument/*
+          - wildcard: !Sub "arn:aws:cloudformation:*:*:stack/{InstrumenterFunctionName}/*"
         detail:
           status-details:
             status:
@@ -281,14 +274,14 @@ Resources:
   EventBridgeLambdaPermission:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !Ref LambdaFunctionName
+      FunctionName: !Ref InstrumenterFunctionName
       Action: lambda:InvokeFunction
       Principal: events.amazonaws.com
       SourceArn: !GetAtt LambdaEventRule.Arn
   EventBridgeLambdaPermission2:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !Ref LambdaFunctionName
+      FunctionName: !Ref InstrumenterFunctionName
       Action: lambda:InvokeFunction
       Principal: events.amazonaws.com
       SourceArn: !GetAtt StackUpdateEventRule.Arn
