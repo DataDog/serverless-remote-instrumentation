@@ -32,21 +32,16 @@ Parameters:
     Default: remote-instrument-self-monitoring-modifier
     Description: >-
       Define the Lambda function name which is remote instrumenting the other Lambda functions.
-  SelfMonitorTargetFunctionNamePrefix:
-    Type: String
-    Default: remote-instrument-self-monitoring
-    Description: >-
-      Function name prefix for target functions
-  SelfMonitorBucketName:
+  BucketName:
     Type: String
     Default: remote-instrument-self-monitor-2
-  DdRemoteInstrumentFunctions:
+  AllowList:
     Type: String
     Default: remote-instrument-self-monitor-node,remote-instrument-self-monitor-python,some-function-does-not-exist-for-testing-purpose
-  DdRemoteInstrumentLambdaTags:
+  TagRule:
     Type: String
     Default: DD_REMOTE_INSTRUMENT_ENABLED:true,another-tag:true
-  DdRemoteUninstrumentFunctions:
+  DenyList:
     Type: String
     Default: remote-instrument-self-monitor-to-be-uninstrumented
   DdExtensionLayerVersion:
@@ -58,6 +53,9 @@ Parameters:
   DdNodeLayerVersion:
     Type: String
     Default: '100'
+  DdAwsAccountNumber:
+    Type: String
+    Default: '425362996713'
 Resources:
   RemoteInstrumentStack:
     Type: AWS::CloudFormation::Stack
@@ -67,15 +65,15 @@ Resources:
       - LambdaFunctionWithSpecifiedTags
       - LambdaFunctionWithoutSpecifiedTags
     Properties:
-      TemplateURL: https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/auto-instrument-dev/0.5.1.yaml
+      TemplateURL: https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/remote-instrument-dev/latest.yaml
       Parameters:
         DdApiKey: !Ref DdApiKey
         DdSite: !Ref DdSite
-        BucketName: !Ref SelfMonitorBucketName
+        BucketName: !Ref BucketName
         DdAwsAccountNumber: '425362996713'
-        DdAutoInstrumentFunctions: !Ref DdRemoteInstrumentFunctions
-        DdAutoInstrumentLambdaTags: !Ref DdRemoteInstrumentLambdaTags
-        DdAutoUninstrumentFunctions: !Ref DdRemoteUninstrumentFunctions
+        AllowList: !Ref AllowList
+        TagRule: !Ref TagRule
+        DenyList: !Ref DenyList
         DdExtensionLayerVersion: !Ref DdExtensionLayerVersion
         DdPythonLayerVersion: !Ref DdPythonLayerVersion
         DdNodeLayerVersion: !Ref DdNodeLayerVersion
@@ -158,12 +156,12 @@ Resources:
       - arm64
       Runtime: nodejs20.x
       Timeout: 90
-      MemorySize: 128
+      MemorySize: 256
       Role: !GetAtt NodeLambdaExecutionRole.Arn
-      Handler: /opt/nodejs/node_modules/datadog-lambda-js/handler.handler
+      Handler: index.handler
       Environment:
         Variables:
-          DD_LAMBDA_HANDLER: index.handler
+#          DD_LAMBDA_HANDLER: index.handler
           DD_TRACE_ENABLED: true
           DD_API_KEY: !Ref DdApiKey
           DD_SERVICE: remote-instrument-self-monitor
@@ -217,12 +215,12 @@ Resources:
       - arm64
       Runtime: python3.11
       Timeout: 90
-      MemorySize: 128
+      MemorySize: 256
       Role: !GetAtt PythonLambdaRole.Arn
-      Handler: /opt/nodejs/node_modules/datadog-lambda-js/handler.handler
+      Handler: index.handler
       Environment:
         Variables:
-          DD_LAMBDA_HANDLER: index.handler
+#          DD_LAMBDA_HANDLER: index.handler
           DD_TRACE_ENABLED: true
           DD_API_KEY: !Ref DdApiKey
           DD_SERVICE: remote-instrument-self-monitor
@@ -276,7 +274,7 @@ Resources:
       - arm64
       Runtime: nodejs20.x
       Timeout: 90
-      MemorySize: 128
+      MemorySize: 256
       Role: !GetAtt NodeLambdaExecutionRole.Arn
       Handler: /opt/nodejs/node_modules/datadog-lambda-js/handler.handler
       Environment:
@@ -337,7 +335,7 @@ Resources:
       - arm64
       Runtime: nodejs20.x
       Timeout: 90
-      MemorySize: 128
+      MemorySize: 256
       Role: !GetAtt NodeLambdaExecutionRole.Arn
       Handler: /opt/nodejs/node_modules/datadog-lambda-js/handler.handler
       Environment:
@@ -396,7 +394,7 @@ Resources:
         - arm64
       Runtime: nodejs20.x
       Timeout: 90
-      MemorySize: 128
+      MemorySize: 256
       Role: !GetAtt LambdaToBeUninstrumentedRole.Arn
       Handler: /opt/nodejs/node_modules/datadog-lambda-js/handler.handler
       Environment:
