@@ -29,9 +29,9 @@ Parameters:
     ConstraintDescription: DdSite is required
   InstrumenterFunctionName:
     Type: String
-    Default: datadog-instrumenter
+    Default: datadog-remote-instrumenter
     Description: >-
-      Define the Lambda function name which is instrumenting the other Lambda functions.
+      Define the Lambda fulnction name which is instrumenting the other Lambda functions.
   BucketName:
     Type: String
     Default: datadog-serverless-instrumentation-5
@@ -266,9 +266,6 @@ Resources:
         detail-type:
           - CloudFormation Stack Status Change
         resources:
-          # stack name is hardcoded (need to be updated if we rename the stack)
-#          - wildcard: arn:aws:cloudformation:*:*:stack/datadog-remote-instrument/*
-#          - wildcard: arn:aws:cloudformation:*:*:stack/datadog-remote-instrument/*
           - wildcard: !Sub "arn:aws:cloudformation:*:*:stack/{InstrumenterFunctionName}/*"
         detail:
           status-details:
