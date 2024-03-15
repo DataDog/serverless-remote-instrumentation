@@ -27,11 +27,6 @@ Parameters:
       and `ddog-gov.com`.
     AllowedPattern: .+
     ConstraintDescription: DdSite is required
-  StackName:
-    Type: String
-    Default: datadog-remote-instrument
-    Description: >-
-      Define the Lambda fulnction name which is instrumenting the other Lambda functions.
   InstrumenterFunctionName:
     Type: String
     Default: datadog-remote-instrumenter
@@ -232,7 +227,7 @@ Resources:
   LambdaEventRule:
     Type: AWS::Events::Rule
     Properties:
-      Description: "EventRule for piping lambda management events to Datadog lambda instrumenter"
+      Description: "EventRule for piping lambda management events to Datadog lambda remote instrumenter"
       EventPattern:
         source:
           - aws.lambda
