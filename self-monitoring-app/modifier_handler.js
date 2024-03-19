@@ -39,7 +39,7 @@ async function emptyBucket(bucketName, config) {
                 Contents,
                 IsTruncated,
                 NextContinuationToken
-            } = await s3.send(new ListObjectsV2Command({
+            } = await s3Client.send(new ListObjectsV2Command({
                 Bucket: bucketName,
                 ContinuationToken: token,
             }));
