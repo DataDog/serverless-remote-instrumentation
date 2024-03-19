@@ -18,7 +18,7 @@ exports.handler = async (event, context, callback) => {
     // await sleep(30000);
 
     // await createStack(config);
-    // await sleep(150000);
+    // await sleep(300000);  // 5 minutes
 
     await deleteStack(config);
     return `✅ All done.`;
@@ -26,7 +26,7 @@ exports.handler = async (event, context, callback) => {
 
 // delete all objects in a bucket
 async function emptyBucket(bucketName, config) {
-    const s3 = new S3Client({region: config.AWS_REGION}); // Replace YOUR_REGION with your S3 bucket region
+    const s3Client = new S3Client({region: config.AWS_REGION}); // Replace YOUR_REGION with your S3 bucket region
 
     // Function to list all objects in the bucket
     async function listAllObjects(bucketName) {
@@ -67,7 +67,7 @@ async function emptyBucket(bucketName, config) {
                 },
             };
 
-            await s3.send(new DeleteObjectsCommand(deleteParams));
+            await s3Client.send(new DeleteObjectsCommand(deleteParams));
         }
     }
 
@@ -80,7 +80,7 @@ async function emptyBucket(bucketName, config) {
 // delete stack
 async function deleteStack(config) {
 
-    await emptyBucket(S3_BUCKET_NAME);
+    await emptyBucket(S3_BUCKET_NAME, config);
     console.log(`bucket ${S3_BUCKET_NAME} is emptied now`)
 
     const client = new CloudFormationClient({region: config.AWS_REGION});
