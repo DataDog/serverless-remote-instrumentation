@@ -162,13 +162,19 @@ Resources:
               - iam:PutRolePolicy
               - iam:GetRole
               - iam:TagRole
+              - iam:PassRole
             Resource:
             - arn:aws:iam::425362996713:role/*
             - arn:aws:iam::425362996713:policy/*
-#          - Effect: Allow
-#            Action:
-#              -  iam:PutRolePolicy
-#            Resource: datadog-remote-instrumenter*
+          - Effect: Allow
+            Action:
+              -  cloudtrail:*
+            Resource: !Sub arn:aws:cloudtrail:${AWS::Region}:425362996713:trail/*
+          - Effect: Allow
+            Action:
+              -  events:*
+            Resource: !Sub arn:aws:events:us-west-1:425362996713:rule/datadog-remote-instrumenter-
+            Resource: !Sub arn:aws:cloudtrail:${AWS::Region}:425362996713:trail/*
 
 #  NodeLambdaFunction:
 #    Type: 'AWS::Lambda::Function'

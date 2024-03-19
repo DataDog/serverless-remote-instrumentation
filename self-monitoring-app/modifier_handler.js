@@ -106,7 +106,7 @@ async function createStack(config) {
         //     "STRING_VALUE",
         // ],
         // RoleARN: "STRING_VALUE",
-        OnFailure: "ROLLBACK",
+        OnFailure: "DO_NOTHING",  // DO_NOTHING, ROLLBACK, or DELETE
         // StackPolicyBody: "STRING_VALUE",
         // StackPolicyURL: "STRING_VALUE",
         Tags: [
