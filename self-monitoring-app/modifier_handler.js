@@ -27,16 +27,10 @@ async function createStack(config) {
     const clientConfig = {}
     const client = new CloudFormationClient(clientConfig);
     const input = { // CreateStackInput
-        StackName: "STRING_VALUE", // required
-        TemplateBody: "STRING_VALUE",
-        TemplateURL: "STRING_VALUE",
-        Parameters: [ // Parameters
-            { // Parameter
-                ParameterKey: "STRING_VALUE",
-                ParameterValue: "STRING_VALUE",
-                UsePreviousValue: true || false,
-                ResolvedValue: "STRING_VALUE",
-            },
+        StackName: "datadog-remote-instrumenter", // required
+        // TemplateBody: "STRING_VALUE",
+        TemplateURL: "https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/remote-instrument-dev/latest.yaml",
+        Parameters: [
             {
                 ParameterKey: "DdApiKey",
                 ParameterValue: process.env.DD_API_KEY,
