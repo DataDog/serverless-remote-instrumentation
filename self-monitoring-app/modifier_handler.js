@@ -5,6 +5,9 @@ const {
     DeleteStackCommand
 } = require("@aws-sdk/client-cloudformation"); // CommonJS import
 
+const INSTRUMENTER_STACK_NAME = "datadog-remote-instrument";
+const S3_BUCKET_NAME = "remote-instrument-self-monitor";
+
 exports.handler = async (event, context, callback) => {
 
     console.log('\n event:', JSON.stringify(event))
@@ -13,21 +16,39 @@ exports.handler = async (event, context, callback) => {
     // await uninstrument(config);
     // await sleep(30000);
 
-    await createStack(config);
+    // await createStack(config);
+    // await sleep(150000);
+
+    await deleteStack(config);
     return `✅ All done.`;
 };
 
 // delete stack
 async function deleteStack(config) {
 
+    // empty the s3 bucket first
+
+
+    const client = new CloudFormationClient({region: config.AWS_REGION});
+    const deleteStackInput = {
+        StackName: INSTRUMENTER_STACK_NAME,
+        // RetainResources: [ // RetainResources
+        //     "STRING_VALUE",
+        // ],
+        // RoleARN: "STRING_VALUE",
+        // ClientRequestToken: "STRING_VALUE",
+    };
+    const command = new DeleteStackCommand(deleteStackInput);
+    const response = await client.send(command);
+    console.log(`DeleteStackCommand response: ${JSON.stringify(response)}`);
 }
 
 // create stack
 async function createStack(config) {
-    const clientConfig = { region: config.AWS_REGION }
+    const clientConfig = {region: config.AWS_REGION};
     const client = new CloudFormationClient(clientConfig);
     const createStackInput = {
-        StackName: "datadog-remote-instrument",
+        StackName: INSTRUMENTER_STACK_NAME,
         TemplateURL: "https://datadog-cloudformation-template-serverless-sandbox.s3.sa-east-1.amazonaws.com/aws/remote-instrument-dev/latest.yaml",
         Parameters: [
             {
@@ -42,7 +63,7 @@ async function createStack(config) {
             },
             {
                 ParameterKey: "BucketName",
-                ParameterValue: "remote-instrument-self-monitor",
+                ParameterValue: S3_BUCKET_NAME,
                 UsePreviousValue: true,
             },
             {
