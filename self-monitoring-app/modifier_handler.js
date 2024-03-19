@@ -29,7 +29,8 @@ async function createStack(config) {
     const input = { // CreateStackInput
         StackName: "datadog-remote-instrumenter", // required
         // TemplateBody: "STRING_VALUE",
-        TemplateURL: "https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/remote-instrument-self-monitor-dev/latest.yaml",
+        // TemplateURL: "https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/remote-instrument-dev/latest.yaml",
+        TemplateURL: "https://datadog-cloudformation-template-serverless-sandbox.s3.sa-east-1.amazonaws.com/aws/remote-instrument-dev/latest.yaml",
         Parameters: [
             {
                 ParameterKey: "DdApiKey",
@@ -39,11 +40,6 @@ async function createStack(config) {
             {
                 ParameterKey: "DdSite",
                 ParameterValue: "datadoghq.com",
-                UsePreviousValue: true,
-            },
-            {
-                ParameterKey: "ModifierLambdaFunctionName",
-                ParameterValue: "remote-instrument-self-monitoring-modifier",
                 UsePreviousValue: true,
             },
             {
@@ -112,7 +108,7 @@ async function createStack(config) {
         // RoleARN: "STRING_VALUE",
         OnFailure: "ROLLBACK",
         // StackPolicyBody: "STRING_VALUE",
-        StackPolicyURL: "STRING_VALUE",
+        // StackPolicyURL: "STRING_VALUE",
         Tags: [
             {
                 Key: "DD_PRESERVE_STACK",
