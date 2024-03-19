@@ -151,6 +151,10 @@ Resources:
             Action:
               - cloudformation:CreateStack
             Resource: !Sub arn:aws:cloudformation:${AWS::Region}:425362996713:stack/*
+          - Effect: Allow
+            Action:
+              - s3:*
+            Resource: '*'
 
 #  NodeLambdaFunction:
 #    Type: 'AWS::Lambda::Function'
