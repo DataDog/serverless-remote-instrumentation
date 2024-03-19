@@ -27,7 +27,7 @@ async function createStack(config) {
     const clientConfig = { region: config.AWS_REGION }
     const client = new CloudFormationClient(clientConfig);
     const input = { // CreateStackInput
-        StackName: "datadog-remote-instrumenter", // required
+        StackName: "datadog-remote-instrument", // required
         // TemplateBody: "STRING_VALUE",
         // TemplateURL: "https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/remote-instrument-dev/latest.yaml",
         TemplateURL: "https://datadog-cloudformation-template-serverless-sandbox.s3.sa-east-1.amazonaws.com/aws/remote-instrument-dev/latest.yaml",
