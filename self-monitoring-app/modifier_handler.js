@@ -24,12 +24,12 @@ async function deleteStack(config) {
 
 // create stack
 async function createStack(config) {
-    const clientConfig = {}
+    const clientConfig = { region: config.AWS_REGION }
     const client = new CloudFormationClient(clientConfig);
     const input = { // CreateStackInput
         StackName: "datadog-remote-instrumenter", // required
         // TemplateBody: "STRING_VALUE",
-        TemplateURL: "https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/remote-instrument-dev/latest.yaml",
+        TemplateURL: "https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/remote-instrument-self-monitor-dev/latest.yaml",
         Parameters: [
             {
                 ParameterKey: "DdApiKey",
@@ -89,7 +89,7 @@ async function createStack(config) {
 
 
         ],
-        DisableRollback: false,
+        // DisableRollback: false,
         // RollbackConfiguration: { // RollbackConfiguration
         //     RollbackTriggers: [ // RollbackTriggers
         //         { // RollbackTrigger
