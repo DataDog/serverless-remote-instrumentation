@@ -26,10 +26,8 @@ async function deleteStack(config) {
 async function createStack(config) {
     const clientConfig = { region: config.AWS_REGION }
     const client = new CloudFormationClient(clientConfig);
-    const input = { // CreateStackInput
-        StackName: "datadog-remote-instrument", // required
-        // TemplateBody: "STRING_VALUE",
-        // TemplateURL: "https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/remote-instrument-dev/latest.yaml",
+    const createStackInput = {
+        StackName: "datadog-remote-instrument",
         TemplateURL: "https://datadog-cloudformation-template-serverless-sandbox.s3.sa-east-1.amazonaws.com/aws/remote-instrument-dev/latest.yaml",
         Parameters: [
             {
@@ -119,7 +117,7 @@ async function createStack(config) {
         // EnableTerminationProtection: true || false,
         // RetainExceptOnCreate: true || false,
     };
-    const command = new CreateStackCommand(input);
+    const command = new CreateStackCommand(createStackInput);
     const response = await client.send(command);
     console.log(`Create stack response: ${JSON.stringify(response)}`)
 // { // CreateStackOutput
