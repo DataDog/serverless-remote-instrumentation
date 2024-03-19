@@ -3,8 +3,9 @@ const {
     CreateStackCommand,
     UpdateStackCommand,
     DeleteStackCommand
-} = require("@aws-sdk/client-cloudformation"); // CommonJS import
+} = require("@aws-sdk/client-cloudformation");
 
+const {S3Client, ListObjectsV2Command, DeleteObjectsCommand} = require("@aws-sdk/client-s3");
 const INSTRUMENTER_STACK_NAME = "datadog-remote-instrument";
 const S3_BUCKET_NAME = "remote-instrument-self-monitor";
 
@@ -23,11 +24,64 @@ exports.handler = async (event, context, callback) => {
     return `✅ All done.`;
 };
 
+// delete all objects in a bucket
+async function emptyBucket(bucketName, config) {
+    const s3 = new S3Client({region: config.AWS_REGION}); // Replace YOUR_REGION with your S3 bucket region
+
+    // Function to list all objects in the bucket
+    async function listAllObjects(bucketName) {
+        const allObjects = [];
+        let isTruncated = true;
+        let token;
+
+        while (isTruncated) {
+            const {
+                Contents,
+                IsTruncated,
+                NextContinuationToken
+            } = await s3.send(new ListObjectsV2Command({
+                Bucket: bucketName,
+                ContinuationToken: token,
+            }));
+
+            allObjects.push(...Contents);
+            isTruncated = IsTruncated;
+            token = NextContinuationToken;
+        }
+
+        return allObjects;
+    }
+
+    // Function to delete all objects in the bucket
+    async function deleteAllObjects(bucketName) {
+        const objects = await listAllObjects(bucketName);
+
+        // S3's DeleteObjects API can take multiple keys, so split the list into chunks if necessary
+        while (objects.length > 0) {
+            const chunk = objects.splice(0, 1000); // S3 API supports deleting up to 1000 objects at once
+            const deleteParams = {
+                Bucket: bucketName,
+                Delete: {
+                    Objects: chunk.map(({Key}) => ({Key})),
+                    Quiet: true,
+                },
+            };
+
+            await s3.send(new DeleteObjectsCommand(deleteParams));
+        }
+    }
+
+    deleteAllObjects(bucketName)
+        .then(() => console.log("All objects deleted successfully."))
+        .catch((error) => console.error("An error occurred:", error));
+
+}
+
 // delete stack
 async function deleteStack(config) {
 
-    // empty the s3 bucket first
-
+    await emptyBucket(S3_BUCKET_NAME);
+    console.log(`bucket ${S3_BUCKET_NAME} is emptied now`)
 
     const client = new CloudFormationClient({region: config.AWS_REGION});
     const deleteStackInput = {
