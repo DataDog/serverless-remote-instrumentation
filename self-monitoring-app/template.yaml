@@ -142,6 +142,7 @@ Resources:
               - lambda:UpdateFunctionConfiguration
               - lambda:TagResource
               - lambda:UntagResource
+              - lambda:CreateFunction
             Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*
           - Effect: Allow
             Action:
@@ -158,7 +159,16 @@ Resources:
           - Effect: Allow
             Action:
               - iam:CreateRole
-            Resource: arn:aws:iam::425362996713:role/*
+              - iam:PutRolePolicy
+              - iam:GetRole
+              - iam:TagRole
+            Resource:
+            - arn:aws:iam::425362996713:role/*
+            - arn:aws:iam::425362996713:policy/*
+#          - Effect: Allow
+#            Action:
+#              -  iam:PutRolePolicy
+#            Resource: datadog-remote-instrumenter*
 
 #  NodeLambdaFunction:
 #    Type: 'AWS::Lambda::Function'
