@@ -34,7 +34,7 @@ Parameters:
       Define the Lambda function name which is remote instrumenting the other Lambda functions.
   BucketName:
     Type: String
-    Default: remote-instrument-self-monitor-2
+    Default: remote-instrument-self-monitor
   AllowList:
     Type: String
     Default: remote-instrument-self-monitor-node,remote-instrument-self-monitor-python,some-function-does-not-exist-for-testing-purpose
@@ -176,6 +176,10 @@ Resources:
             Action:
               -  events:*
             Resource: !Sub arn:aws:events:${AWS::Region}:425362996713:rule/*
+          - Effect: Allow
+            Action:
+              - s3:*
+            Resource: !Sub arn:aws:s3:::${BucketName}
 
 #  NodeLambdaFunction:
 #    Type: 'AWS::Lambda::Function'
