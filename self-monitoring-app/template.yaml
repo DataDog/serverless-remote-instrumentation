@@ -57,34 +57,34 @@ Parameters:
     Type: String
     Default: '425362996713'
 Resources:
-  RemoteInstrumentStack:
-    Type: AWS::CloudFormation::Stack
-    DependsOn:
-      - NodeLambdaFunction
-      - PythonLambdaFunction
-      - LambdaFunctionWithSpecifiedTags
-      - LambdaFunctionWithoutSpecifiedTags
-    Properties:
-      TemplateURL: https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/remote-instrument-dev/latest.yaml
-      Parameters:
-        DdApiKey: !Ref DdApiKey
-        DdSite: !Ref DdSite
-        BucketName: !Ref BucketName
-        DdAwsAccountNumber: '425362996713'
-        AllowList: !Ref AllowList
-        TagRule: !Ref TagRule
-        DenyList: !Ref DenyList
-        DdExtensionLayerVersion: !Ref DdExtensionLayerVersion
-        DdPythonLayerVersion: !Ref DdPythonLayerVersion
-        DdNodeLayerVersion: !Ref DdNodeLayerVersion
+#  RemoteInstrumentStack:
+#    Type: AWS::CloudFormation::Stack
+#    DependsOn:
+#      - NodeLambdaFunction
+#      - PythonLambdaFunction
+#      - LambdaFunctionWithSpecifiedTags
+#      - LambdaFunctionWithoutSpecifiedTags
+#    Properties:
+#      TemplateURL: https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/remote-instrument-dev/latest.yaml
+#      Parameters:
+#        DdApiKey: !Ref DdApiKey
+#        DdSite: !Ref DdSite
+#        BucketName: !Ref BucketName
+#        DdAwsAccountNumber: '425362996713'
+#        AllowList: !Ref AllowList
+#        TagRule: !Ref TagRule
+#        DenyList: !Ref DenyList
+#        DdExtensionLayerVersion: !Ref DdExtensionLayerVersion
+#        DdPythonLayerVersion: !Ref DdPythonLayerVersion
+#        DdNodeLayerVersion: !Ref DdNodeLayerVersion
   ModifierLambdaFunction:
     Type: 'AWS::Lambda::Function'
-    DependsOn:
-      - RemoteInstrumentStack
-      - NodeLambdaFunction
-      - PythonLambdaFunction
-      - LambdaFunctionWithSpecifiedTags
-      - LambdaFunctionWithoutSpecifiedTags
+#    DependsOn:
+#      - RemoteInstrumentStack
+#      - NodeLambdaFunction
+#      - PythonLambdaFunction
+#      - LambdaFunctionWithSpecifiedTags
+#      - LambdaFunctionWithoutSpecifiedTags
     Properties:
       FunctionName: !Ref ModifierLambdaFunctionName
       Architectures:
@@ -148,299 +148,299 @@ Resources:
               - lambda:GetLayerVersion
             Resource: !Sub arn:aws:lambda:${AWS::Region}:464622532012:layer:*
 
-  NodeLambdaFunction:
-    Type: 'AWS::Lambda::Function'
-    Properties:
-      FunctionName: "remote-instrument-self-monitor-node"
-      Architectures:
-      - arm64
-      Runtime: nodejs20.x
-      Timeout: 90
-      MemorySize: 256
-      Role: !GetAtt NodeLambdaExecutionRole.Arn
-      Handler: index.handler
-      Environment:
-        Variables:
+#  NodeLambdaFunction:
+#    Type: 'AWS::Lambda::Function'
+#    Properties:
+#      FunctionName: "remote-instrument-self-monitor-node"
+#      Architectures:
+#      - arm64
+#      Runtime: nodejs20.x
+#      Timeout: 90
+#      MemorySize: 256
+#      Role: !GetAtt NodeLambdaExecutionRole.Arn
+#      Handler: index.handler
+#      Environment:
+#        Variables:
+##          DD_LAMBDA_HANDLER: index.handler
+#          DD_TRACE_ENABLED: true
+#          DD_API_KEY: !Ref DdApiKey
+#          DD_SERVICE: remote-instrument-self-monitor
+#          DD_ENV: dev
+#          DD_VERSION: 0.1.0
+#          DD_SITE: !Ref DdSite
+#      Tags:
+#        - Key: "service"
+#          Value: "datadog-remote-instrumentation"
+#        - Key: "DD_REMOTE_INSTRUMENT_ENABLED"
+#          Value: "true"
+#      Code:
+#        ZipFile: |
+#          exports.handler = async (event, context, callback) => {
+#            console.log('\n event:', JSON.stringify(event))
+#            return `Succeeded.`;
+#          };
+#
+#  NodeLambdaExecutionRole:
+#    Type: 'AWS::IAM::Role'
+#    Properties:
+#      Path: "/"
+#      AssumeRolePolicyDocument:
+#        Version: "2012-10-17"
+#        Statement:
+#          - Effect: Allow
+#            Principal:
+#              Service: lambda.amazonaws.com
+#            Action: 'sts:AssumeRole'
+#      Policies:
+#      - PolicyName: root
+#        PolicyDocument:
+#          Version: "2012-10-17"
+#          Statement:
+#          - Effect: Allow
+#            Action:
+#            - logs:CreateLogStream
+#            - logs:CreateLogGroup
+#            - logs:PutLogEvents
+#            Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
+#          - Effect: Allow
+#            Action:
+#              - lambda:GetLayerVersion
+#            Resource: !Sub arn:aws:lambda:${AWS::Region}:464622532012:layer:*
+#
+#  PythonLambdaFunction:
+#    Type: 'AWS::Lambda::Function'
+#    Properties:
+#      FunctionName: "remote-instrument-self-monitor-python"
+#      Architectures:
+#      - arm64
+#      Runtime: python3.11
+#      Timeout: 90
+#      MemorySize: 256
+#      Role: !GetAtt PythonLambdaRole.Arn
+#      Handler: index.handler
+#      Environment:
+#        Variables:
+##          DD_LAMBDA_HANDLER: index.handler
+#          DD_TRACE_ENABLED: true
+#          DD_API_KEY: !Ref DdApiKey
+#          DD_SERVICE: remote-instrument-self-monitor
+#          DD_ENV: dev
+#          DD_VERSION: 0.1.0
+#          DD_SITE: !Ref DdSite
+#      Tags:
+#        - Key: "service"
+#          Value: "datadog-remote-instrumentation"
+#        - Key: "DD_REMOTE_INSTRUMENT_ENABLED"
+#          Value: "true"
+#      Code:
+#        ZipFile: |
+#          def lambda_handler(event, context):
+#            return {
+#                "statusCode": 200
+#            }
+#
+#  PythonLambdaRole:
+#    Type: 'AWS::IAM::Role'
+#    Properties:
+#      Path: "/"
+#      AssumeRolePolicyDocument:
+#        Version: "2012-10-17"
+#        Statement:
+#          - Effect: Allow
+#            Principal:
+#              Service: lambda.amazonaws.com
+#            Action: 'sts:AssumeRole'
+#      Policies:
+#      - PolicyName: root
+#        PolicyDocument:
+#          Version: "2012-10-17"
+#          Statement:
+#          - Effect: Allow
+#            Action:
+#            - logs:CreateLogStream
+#            - logs:CreateLogGroup
+#            - logs:PutLogEvents
+#            Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
+#          - Effect: Allow
+#            Action:
+#              - lambda:GetLayerVersion
+#            Resource: !Sub arn:aws:lambda:${AWS::Region}:464622532012:layer:*
+#
+#  LambdaFunctionWithSpecifiedTags:
+#    Type: 'AWS::Lambda::Function'
+#    Properties:
+#      FunctionName: "remote-instrument-self-monitor-with-specified-tags"
+#      Architectures:
+#      - arm64
+#      Runtime: nodejs20.x
+#      Timeout: 90
+#      MemorySize: 256
+#      Role: !GetAtt NodeLambdaExecutionRole.Arn
+#      Handler: /opt/nodejs/node_modules/datadog-lambda-js/handler.handler
+#      Environment:
+#        Variables:
 #          DD_LAMBDA_HANDLER: index.handler
-          DD_TRACE_ENABLED: true
-          DD_API_KEY: !Ref DdApiKey
-          DD_SERVICE: remote-instrument-self-monitor
-          DD_ENV: dev
-          DD_VERSION: 0.1.0
-          DD_SITE: !Ref DdSite
-      Tags:
-        - Key: "service"
-          Value: "datadog-remote-instrumentation"
-        - Key: "DD_REMOTE_INSTRUMENT_ENABLED"
-          Value: "true"
-      Code:
-        ZipFile: |
-          exports.handler = async (event, context, callback) => {
-            console.log('\n event:', JSON.stringify(event))
-            return `Succeeded.`;
-          };
-
-  NodeLambdaExecutionRole:
-    Type: 'AWS::IAM::Role'
-    Properties:
-      Path: "/"
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action: 'sts:AssumeRole'
-      Policies:
-      - PolicyName: root
-        PolicyDocument:
-          Version: "2012-10-17"
-          Statement:
-          - Effect: Allow
-            Action:
-            - logs:CreateLogStream
-            - logs:CreateLogGroup
-            - logs:PutLogEvents
-            Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
-          - Effect: Allow
-            Action:
-              - lambda:GetLayerVersion
-            Resource: !Sub arn:aws:lambda:${AWS::Region}:464622532012:layer:*
-
-  PythonLambdaFunction:
-    Type: 'AWS::Lambda::Function'
-    Properties:
-      FunctionName: "remote-instrument-self-monitor-python"
-      Architectures:
-      - arm64
-      Runtime: python3.11
-      Timeout: 90
-      MemorySize: 256
-      Role: !GetAtt PythonLambdaRole.Arn
-      Handler: index.handler
-      Environment:
-        Variables:
+#          DD_TRACE_ENABLED: true
+#          DD_API_KEY: !Ref DdApiKey
+#          DD_SERVICE: remote-instrument-self-monitor
+#          DD_ENV: dev
+#          DD_VERSION: 0.1.0
+#          DD_SITE: !Ref DdSite
+#      Tags:
+#        - Key: "service"
+#          Value: "datadog-remote-instrumentation"
+#        - Key: "DD_REMOTE_INSTRUMENT_ENABLED"
+#          Value: "true"
+#        - Key: "another-tag"
+#          Value: "true"
+#      Code:
+#        ZipFile: |
+#          exports.handler = async (event, context, callback) => {
+#            console.log('\n event:', JSON.stringify(event))
+#            return `Succeeded.`;
+#          };
+#
+#  FunctionWithSpecifiedTagsLambdaRole:
+#    Type: 'AWS::IAM::Role'
+#    Properties:
+#      Path: "/"
+#      AssumeRolePolicyDocument:
+#        Version: "2012-10-17"
+#        Statement:
+#          - Effect: Allow
+#            Principal:
+#              Service: lambda.amazonaws.com
+#            Action: 'sts:AssumeRole'
+#      Policies:
+#      - PolicyName: root
+#        PolicyDocument:
+#          Version: "2012-10-17"
+#          Statement:
+#          - Effect: Allow
+#            Action:
+#            - logs:CreateLogStream
+#            - logs:CreateLogGroup
+#            - logs:PutLogEvents
+#            Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
+#          - Effect: Allow
+#            Action:
+#              - lambda:GetLayerVersion
+#            Resource: !Sub arn:aws:lambda:${AWS::Region}:464622532012:layer:*
+#
+#  LambdaFunctionWithoutSpecifiedTags:
+#    Type: 'AWS::Lambda::Function'
+#    Properties:
+#      FunctionName: "remote-instrument-self-monitor-without-specified-tags"
+#      Architectures:
+#      - arm64
+#      Runtime: nodejs20.x
+#      Timeout: 90
+#      MemorySize: 256
+#      Role: !GetAtt NodeLambdaExecutionRole.Arn
+#      Handler: /opt/nodejs/node_modules/datadog-lambda-js/handler.handler
+#      Environment:
+#        Variables:
 #          DD_LAMBDA_HANDLER: index.handler
-          DD_TRACE_ENABLED: true
-          DD_API_KEY: !Ref DdApiKey
-          DD_SERVICE: remote-instrument-self-monitor
-          DD_ENV: dev
-          DD_VERSION: 0.1.0
-          DD_SITE: !Ref DdSite
-      Tags:
-        - Key: "service"
-          Value: "datadog-remote-instrumentation"
-        - Key: "DD_REMOTE_INSTRUMENT_ENABLED"
-          Value: "true"
-      Code:
-        ZipFile: |
-          def lambda_handler(event, context):
-            return {
-                "statusCode": 200
-            }
-
-  PythonLambdaRole:
-    Type: 'AWS::IAM::Role'
-    Properties:
-      Path: "/"
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action: 'sts:AssumeRole'
-      Policies:
-      - PolicyName: root
-        PolicyDocument:
-          Version: "2012-10-17"
-          Statement:
-          - Effect: Allow
-            Action:
-            - logs:CreateLogStream
-            - logs:CreateLogGroup
-            - logs:PutLogEvents
-            Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
-          - Effect: Allow
-            Action:
-              - lambda:GetLayerVersion
-            Resource: !Sub arn:aws:lambda:${AWS::Region}:464622532012:layer:*
-
-  LambdaFunctionWithSpecifiedTags:
-    Type: 'AWS::Lambda::Function'
-    Properties:
-      FunctionName: "remote-instrument-self-monitor-with-specified-tags"
-      Architectures:
-      - arm64
-      Runtime: nodejs20.x
-      Timeout: 90
-      MemorySize: 256
-      Role: !GetAtt NodeLambdaExecutionRole.Arn
-      Handler: /opt/nodejs/node_modules/datadog-lambda-js/handler.handler
-      Environment:
-        Variables:
-          DD_LAMBDA_HANDLER: index.handler
-          DD_TRACE_ENABLED: true
-          DD_API_KEY: !Ref DdApiKey
-          DD_SERVICE: remote-instrument-self-monitor
-          DD_ENV: dev
-          DD_VERSION: 0.1.0
-          DD_SITE: !Ref DdSite
-      Tags:
-        - Key: "service"
-          Value: "datadog-remote-instrumentation"
-        - Key: "DD_REMOTE_INSTRUMENT_ENABLED"
-          Value: "true"
-        - Key: "another-tag"
-          Value: "true"
-      Code:
-        ZipFile: |
-          exports.handler = async (event, context, callback) => {
-            console.log('\n event:', JSON.stringify(event))
-            return `Succeeded.`;
-          };
-
-  FunctionWithSpecifiedTagsLambdaRole:
-    Type: 'AWS::IAM::Role'
-    Properties:
-      Path: "/"
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action: 'sts:AssumeRole'
-      Policies:
-      - PolicyName: root
-        PolicyDocument:
-          Version: "2012-10-17"
-          Statement:
-          - Effect: Allow
-            Action:
-            - logs:CreateLogStream
-            - logs:CreateLogGroup
-            - logs:PutLogEvents
-            Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
-          - Effect: Allow
-            Action:
-              - lambda:GetLayerVersion
-            Resource: !Sub arn:aws:lambda:${AWS::Region}:464622532012:layer:*
-
-  LambdaFunctionWithoutSpecifiedTags:
-    Type: 'AWS::Lambda::Function'
-    Properties:
-      FunctionName: "remote-instrument-self-monitor-without-specified-tags"
-      Architectures:
-      - arm64
-      Runtime: nodejs20.x
-      Timeout: 90
-      MemorySize: 256
-      Role: !GetAtt NodeLambdaExecutionRole.Arn
-      Handler: /opt/nodejs/node_modules/datadog-lambda-js/handler.handler
-      Environment:
-        Variables:
-          DD_LAMBDA_HANDLER: index.handler
-          DD_TRACE_ENABLED: true
-          DD_API_KEY: !Ref DdApiKey
-          DD_SERVICE: remote-instrument-self-monitor
-          DD_ENV: dev
-          DD_VERSION: 0.1.0
-          DD_SITE: !Ref DdSite
-      Tags:
-        - Key: "service"
-          Value: "datadog-remote-instrumentation"
-        - Key: "another-tag"
-          Value: "true"
-      Code:
-        ZipFile: |
-          exports.handler = async (event, context, callback) => {
-            console.log('\n event:', JSON.stringify(event))
-            return `Succeeded.`;
-          };
-
-  FunctionWithoutSpecifiedTagsLambdaRole:
-    Type: 'AWS::IAM::Role'
-    Properties:
-      Path: "/"
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action: 'sts:AssumeRole'
-      Policies:
-      - PolicyName: root
-        PolicyDocument:
-          Version: "2012-10-17"
-          Statement:
-          - Effect: Allow
-            Action:
-            - logs:CreateLogStream
-            - logs:CreateLogGroup
-            - logs:PutLogEvents
-            Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
-          - Effect: Allow
-            Action:
-              - lambda:GetLayerVersion
-            Resource: !Sub arn:aws:lambda:${AWS::Region}:464622532012:layer:*
-
-  LambdaToBeUninstrumentedFunction:
-    Type: 'AWS::Lambda::Function'
-    Properties:
-      FunctionName: "remote-instrument-self-monitor-to-be-uninstrumented"
-      Architectures:
-        - arm64
-      Runtime: nodejs20.x
-      Timeout: 90
-      MemorySize: 256
-      Role: !GetAtt LambdaToBeUninstrumentedRole.Arn
-      Handler: /opt/nodejs/node_modules/datadog-lambda-js/handler.handler
-      Environment:
-        Variables:
-          DD_LAMBDA_HANDLER: index.handler
-          DD_TRACE_ENABLED: true
-          DD_API_KEY: !Ref DdApiKey
-          DD_SERVICE: remote-instrument-self-monitor
-          DD_ENV: dev
-          DD_VERSION: 0.1.0
-          DD_SITE: !Ref DdSite
-      Tags:
-        - Key: "service"
-          Value: "datadog-remote-instrumentation"
-        - Key: "DD_REMOTE_INSTRUMENT_ENABLED"
-          Value: "true"
-      Code:
-        ZipFile: |
-          exports.handler = async (event, context, callback) => {
-            console.log('\n event:', JSON.stringify(event))
-            return `Succeeded.`;
-          };
-
-  LambdaToBeUninstrumentedRole:
-    Type: 'AWS::IAM::Role'
-    Properties:
-      Path: "/"
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action: 'sts:AssumeRole'
-      Policies:
-        - PolicyName: root
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - logs:CreateLogStream
-                  - logs:CreateLogGroup
-                  - logs:PutLogEvents
-                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
-              - Effect: Allow
-                Action:
-                  - lambda:GetLayerVersion
-                Resource: !Sub arn:aws:lambda:${AWS::Region}:464622532012:layer:*
+#          DD_TRACE_ENABLED: true
+#          DD_API_KEY: !Ref DdApiKey
+#          DD_SERVICE: remote-instrument-self-monitor
+#          DD_ENV: dev
+#          DD_VERSION: 0.1.0
+#          DD_SITE: !Ref DdSite
+#      Tags:
+#        - Key: "service"
+#          Value: "datadog-remote-instrumentation"
+#        - Key: "another-tag"
+#          Value: "true"
+#      Code:
+#        ZipFile: |
+#          exports.handler = async (event, context, callback) => {
+#            console.log('\n event:', JSON.stringify(event))
+#            return `Succeeded.`;
+#          };
+#
+#  FunctionWithoutSpecifiedTagsLambdaRole:
+#    Type: 'AWS::IAM::Role'
+#    Properties:
+#      Path: "/"
+#      AssumeRolePolicyDocument:
+#        Version: "2012-10-17"
+#        Statement:
+#          - Effect: Allow
+#            Principal:
+#              Service: lambda.amazonaws.com
+#            Action: 'sts:AssumeRole'
+#      Policies:
+#      - PolicyName: root
+#        PolicyDocument:
+#          Version: "2012-10-17"
+#          Statement:
+#          - Effect: Allow
+#            Action:
+#            - logs:CreateLogStream
+#            - logs:CreateLogGroup
+#            - logs:PutLogEvents
+#            Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
+#          - Effect: Allow
+#            Action:
+#              - lambda:GetLayerVersion
+#            Resource: !Sub arn:aws:lambda:${AWS::Region}:464622532012:layer:*
+#
+#  LambdaToBeUninstrumentedFunction:
+#    Type: 'AWS::Lambda::Function'
+#    Properties:
+#      FunctionName: "remote-instrument-self-monitor-to-be-uninstrumented"
+#      Architectures:
+#        - arm64
+#      Runtime: nodejs20.x
+#      Timeout: 90
+#      MemorySize: 256
+#      Role: !GetAtt LambdaToBeUninstrumentedRole.Arn
+#      Handler: /opt/nodejs/node_modules/datadog-lambda-js/handler.handler
+#      Environment:
+#        Variables:
+#          DD_LAMBDA_HANDLER: index.handler
+#          DD_TRACE_ENABLED: true
+#          DD_API_KEY: !Ref DdApiKey
+#          DD_SERVICE: remote-instrument-self-monitor
+#          DD_ENV: dev
+#          DD_VERSION: 0.1.0
+#          DD_SITE: !Ref DdSite
+#      Tags:
+#        - Key: "service"
+#          Value: "datadog-remote-instrumentation"
+#        - Key: "DD_REMOTE_INSTRUMENT_ENABLED"
+#          Value: "true"
+#      Code:
+#        ZipFile: |
+#          exports.handler = async (event, context, callback) => {
+#            console.log('\n event:', JSON.stringify(event))
+#            return `Succeeded.`;
+#          };
+#
+#  LambdaToBeUninstrumentedRole:
+#    Type: 'AWS::IAM::Role'
+#    Properties:
+#      Path: "/"
+#      AssumeRolePolicyDocument:
+#        Version: "2012-10-17"
+#        Statement:
+#          - Effect: Allow
+#            Principal:
+#              Service: lambda.amazonaws.com
+#            Action: 'sts:AssumeRole'
+#      Policies:
+#        - PolicyName: root
+#          PolicyDocument:
+#            Version: "2012-10-17"
+#            Statement:
+#              - Effect: Allow
+#                Action:
+#                  - logs:CreateLogStream
+#                  - logs:CreateLogGroup
+#                  - logs:PutLogEvents
+#                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
+#              - Effect: Allow
+#                Action:
+#                  - lambda:GetLayerVersion
+#                Resource: !Sub arn:aws:lambda:${AWS::Region}:464622532012:layer:*
