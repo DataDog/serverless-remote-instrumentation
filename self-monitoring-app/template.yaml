@@ -137,12 +137,14 @@ Resources:
             Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
           - Effect: Allow
             Action:
-              - lambda:InvokeFunction
-              - lambda:GetFunction
-              - lambda:UpdateFunctionConfiguration
-              - lambda:TagResource
-              - lambda:UntagResource
-              - lambda:CreateFunction
+#              - lambda:InvokeFunction
+#              - lambda:GetFunction
+#              - lambda:UpdateFunctionConfiguration
+#              - lambda:TagResource
+#              - lambda:UntagResource
+#              - lambda:CreateFunction
+#              - lambda:AddPermission
+              - lambda:*
             Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*
           - Effect: Allow
             Action:
