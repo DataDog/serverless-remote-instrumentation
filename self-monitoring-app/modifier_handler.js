@@ -99,9 +99,9 @@ async function createStack(config) {
         // NotificationARNs: [ // NotificationARNs
         //     "STRING_VALUE",
         // ],
-        // Capabilities: [ // Capabilities
-        //     "CAPABILITY_IAM" || "CAPABILITY_NAMED_IAM" || "CAPABILITY_AUTO_EXPAND",
-        // ],
+        Capabilities: [
+            "CAPABILITY_IAM"
+        ],
         // ResourceTypes: [ // ResourceTypes
         //     "STRING_VALUE",
         // ],
