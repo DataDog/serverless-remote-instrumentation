@@ -65,7 +65,6 @@ Resources:
       - LambdaFunctionWithSpecifiedTags
       - LambdaFunctionWithoutSpecifiedTags
     Properties:
-      StackName: datadog-remote-instrument
       TemplateURL: https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/remote-instrument-dev/latest.yaml
       Parameters:
         DdApiKey: !Ref DdApiKey
