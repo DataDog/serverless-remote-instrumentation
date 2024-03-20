@@ -291,7 +291,6 @@ async function uninstrumentFunctions(functionNamesToUninstrument, config) {
         const functionArn = `arn:aws:lambda:${config.AWS_REGION}:${config.DD_AWS_ACCOUNT_NUMBER}:function:${functionName}`;
         await instrumentWithDatadogCi(functionArn, true, NODE, config, uninstrumentedFunctionArns);
     }
-    await untagResourcesOfSlsTag(uninstrumentedFunctionArns, config);
 }
 
 async function instrumentWithDatadogCi(functionArn, runtime = NODE, config, functionArns) {
