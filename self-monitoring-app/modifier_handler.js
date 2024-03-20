@@ -17,8 +17,8 @@ exports.handler = async (event, context, callback) => {
     // await uninstrument(config);
     // await sleep(30000);
 
-    await createStack(config);
-    await sleep(300000);  // 5 minutes
+    // await createStack(config);
+    // await sleep(300000);  // 5 minutes
 
     // await deleteStack(config);
     await updateStack(config);
@@ -98,101 +98,102 @@ async function deleteStack(config) {
     console.log(`DeleteStackCommand response: ${JSON.stringify(response)}`);
 }
 
+const createStackInput = {
+    StackName: INSTRUMENTER_STACK_NAME,
+    TemplateURL: "https://datadog-cloudformation-template-serverless-sandbox.s3.sa-east-1.amazonaws.com/aws/remote-instrument-dev/latest.yaml",
+    Parameters: [
+        {
+            ParameterKey: "DdApiKey",
+            ParameterValue: process.env.DD_API_KEY,
+            UsePreviousValue: true,
+        },
+        {
+            ParameterKey: "DdSite",
+            ParameterValue: "datadoghq.com",
+            UsePreviousValue: true,
+        },
+        {
+            ParameterKey: "BucketName",
+            ParameterValue: S3_BUCKET_NAME,
+            UsePreviousValue: true,
+        },
+        {
+            ParameterKey: "DdAwsAccountNumber",
+            ParameterValue: "425362996713",
+            UsePreviousValue: true,
+        },
+        {
+            ParameterKey: "AllowList",
+            ParameterValue: "remote-instrument-self-monitor-node,remote-instrument-self-monitor-python,some-function-does-not-exist-for-testing-purpose",
+            UsePreviousValue: true,
+        },
+        {
+            ParameterKey: "TagRule",
+            ParameterValue: "DD_REMOTE_INSTRUMENT_ENABLED:true,another-tag:true",
+            UsePreviousValue: true,
+        },
+        {
+            ParameterKey: "DenyList",
+            ParameterValue: "remote-instrument-self-monitor-to-be-uninstrumented",
+            UsePreviousValue: true,
+        },
+        {
+            ParameterKey: "DdExtensionLayerVersion",
+            ParameterValue: "50",
+            UsePreviousValue: true,
+        },
+        {
+            ParameterKey: "DdPythonLayerVersion",
+            ParameterValue: "70",
+            UsePreviousValue: true,
+        },
+        {
+            ParameterKey: "DdNodeLayerVersion",
+            ParameterValue: "100",
+            UsePreviousValue: true,
+        },
+
+
+    ],
+    // DisableRollback: false,
+    // RollbackConfiguration: { // RollbackConfiguration
+    //     RollbackTriggers: [ // RollbackTriggers
+    //         { // RollbackTrigger
+    //             Arn: "STRING_VALUE", // required
+    //             Type: "STRING_VALUE", // required
+    //         },
+    //     ],
+    //     MonitoringTimeInMinutes: Number("int"),
+    // },
+    TimeoutInMinutes: 5,  // minutes
+    // NotificationARNs: [ // NotificationARNs
+    //     "STRING_VALUE",
+    // ],
+    Capabilities: [
+        "CAPABILITY_IAM"
+    ],
+    // ResourceTypes: [ // ResourceTypes
+    //     "STRING_VALUE",
+    // ],
+    // RoleARN: "STRING_VALUE",
+    OnFailure: "DO_NOTHING",  // DO_NOTHING, ROLLBACK, or DELETE
+    // StackPolicyBody: "STRING_VALUE",
+    // StackPolicyURL: "STRING_VALUE",
+    Tags: [
+        {
+            Key: "DD_PRESERVE_STACK",
+            Value: "true",
+        },
+    ],
+    // ClientRequestToken: "STRING_VALUE",
+    // EnableTerminationProtection: true || false,
+    // RetainExceptOnCreate: true || false,
+};
+
 // create stack
 async function createStack(config) {
     const clientConfig = {region: config.AWS_REGION};
     const client = new CloudFormationClient(clientConfig);
-    const createStackInput = {
-        StackName: INSTRUMENTER_STACK_NAME,
-        TemplateURL: "https://datadog-cloudformation-template-serverless-sandbox.s3.sa-east-1.amazonaws.com/aws/remote-instrument-dev/latest.yaml",
-        Parameters: [
-            {
-                ParameterKey: "DdApiKey",
-                ParameterValue: process.env.DD_API_KEY,
-                UsePreviousValue: true,
-            },
-            {
-                ParameterKey: "DdSite",
-                ParameterValue: "datadoghq.com",
-                UsePreviousValue: true,
-            },
-            {
-                ParameterKey: "BucketName",
-                ParameterValue: S3_BUCKET_NAME,
-                UsePreviousValue: true,
-            },
-            {
-                ParameterKey: "DdAwsAccountNumber",
-                ParameterValue: "425362996713",
-                UsePreviousValue: true,
-            },
-            {
-                ParameterKey: "AllowList",
-                ParameterValue: "remote-instrument-self-monitor-node,remote-instrument-self-monitor-python,some-function-does-not-exist-for-testing-purpose",
-                UsePreviousValue: true,
-            },
-            {
-                ParameterKey: "TagRule",
-                ParameterValue: "DD_REMOTE_INSTRUMENT_ENABLED:true,another-tag:true",
-                UsePreviousValue: true,
-            },
-            {
-                ParameterKey: "DenyList",
-                ParameterValue: "remote-instrument-self-monitor-to-be-uninstrumented",
-                UsePreviousValue: true,
-            },
-            {
-                ParameterKey: "DdExtensionLayerVersion",
-                ParameterValue: "50",
-                UsePreviousValue: true,
-            },
-            {
-                ParameterKey: "DdPythonLayerVersion",
-                ParameterValue: "70",
-                UsePreviousValue: true,
-            },
-            {
-                ParameterKey: "DdNodeLayerVersion",
-                ParameterValue: "100",
-                UsePreviousValue: true,
-            },
-
-
-        ],
-        // DisableRollback: false,
-        // RollbackConfiguration: { // RollbackConfiguration
-        //     RollbackTriggers: [ // RollbackTriggers
-        //         { // RollbackTrigger
-        //             Arn: "STRING_VALUE", // required
-        //             Type: "STRING_VALUE", // required
-        //         },
-        //     ],
-        //     MonitoringTimeInMinutes: Number("int"),
-        // },
-        TimeoutInMinutes: 5,  // minutes
-        // NotificationARNs: [ // NotificationARNs
-        //     "STRING_VALUE",
-        // ],
-        Capabilities: [
-            "CAPABILITY_IAM"
-        ],
-        // ResourceTypes: [ // ResourceTypes
-        //     "STRING_VALUE",
-        // ],
-        // RoleARN: "STRING_VALUE",
-        OnFailure: "DO_NOTHING",  // DO_NOTHING, ROLLBACK, or DELETE
-        // StackPolicyBody: "STRING_VALUE",
-        // StackPolicyURL: "STRING_VALUE",
-        Tags: [
-            {
-                Key: "DD_PRESERVE_STACK",
-                Value: "true",
-            },
-        ],
-        // ClientRequestToken: "STRING_VALUE",
-        // EnableTerminationProtection: true || false,
-        // RetainExceptOnCreate: true || false,
-    };
     const command = new CreateStackCommand(createStackInput);
     const response = await client.send(command);
     console.log(`Create stack response: ${JSON.stringify(response)}`)
@@ -204,65 +205,10 @@ async function createStack(config) {
 // update stack
 async function updateStack(config) {
     const client = new CloudFormationClient({region: config.AWS_REGION});
-    const input = { // UpdateStackInput
-        StackName: INSTRUMENTER_STACK_NAME, // required
-        // TemplateBody: "STRING_VALUE",
-        // TemplateURL: "STRING_VALUE",
-        // UsePreviousTemplate: true || false,
-        // StackPolicyDuringUpdateBody: "STRING_VALUE",
-        // StackPolicyDuringUpdateURL: "STRING_VALUE",
-        Parameters: [
-            {
-                ParameterKey: "DdExtensionLayerVersion",
-                ParameterValue: "49",
-                UsePreviousValue: true,
-            },
-            // { // Parameter
-            //     ParameterKey: "STRING_VALUE",
-            //     ParameterValue: "STRING_VALUE",
-            //     UsePreviousValue: true || false,
-            //     ResolvedValue: "STRING_VALUE",
-            // },
-        ],
-        // Capabilities: [ // Capabilities
-        //     "CAPABILITY_IAM" || "CAPABILITY_NAMED_IAM" || "CAPABILITY_AUTO_EXPAND",
-        // ],
-        // ResourceTypes: [ // ResourceTypes
-        //     "STRING_VALUE",
-        // ],
-        // RoleARN: "STRING_VALUE",
-        // RollbackConfiguration: { // RollbackConfiguration
-        //     RollbackTriggers: [ // RollbackTriggers
-        //         { // RollbackTrigger
-        //             Arn: "STRING_VALUE", // required
-        //             Type: "STRING_VALUE", // required
-        //         },
-        //     ],
-        //     MonitoringTimeInMinutes: Number("int"),
-        // },
-        // StackPolicyBody: "STRING_VALUE",
-        // StackPolicyURL: "STRING_VALUE",
-        // NotificationARNs: [ // NotificationARNs
-        //     "STRING_VALUE",
-        // ],
-        // Tags: [ // Tags
-        //     { // Tag
-        //         Key: "STRING_VALUE", // required
-        //         Value: "STRING_VALUE", // required
-        //     },
-        // ],
-        // DisableRollback: true || false,
-        // ClientRequestToken: "STRING_VALUE",
-        // RetainExceptOnCreate: true || false,
-    };
-    const command = new UpdateStackCommand(input);
+    const updateStackInput = Object.assign({}, createStackInput);
+    const command = new UpdateStackCommand(updateStackInput);
     const response = await client.send(command);
-    console.log(`UpdateStackCommand response: ${JSON.stringify(response)}`)
-// { // UpdateStackOutput
-//   StackId: "STRING_VALUE",
-// };
-
-
+    console.log(`UpdateStackCommand response: ${JSON.stringify(response)}`);
 }
 
 // uninstrument
