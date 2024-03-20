@@ -14,14 +14,22 @@ exports.handler = async (event, context, callback) => {
     console.log('\n event:', JSON.stringify(event))
     console.log(`\n process: ${JSON.stringify(process.env)}`)
     const config = await getConfig();
+    
     // await uninstrument(config);
     // await sleep(30000);
 
-    // await createStack(config);
-    // await sleep(300000);  // 5 minutes
+    await createStack(config);
+    console.log(`creating stack...`);
+    await sleep(300000);  // 5 minutes
 
     // await deleteStack(config);
     await updateStack(config);
+    console.log(`updating stack...`);
+    await sleep(300000);  // 5 minutes
+
+    await deleteStack(config);
+    console.log(`deleting stack...`);
+
     return `✅ All done.`;
 };
 
@@ -197,9 +205,6 @@ async function createStack(config) {
     const command = new CreateStackCommand(createStackInput);
     const response = await client.send(command);
     console.log(`Create stack response: ${JSON.stringify(response)}`)
-// { // CreateStackOutput
-//   StackId: "STRING_VALUE",
-// };
 }
 
 // update stack
@@ -207,6 +212,12 @@ async function updateStack(config) {
     const client = new CloudFormationClient({region: config.AWS_REGION});
     const updateStackInput = Object.assign({}, createStackInput);
     updateStackInput.Parameters = [
+        {
+            ParameterKey: "DdExtensionLayerVersion",
+            ParameterValue: "49",  // was "50"
+            UsePreviousValue: false,
+        },
+        // Only the extension version changed. Every other parameters below are not changed.
         {
             ParameterKey: "DdApiKey",
             UsePreviousValue: true,
@@ -234,11 +245,6 @@ async function updateStack(config) {
         {
             ParameterKey: "DenyList",
             UsePreviousValue: true,
-        },
-        {
-            ParameterKey: "DdExtensionLayerVersion",
-            ParameterValue: "49",  // was "50"
-            UsePreviousValue: false,
         },
         {
             ParameterKey: "DdPythonLayerVersion",
