@@ -205,53 +205,59 @@ async function createStack(config) {
 async function updateStack(config) {
     const client = new CloudFormationClient({region: config.AWS_REGION});
     const input = { // UpdateStackInput
-        StackName: "STRING_VALUE", // required
-        TemplateBody: "STRING_VALUE",
-        TemplateURL: "STRING_VALUE",
-        UsePreviousTemplate: true || false,
-        StackPolicyDuringUpdateBody: "STRING_VALUE",
-        StackPolicyDuringUpdateURL: "STRING_VALUE",
-        Parameters: [ // Parameters
-            { // Parameter
-                ParameterKey: "STRING_VALUE",
-                ParameterValue: "STRING_VALUE",
-                UsePreviousValue: true || false,
-                ResolvedValue: "STRING_VALUE",
+        StackName: INSTRUMENTER_STACK_NAME, // required
+        // TemplateBody: "STRING_VALUE",
+        // TemplateURL: "STRING_VALUE",
+        // UsePreviousTemplate: true || false,
+        // StackPolicyDuringUpdateBody: "STRING_VALUE",
+        // StackPolicyDuringUpdateURL: "STRING_VALUE",
+        Parameters: [
+            {
+                ParameterKey: "DdExtensionLayerVersion",
+                ParameterValue: "49",
+                UsePreviousValue: true,
             },
+            // { // Parameter
+            //     ParameterKey: "STRING_VALUE",
+            //     ParameterValue: "STRING_VALUE",
+            //     UsePreviousValue: true || false,
+            //     ResolvedValue: "STRING_VALUE",
+            // },
         ],
-        Capabilities: [ // Capabilities
-            "CAPABILITY_IAM" || "CAPABILITY_NAMED_IAM" || "CAPABILITY_AUTO_EXPAND",
-        ],
-        ResourceTypes: [ // ResourceTypes
-            "STRING_VALUE",
-        ],
-        RoleARN: "STRING_VALUE",
-        RollbackConfiguration: { // RollbackConfiguration
-            RollbackTriggers: [ // RollbackTriggers
-                { // RollbackTrigger
-                    Arn: "STRING_VALUE", // required
-                    Type: "STRING_VALUE", // required
-                },
-            ],
-            MonitoringTimeInMinutes: Number("int"),
-        },
-        StackPolicyBody: "STRING_VALUE",
-        StackPolicyURL: "STRING_VALUE",
-        NotificationARNs: [ // NotificationARNs
-            "STRING_VALUE",
-        ],
-        Tags: [ // Tags
-            { // Tag
-                Key: "STRING_VALUE", // required
-                Value: "STRING_VALUE", // required
-            },
-        ],
-        DisableRollback: true || false,
-        ClientRequestToken: "STRING_VALUE",
-        RetainExceptOnCreate: true || false,
+        // Capabilities: [ // Capabilities
+        //     "CAPABILITY_IAM" || "CAPABILITY_NAMED_IAM" || "CAPABILITY_AUTO_EXPAND",
+        // ],
+        // ResourceTypes: [ // ResourceTypes
+        //     "STRING_VALUE",
+        // ],
+        // RoleARN: "STRING_VALUE",
+        // RollbackConfiguration: { // RollbackConfiguration
+        //     RollbackTriggers: [ // RollbackTriggers
+        //         { // RollbackTrigger
+        //             Arn: "STRING_VALUE", // required
+        //             Type: "STRING_VALUE", // required
+        //         },
+        //     ],
+        //     MonitoringTimeInMinutes: Number("int"),
+        // },
+        // StackPolicyBody: "STRING_VALUE",
+        // StackPolicyURL: "STRING_VALUE",
+        // NotificationARNs: [ // NotificationARNs
+        //     "STRING_VALUE",
+        // ],
+        // Tags: [ // Tags
+        //     { // Tag
+        //         Key: "STRING_VALUE", // required
+        //         Value: "STRING_VALUE", // required
+        //     },
+        // ],
+        // DisableRollback: true || false,
+        // ClientRequestToken: "STRING_VALUE",
+        // RetainExceptOnCreate: true || false,
     };
     const command = new UpdateStackCommand(input);
     const response = await client.send(command);
+    console.log(`UpdateStackCommand response: ${JSON.stringify(response)}`)
 // { // UpdateStackOutput
 //   StackId: "STRING_VALUE",
 // };
