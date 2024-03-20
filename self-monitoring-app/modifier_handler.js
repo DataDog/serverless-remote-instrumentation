@@ -206,7 +206,49 @@ async function createStack(config) {
 async function updateStack(config) {
     const client = new CloudFormationClient({region: config.AWS_REGION});
     const updateStackInput = Object.assign({}, createStackInput);
-    updateStackInput.Parameters[7].ParameterValue = '49'
+    updateStackInput.Parameters = [
+        {
+            ParameterKey: "DdApiKey",
+            UsePreviousValue: true,
+        },
+        {
+            ParameterKey: "DdSite",
+            UsePreviousValue: true,
+        },
+        {
+            ParameterKey: "BucketName",
+            UsePreviousValue: true,
+        },
+        {
+            ParameterKey: "DdAwsAccountNumber",
+            UsePreviousValue: true,
+        },
+        {
+            ParameterKey: "AllowList",
+            UsePreviousValue: true,
+        },
+        {
+            ParameterKey: "TagRule",
+            UsePreviousValue: true,
+        },
+        {
+            ParameterKey: "DenyList",
+            UsePreviousValue: true,
+        },
+        {
+            ParameterKey: "DdExtensionLayerVersion",
+            ParameterValue: "49",  // was "50"
+            UsePreviousValue: false,
+        },
+        {
+            ParameterKey: "DdPythonLayerVersion",
+            UsePreviousValue: true,
+        },
+        {
+            ParameterKey: "DdNodeLayerVersion",
+            UsePreviousValue: true,
+        },
+    ]
     console.log(`updateStackInput: ${JSON.stringify(updateStackInput.Parameters)}`);
 
     const command = new UpdateStackCommand(updateStackInput);
