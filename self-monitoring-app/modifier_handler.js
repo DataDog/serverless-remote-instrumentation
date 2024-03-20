@@ -5,6 +5,7 @@ const {
     DeleteStackCommand
 } = require("@aws-sdk/client-cloudformation");
 
+const datadogCi = require('@datadog/datadog-ci/dist/cli.js');
 const {S3Client, ListObjectsV2Command, DeleteObjectsCommand} = require("@aws-sdk/client-s3");
 const INSTRUMENTER_STACK_NAME = "datadog-remote-instrument";
 const S3_BUCKET_NAME = "remote-instrument-self-monitor";
@@ -289,6 +290,40 @@ async function uninstrumentFunctions(functionNamesToUninstrument, config) {
         await instrumentWithDatadogCi(functionArn, true, NODE, config, uninstrumentedFunctionArns);
     }
     await untagResourcesOfSlsTag(uninstrumentedFunctionArns, config);
+}
+
+async function instrumentWithDatadogCi(functionArn, uninstrument = false, runtime = NODE, config, functionArns) {
+    console.log(`instrumentWithDatadogCi: functionArns: ${functionArns} , uninstrument: ${uninstrument}`)
+    const cli = datadogCi.cli;
+    const layerVersionObj = await getLayerAndRuntimeVersion(runtime, config);
+
+    let command;
+    if (uninstrument === false) {
+        command = ['lambda', 'instrument', '-f', functionArn, '-v', layerVersionObj.runtimeLayerVersion, '-e', layerVersionObj.extensionVersion];
+    } else {
+        console.log(`\n uninstrumenting...`)
+        command = ['lambda', 'uninstrument', '-f', functionArn, '-r', config.AWS_REGION];
+    }
+    console.log(`🖥️ datadog-ci command: ${JSON.stringify(command)}`);
+
+    const commandExitCode = await cli.run(command);
+
+    console.log(`\n commandExitCode type: ${typeof commandExitCode}, \n commandExitCode: ${commandExitCode}`);
+    if (commandExitCode === 0) {
+        if (uninstrument === false) {
+            console.log(`✅ Function ${functionArn} is instrumented with datadog-ci.`);
+        } else {
+            console.log(`✅ Function ${functionArn} is uninstrumented with datadog-ci.`);
+        }
+        functionArns.push(functionArn);
+        console.log(`now functionArns: ${JSON.stringify(functionArns)}`)
+    } else {
+        if (uninstrument === false) {
+            console.log(`❌ datadog-ci instrumentation failed for function ${functionArn}`);
+        } else {
+            console.log(`❌ datadog-ci uninstrumentation failed for function ${functionArn}`);
+        }
+    }
 }
 
 async function getConfig() {
