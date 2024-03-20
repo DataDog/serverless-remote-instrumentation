@@ -14,21 +14,20 @@ exports.handler = async (event, context, callback) => {
     console.log('\n event:', JSON.stringify(event))
     console.log(`\n process: ${JSON.stringify(process.env)}`)
     const config = await getConfig();
-    
-    // await uninstrument(config);
-    // await sleep(30000);
 
-    await createStack(config);
-    console.log(`creating stack...`);
-    await sleep(300000);  // 5 minutes
-
-    // await deleteStack(config);
-    await updateStack(config);
-    console.log(`updating stack...`);
-    await sleep(300000);  // 5 minutes
+    await uninstrument(config);
+    await sleep(120000);  // 120 seconds
 
     await deleteStack(config);
     console.log(`deleting stack...`);
+    await sleep(120000);  // 120 seconds
+
+    await createStack(config);
+    console.log(`creating stack...`);
+    await sleep(100000);  // 100 seconds
+
+    await updateStack(config);
+    console.log(`updating stack...`);
 
     return `✅ All done.`;
 };
