@@ -18,16 +18,16 @@ exports.handler = async (event, context, callback) => {
     await uninstrument(config);
     await sleep(120000);  // 120 seconds
 
-    await deleteStack(config);
-    console.log(`deleting stack...`);
-    await sleep(120000);  // 120 seconds
-
     await createStack(config);
     console.log(`creating stack...`);
     await sleep(100000);  // 100 seconds
 
     await updateStack(config);
     console.log(`updating stack...`);
+
+    // await deleteStack(config);
+    // console.log(`deleting stack...`);
+    // await sleep(120000);  // 120 seconds
 
     return `✅ All done.`;
 };
@@ -280,10 +280,6 @@ function sleep(ms) {
 
 
 async function uninstrumentFunctions(functionNamesToUninstrument, config) {
-    const span = tracer.scope().active();
-    if (span !== null) {
-        span.setTag('functionNamesToUninstrument', functionNamesToUninstrument)
-    }
     console.log(`\n functionNamesToUninstrument: ${functionNamesToUninstrument}`)
 
     const uninstrumentedFunctionArns = [];
