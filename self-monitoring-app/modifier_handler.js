@@ -20,7 +20,7 @@ exports.handler = async (event, context, callback) => {
     console.log(`\n process: ${JSON.stringify(process.env)}`)
     const config = await getConfig();
 
-    let stackName = await getInstrumenterStackName(config);
+    let stackName = await getNestedInstrumenterStackName(config);
 
     // await deleteStack(config);
     // console.log(`deleting stack...`);
@@ -93,64 +93,39 @@ async function emptyBucket(bucketName, config) {
 }
 
 
-async function getInstrumenterStackName(config) {
+async function getNestedInstrumenterStackName(config) {
 // const { CloudFormationClient, DescribeStackResourcesCommand } = require("@aws-sdk/client-cloudformation"); // CommonJS import
     const client = new CloudFormationClient({region: config.AWS_REGION});
     const input = { // DescribeStackResourcesInput
         StackName: SELF_MONITOR_STACK_NAME,
-        // LogicalResourceId: "STRING_VALUE",
+        LogicalResourceId: "RemoteInstrumentStack",
         // PhysicalResourceId: "STRING_VALUE",
     };
     const command = new DescribeStackResourcesCommand(input);
     const response = await client.send(command);
     console.log(`DescribeStackResourcesCommand: ${JSON.stringify(response)}`)
-    // for (let resource of response.StackResources) {
-    //     if
-    // }
 
-
-    // { // DescribeStackResourcesOutput
-    //   StackResources: [ // StackResources
-    //     { // StackResource
-    //       StackName: "STRING_VALUE",
-    //       StackId: "STRING_VALUE",
-    //       LogicalResourceId: "STRING_VALUE", // required
-    //       PhysicalResourceId: "STRING_VALUE",
-    //       ResourceType: "STRING_VALUE", // required
-    //       Timestamp: new Date("TIMESTAMP"), // required
-    //       ResourceStatus: "CREATE_IN_PROGRESS" || "CREATE_FAILED" || "CREATE_COMPLETE" || "DELETE_IN_PROGRESS" || "DELETE_FAILED" || "DELETE_COMPLETE" || "DELETE_SKIPPED" || "UPDATE_IN_PROGRESS" || "UPDATE_FAILED" || "UPDATE_COMPLETE" || "IMPORT_FAILED" || "IMPORT_COMPLETE" || "IMPORT_IN_PROGRESS" || "IMPORT_ROLLBACK_IN_PROGRESS" || "IMPORT_ROLLBACK_FAILED" || "IMPORT_ROLLBACK_COMPLETE" || "UPDATE_ROLLBACK_IN_PROGRESS" || "UPDATE_ROLLBACK_COMPLETE" || "UPDATE_ROLLBACK_FAILED" || "ROLLBACK_IN_PROGRESS" || "ROLLBACK_COMPLETE" || "ROLLBACK_FAILED", // required
-    //       ResourceStatusReason: "STRING_VALUE",
-    //       Description: "STRING_VALUE",
-    //       DriftInformation: { // StackResourceDriftInformation
-    //         StackResourceDriftStatus: "IN_SYNC" || "MODIFIED" || "DELETED" || "NOT_CHECKED", // required
-    //         LastCheckTimestamp: new Date("TIMESTAMP"),
-    //       },
-    //       ModuleInfo: { // ModuleInfo
-    //         TypeHierarchy: "STRING_VALUE",
-    //         LogicalIdHierarchy: "STRING_VALUE",
-    //       },
-    //     },
-    //   ],
-    // };
-
-
+    const nestedStackARN = response.StackResources[0].PhysicalResourceId;
+    const nestedStackName = nestedStackARN.split('/')[1]
+    return nestedStackName;
 }
 
 // delete stack
 async function deleteStack(config) {
+    var stackNameToDelete;
+    try{
+        stackNameToDelete = await getNestedInstrumenterStackName(config);
+    } catch {
+        console.log(`\n The original nested stack is deleted. trying to delete the ${INSTRUMENTER_STACK_NAME} stack now.\n`);
+        stackNameToDelete = INSTRUMENTER_STACK_NAME
+    }
 
-    let INSTRUMENTER_STACK_NAME = getInstrumenterStackName();
     await emptyBucket(S3_BUCKET_NAME, config);
     console.log(`bucket ${S3_BUCKET_NAME} is emptied now`)
 
     const client = new CloudFormationClient({region: config.AWS_REGION});
     const deleteStackInput = {
-        StackName: INSTRUMENTER_STACK_NAME,
-        // RetainResources: [ // RetainResources
-        //     "STRING_VALUE",
-        // ],
-        // RoleARN: "STRING_VALUE",
-        // ClientRequestToken: "STRING_VALUE",
+        StackName: stackNameToDelete,
     };
     const command = new DeleteStackCommand(deleteStackInput);
     const response = await client.send(command);
