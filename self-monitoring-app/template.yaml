@@ -65,6 +65,7 @@ Resources:
       - LambdaFunctionWithSpecifiedTags
       - LambdaFunctionWithoutSpecifiedTags
     Properties:
+      StackName: datadog-remote-instrument
       TemplateURL: https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/remote-instrument-dev/latest.yaml
       Parameters:
         DdApiKey: !Ref DdApiKey
@@ -210,7 +211,7 @@ Resources:
           DD_SITE: !Ref DdSite
       Tags:
         - Key: "service"
-          Value: "datadog-remote-instrumentation"
+          Value: "remote-instrument-self-monitor"
         - Key: "DD_REMOTE_INSTRUMENT_ENABLED"
           Value: "true"
       Code:
@@ -269,7 +270,7 @@ Resources:
           DD_SITE: !Ref DdSite
       Tags:
         - Key: "service"
-          Value: "datadog-remote-instrumentation"
+          Value: "remote-instrument-self-monitor"
         - Key: "DD_REMOTE_INSTRUMENT_ENABLED"
           Value: "true"
       Code:
@@ -328,7 +329,7 @@ Resources:
           DD_SITE: !Ref DdSite
       Tags:
         - Key: "service"
-          Value: "datadog-remote-instrumentation"
+          Value: "remote-instrument-self-monitor"
         - Key: "DD_REMOTE_INSTRUMENT_ENABLED"
           Value: "true"
         - Key: "another-tag"
@@ -389,7 +390,7 @@ Resources:
           DD_SITE: !Ref DdSite
       Tags:
         - Key: "service"
-          Value: "datadog-remote-instrumentation"
+          Value: "remote-instrument-self-monitor"
         - Key: "another-tag"
           Value: "true"
       Code:
@@ -448,7 +449,7 @@ Resources:
           DD_SITE: !Ref DdSite
       Tags:
         - Key: "service"
-          Value: "datadog-remote-instrumentation"
+          Value: "remote-instrument-self-monitor"
         - Key: "DD_REMOTE_INSTRUMENT_ENABLED"
           Value: "true"
       Code:
