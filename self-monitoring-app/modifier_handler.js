@@ -206,6 +206,9 @@ async function createStack(config) {
 async function updateStack(config) {
     const client = new CloudFormationClient({region: config.AWS_REGION});
     const updateStackInput = Object.assign({}, createStackInput);
+    updateStackInput.Parameters[7].ParameterValue = '49'
+    console.log(`updateStackInput: ${JSON.stringify(updateStackInput.Parameters)}`);
+
     const command = new UpdateStackCommand(updateStackInput);
     const response = await client.send(command);
     console.log(`UpdateStackCommand response: ${JSON.stringify(response)}`);
