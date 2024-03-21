@@ -487,6 +487,8 @@ Resources:
                 Resource: !Sub arn:aws:lambda:${AWS::Region}:464622532012:layer:*
   UninstrumentScheduledRule:
     Type: 'AWS::Events::Rule'
+    DependsOn:
+      - ModifierLambdaFunction
     Properties:
       Description: "Triggered every hour at minute 5"
       ScheduleExpression: "cron(0,10,30,40 * * * ? *)"
@@ -497,6 +499,8 @@ Resources:
           Input: '{"eventName": "Uninstrument"}'
   DeleteStackScheduledRule:
     Type: 'AWS::Events::Rule'
+    DependsOn:
+      - ModifierLambdaFunction
     Properties:
       Description: "Triggered every hour at minute 5"
       ScheduleExpression: "cron(5,35 * * * ? *)"
@@ -507,6 +511,8 @@ Resources:
           Input: '{"eventName": "DeleteStack"}'
   CreateStackScheduledRule:
     Type: 'AWS::Events::Rule'
+    DependsOn:
+      - ModifierLambdaFunction
     Properties:
       Description: "Triggered every hour at minute 5"
       ScheduleExpression: "cron(15,45 * * * ? *)"
@@ -517,6 +523,8 @@ Resources:
           Input: '{"eventName": "CreateStack"}'
   UpdateStackScheduledRule:
     Type: 'AWS::Events::Rule'
+    DependsOn:
+      - ModifierLambdaFunction
     Properties:
       Description: "Triggered every hour at minute 5"
       ScheduleExpression: "cron(20,50 * * * ? *)"
