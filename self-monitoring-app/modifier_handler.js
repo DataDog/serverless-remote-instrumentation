@@ -35,10 +35,10 @@ exports.handler = async (event, context, callback) => {
     // await updateStack(config);
     // console.log(`updating stack...`);
     // await sleep(120000);  // 120 seconds
-
-    await deleteStack(config);
-    console.log(`deleting stack...`);
-    await sleep(120000);  // 120 seconds
+    //
+    // await deleteStack(config);
+    // console.log(`deleting stack...`);
+    // await sleep(120000);  // 120 seconds
 
 
     return `✅ All done.`;
