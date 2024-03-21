@@ -533,3 +533,20 @@ Resources:
         - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ModifierLambdaFunctionName}
           Id: "UpdateStackRemoteInstrumentSelfMonitor"
           Input: '{"eventName": "UpdateStack"}'
+  EveryFiveMinutesScheduledRule:
+    Type: 'AWS::Events::Rule'
+    DependsOn:
+      - ModifierLambdaFunction
+    Properties:
+      Description: "Triggered every 5 minutes"
+      ScheduleExpression: "cron(0/5 * * * ? *)"
+      State: "ENABLED"
+      Targets:
+        - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:remote-instrument-self-monitor-node
+          Id: "NodeFunction"
+        - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:remote-instrument-self-monitor-python
+          Id: "PythonFunction"
+        - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:remote-instrument-self-monitor-with-specified-tags
+          Id: "FunctionWithTags"
+        - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:remote-instrument-self-monitor-without-specified-tags
+          Id: "FunctionWithoutTags"
