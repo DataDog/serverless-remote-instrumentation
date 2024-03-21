@@ -21,8 +21,8 @@ exports.handler = async (event, context, callback) => {
     console.log(`\n process: ${JSON.stringify(process.env)}`)
     const config = getConfig();
 
-    await uninstrument(config);
-    await sleep(120000);  // 120 seconds
+    // await uninstrument(config);
+    // await sleep(120000);  // 120 seconds
 
     await deleteStack(config);
     console.log(`deleting stack...`);
@@ -133,7 +133,7 @@ async function deleteStack(config) {
 
     for (let stackName of stackNamesToDelete) {
         const deleteStackInput = {
-            StackName: stackNameToDelete,
+            StackName: stackName,
         };
         const command = new DeleteStackCommand(deleteStackInput);
         const response = await client.send(command);
