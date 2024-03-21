@@ -111,29 +111,34 @@ async function getNestedInstrumenterStackName(config) {
 
     const nestedStackARN = response.StackResources[0].PhysicalResourceId;
     const nestedStackName = nestedStackARN.split('/')[1]
+    console.log(`nestedStackName: ${nestedStackName}`)
     return nestedStackName;
 }
 
 // delete stack
 async function deleteStack(config) {
-    let stackNameToDelete;
+    let stackNamesToDelete = [INSTRUMENTER_STACK_NAME];
     try {
-        stackNameToDelete = await getNestedInstrumenterStackName(config);
+        let nestedStackName = await getNestedInstrumenterStackName(config);
+        stackNamesToDelete.push(nestedStackName);
     } catch {
-        console.log(`\n The original nested stack is deleted. trying to delete the ${INSTRUMENTER_STACK_NAME} stack now.\n`);
-        stackNameToDelete = INSTRUMENTER_STACK_NAME
+        console.log(`failed to fetch nestedStackName. trying again`);
+        let nestedStackName = await getNestedInstrumenterStackName(config);
+        stackNamesToDelete.push(nestedStackName);
     }
 
     await emptyBucket(S3_BUCKET_NAME, config);
-    console.log(`bucket ${S3_BUCKET_NAME} is emptied now`)
-
+    console.log(`bucket ${S3_BUCKET_NAME} is emptied now`);
     const client = new CloudFormationClient({region: config.AWS_REGION});
-    const deleteStackInput = {
-        StackName: stackNameToDelete,
-    };
-    const command = new DeleteStackCommand(deleteStackInput);
-    const response = await client.send(command);
-    console.log(`DeleteStackCommand response: ${JSON.stringify(response)}`);
+
+    for (let stackName of stackNamesToDelete) {
+        const deleteStackInput = {
+            StackName: stackNameToDelete,
+        };
+        const command = new DeleteStackCommand(deleteStackInput);
+        const response = await client.send(command);
+        console.log(`DeleteStackCommand response: ${JSON.stringify(response)}`);
+    }
 }
 
 const createStackInput = {
