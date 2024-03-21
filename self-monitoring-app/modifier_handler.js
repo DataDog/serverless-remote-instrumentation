@@ -23,17 +23,18 @@ exports.handler = async (event, context, callback) => {
 
     // await uninstrument(config);
     // await sleep(120000);  // 120 seconds
-
-    await deleteStack(config);
-    console.log(`deleting stack...`);
-    await sleep(120000);  // 120 seconds
-
-    await createStack(config);
-    console.log(`creating stack...`);
-    await sleep(180000);  // 180 seconds
-
-    await updateStack(config);
-    console.log(`updating stack...`);
+    //
+    // await deleteStack(config);
+    // console.log(`deleting stack...`);
+    // await sleep(120000);  // 120 seconds
+    //
+    // await createStack(config);
+    // console.log(`creating stack...`);
+    // await sleep(180000);  // 180 seconds
+    //
+    // await updateStack(config);
+    // console.log(`updating stack...`);
+    // await sleep(120000);  // 120 seconds
 
     await deleteStack(config);
     console.log(`deleting stack...`);
