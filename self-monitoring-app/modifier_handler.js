@@ -317,11 +317,11 @@ async function uninstrumentFunctions(functionNamesToUninstrument, config) {
     for (let functionName of functionNamesToUninstrument) {
         console.log(`\n functionName in functionNamesToUninstrument : ${functionName}`)
         const functionArn = `arn:aws:lambda:${config.AWS_REGION}:${DD_AWS_ACCOUNT_NUMBER}:function:${functionName}`;
-        await instrumentWithDatadogCi(functionArn, true, NODE, config, uninstrumentedFunctionArns);
+        await uninstrumentWithDatadogCi(functionArn, NODE, config, uninstrumentedFunctionArns);
     }
 }
 
-async function instrumentWithDatadogCi(functionArn, runtime = NODE, config, functionArns) {
+async function uninstrumentWithDatadogCi(functionArn, runtime = NODE, config, functionArns) {
     console.log(`instrumentWithDatadogCi: functionArns: ${functionArns}`)
     const cli = datadogCi.cli;
     let command;
@@ -345,22 +345,6 @@ function getConfig() {
     const config = {
         // AWS
         AWS_REGION: process.env.AWS_REGION,
-        DD_AWS_ACCOUNT_NUMBER: process.env.DD_AWS_ACCOUNT_NUMBER,
-
-        // instrumentation and uninstrumentation
-        AllowList: process.env.AllowList,
-        TagRule: process.env.TagRule,
-        DenyList: process.env.DenyList,
-
-        // layer version
-        DD_EXTENSION_LAYER_VERSION: process.env.DD_EXTENSION_LAYER_VERSION,
-        DD_PYTHON_LAYER_VERSION: process.env.DD_PYTHON_LAYER_VERSION,
-        DD_NODE_LAYER_VERSION: process.env.DD_NODE_LAYER_VERSION,
-        DD_LAYER_VERSIONS: {
-            extensionVersion: process.env.DD_EXTENSION_LAYER_VERSION,
-            pythonLayerVersion: process.env.DD_PYTHON_LAYER_VERSION,
-            nodeLayerVersion: process.env.DD_NODE_LAYER_VERSION,
-        },
     };
     console.log(`\n config: ${JSON.stringify(config)}`)
     return config;
