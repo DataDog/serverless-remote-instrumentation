@@ -200,6 +200,11 @@ function validateEventIsExpected(event) {
 
 async function instrumentWithEvent(event, specifiedFunctionNames, config) {
     validateEventIsExpected(event)
+    if (event["detail"]["eventName"] === 'UntagResource20170331v2') {
+        console.log(`TODO: UntagResource20170331v2 is not yet implemented yet.`)
+        return;
+    }
+
     const specifiedFunctionNameSet = new Set(specifiedFunctionNames)
 
     let functionFromEventIsNotInSpecifiedFunctionNames = false;
