@@ -184,7 +184,7 @@ function getFunctionNamesFromString(s) {
 function validateEventIsExpected(event) {
     // safety guard against unexpected event format that should have been filtered by EventBridge Rule
 
-    const expectedEventNameSet = new Set(["UpdateFunctionConfiguration20150331v2", "CreateFunction20150331"])
+    const expectedEventNameSet = new Set(["UpdateFunctionConfiguration20150331v2", "CreateFunction20150331", "DeleteLayerVersion20181031"])
     if (event["detail-type"] !== "AWS API Call via CloudTrail") {
         throw new Error(`event.detail-type is unexpected. Event: ${JSON.stringify(event)}`)
     }
@@ -199,11 +199,12 @@ function validateEventIsExpected(event) {
 }
 
 async function instrumentWithEvent(event, specifiedFunctionNames, config) {
-    validateEventIsExpected(event)
     if (event["detail"]["eventName"] === 'UntagResource20170331v2') {
         console.log(`TODO: UntagResource20170331v2 is not yet implemented yet.`)
         return;
     }
+
+    validateEventIsExpected(event)
 
     const specifiedFunctionNameSet = new Set(specifiedFunctionNames)
 
