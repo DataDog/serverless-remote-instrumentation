@@ -485,3 +485,44 @@ Resources:
                 Action:
                   - lambda:GetLayerVersion
                 Resource: !Sub arn:aws:lambda:${AWS::Region}:464622532012:layer:*
+  Resources:
+    UninstrumentScheduledRule:
+      Type: 'AWS::Events::Rule'
+      Properties:
+        Description: "Triggered every hour at minute 5"
+        ScheduleExpression: "cron(0,10,30,40 * * * ? *)"
+        State: "ENABLED"
+        Targets:
+          - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ModifierLambdaFunctionName}
+            Id: "UninstrumentRemoteInstrumentSelfMonitor"
+            Input: '{"eventName": "Uninstrument"}'
+    DeleteStackScheduledRule:
+      Type: 'AWS::Events::Rule'
+      Properties:
+        Description: "Triggered every hour at minute 5"
+        ScheduleExpression: "cron(5,35 * * * ? *)"
+        State: "ENABLED"
+        Targets:
+          - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ModifierLambdaFunctionName}
+            Id: "DeleteStackRemoteInstrumentSelfMonitor"
+            Input: '{"eventName": "DeleteStack"}'
+    CreateStackScheduledRule:
+      Type: 'AWS::Events::Rule'
+      Properties:
+        Description: "Triggered every hour at minute 5"
+        ScheduleExpression: "cron(15,45 * * * ? *)"
+        State: "ENABLED"
+        Targets:
+          - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ModifierLambdaFunctionName}
+            Id: "CreateStackRemoteInstrumentSelfMonitor"
+            Input: '{"eventName": "CreateStack"}'
+    UpdateStackScheduledRule:
+      Type: 'AWS::Events::Rule'
+      Properties:
+        Description: "Triggered every hour at minute 5"
+        ScheduleExpression: "cron(20,50 * * * ? *)"
+        State: "ENABLED"
+        Targets:
+          - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ModifierLambdaFunctionName}
+            Id: "UpdateStackRemoteInstrumentSelfMonitor"
+            Input: '{"eventName": "UpdateStack"}'
