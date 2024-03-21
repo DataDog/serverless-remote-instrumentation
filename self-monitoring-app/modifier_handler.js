@@ -13,28 +13,32 @@ const INSTRUMENTER_STACK_NAME = "datadog-remote-instrument";
 const S3_BUCKET_NAME = "remote-instrument-self-monitor";
 const NODE = "node"
 const PYTHON = "python"
+const DD_AWS_ACCOUNT_NUMBER = "425362996713"
 
 exports.handler = async (event, context, callback) => {
 
     console.log('\n event:', JSON.stringify(event))
     console.log(`\n process: ${JSON.stringify(process.env)}`)
-    const config = await getConfig();
+    const config = getConfig();
 
-    let stackName = await getNestedInstrumenterStackName(config);
+    await uninstrument(config);
+    await sleep(120000);  // 120 seconds
 
-    // await deleteStack(config);
-    // console.log(`deleting stack...`);
-    // await sleep(120000);  // 120 seconds
-    //
-    // await uninstrument(config);
-    // await sleep(120000);  // 120 seconds
-    //
-    // await createStack(config);
-    // console.log(`creating stack...`);
-    // await sleep(100000);  // 100 seconds
-    //
-    // await updateStack(config);
-    // console.log(`updating stack...`);
+    await deleteStack(config);
+    console.log(`deleting stack...`);
+    await sleep(120000);  // 120 seconds
+
+    await createStack(config);
+    console.log(`creating stack...`);
+    await sleep(180000);  // 180 seconds
+
+    await updateStack(config);
+    console.log(`updating stack...`);
+
+    await deleteStack(config);
+    console.log(`deleting stack...`);
+    await sleep(120000);  // 120 seconds
+
 
     return `✅ All done.`;
 };
@@ -112,8 +116,8 @@ async function getNestedInstrumenterStackName(config) {
 
 // delete stack
 async function deleteStack(config) {
-    var stackNameToDelete;
-    try{
+    let stackNameToDelete;
+    try {
         stackNameToDelete = await getNestedInstrumenterStackName(config);
     } catch {
         console.log(`\n The original nested stack is deleted. trying to delete the ${INSTRUMENTER_STACK_NAME} stack now.\n`);
@@ -312,7 +316,7 @@ async function uninstrumentFunctions(functionNamesToUninstrument, config) {
     const uninstrumentedFunctionArns = [];
     for (let functionName of functionNamesToUninstrument) {
         console.log(`\n functionName in functionNamesToUninstrument : ${functionName}`)
-        const functionArn = `arn:aws:lambda:${config.AWS_REGION}:${config.DD_AWS_ACCOUNT_NUMBER}:function:${functionName}`;
+        const functionArn = `arn:aws:lambda:${config.AWS_REGION}:${DD_AWS_ACCOUNT_NUMBER}:function:${functionName}`;
         await instrumentWithDatadogCi(functionArn, true, NODE, config, uninstrumentedFunctionArns);
     }
 }
@@ -337,7 +341,7 @@ async function instrumentWithDatadogCi(functionArn, runtime = NODE, config, func
     }
 }
 
-async function getConfig() {
+function getConfig() {
     const config = {
         // AWS
         AWS_REGION: process.env.AWS_REGION,
