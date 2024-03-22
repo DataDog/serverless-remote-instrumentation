@@ -196,6 +196,7 @@ function validateEventIsExpected(event) {
 
     if (!expectedEventNameSet.has(event["detail"]["eventName"])) {
         throw new Error(`event.detail.eventName is not expected. Event: ${JSON.stringify(event)}`);
+        return false;
     }
 }
 
@@ -203,6 +204,11 @@ async function instrumentWithEvent(event, specifiedFunctionNames, config) {
     if (event["detail"]["eventName"] === 'UntagResource20170331v2' ||
         event["detail"]["eventName"] === 'TagResource20170331v2') {
         console.log(`TODO: (Un)TagResource20170331v2 is not yet implemented yet.`)
+        return;
+    }
+    // not sure why instrumenter is receiving this event. but skipping for now.
+    if (event["detail"]["eventName"] === 'AddPermission20150331v2') {
+        console.log(`An "AddPermission20150331v2" event is received. Do nothing and end the invocation now.`)
         return;
     }
 
