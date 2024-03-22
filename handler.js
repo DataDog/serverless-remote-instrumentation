@@ -211,6 +211,13 @@ async function instrumentWithEvent(event, specifiedFunctionNames, config) {
         console.log(`An "AddPermission20150331v2" event is received. Do nothing and end the invocation now.`)
         return;
     }
+    // not sure why instrumenter is receiving this event. but skipping for now.
+    if (event["detail"]["eventName"] === 'UpdateFunctionCode20150331v2') {
+        console.log(`An "UpdateFunctionCode20150331v2" event is received. Do nothing and end the invocation now.`)
+        return;
+    }
+
+
 
     validateEventIsExpected(event)
 
