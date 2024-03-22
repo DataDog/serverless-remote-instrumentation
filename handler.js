@@ -4,7 +4,7 @@ const axios = require('axios');
 const cfnResponse = require("cfn-response");  // file will be auto-injected by CloudFormation
 const datadogCi = require('@datadog/datadog-ci/dist/cli.js');
 const tracer = require('dd-trace')
-const { LambdaClient, GetFunctionCommand } = require("@aws-sdk/client-lambda");
+const {LambdaClient, GetFunctionCommand} = require("@aws-sdk/client-lambda");
 const {
     ResourceGroupsTaggingAPIClient,
     GetResourcesCommand,
@@ -156,6 +156,7 @@ async function uninstrumentFunctions(functionNamesToUninstrument, config) {
             setTimeout(resolve, ms);
         });
     }
+
     console.log(`\n waiting for 5 seconds for instrument to complete before running unistrument to avoid "The operation cannot be performed at this time. An update is in progress."`)
     await sleep(5000);
 
@@ -199,8 +200,9 @@ function validateEventIsExpected(event) {
 }
 
 async function instrumentWithEvent(event, specifiedFunctionNames, config) {
-    if (event["detail"]["eventName"] === 'UntagResource20170331v2') {
-        console.log(`TODO: UntagResource20170331v2 is not yet implemented yet.`)
+    if (event["detail"]["eventName"] === 'UntagResource20170331v2' ||
+        event["detail"]["eventName"] === 'TagResource20170331v2') {
+        console.log(`TODO: (Un)TagResource20170331v2 is not yet implemented yet.`)
         return;
     }
 
@@ -223,7 +225,7 @@ async function instrumentWithEvent(event, specifiedFunctionNames, config) {
         const params = {
             FunctionName: functionName
         };
-        const client = new LambdaClient({ region: config.AWS_REGION });
+        const client = new LambdaClient({region: config.AWS_REGION});
         const command = new GetFunctionCommand(params);
 
         // aws-vault exec sso-serverless-sandbox-account-admin-8h -- aws lambda get-function --function-name test-ci-instrument-kimi --region sa-east-1
@@ -303,13 +305,13 @@ function shouldBeAutoInstrumentedByTag(getFunctionCommandOutput, specifiedTags) 
 async function getFunctionNamesFromResourceGroupsTaggingAPI(tagFilters, config) {
     // aws-vault exec sso-serverless-sandbox-account-admin-8h -- aws resourcegroupstaggingapi get-resources --tag-filters Key=DD_AUTO_INSTRUMENT_ENABLED,Values=true --resource-type-filters="lambda:function" --region sa-east-1
     // aws-vault exec sso-serverless-sandbox-account-admin-8h -- aws resourcegroupstaggingapi get-resources --tag-filters Key=createdBy,Values=kimi --resource-type-filters="lambda:function" --region sa-east-1
-    const client = new ResourceGroupsTaggingAPIClient({ region: config.AWS_REGION });
+    const client = new ResourceGroupsTaggingAPIClient({region: config.AWS_REGION});
     const input = {
         TagFilters: tagFilters,
         ResourceTypeFilters: ["lambda:function"]
     }
     const getResourcesCommand = new GetResourcesCommand(input);
-    let getResourcesCommandOutput = { ResourceTagMappingList: [] };
+    let getResourcesCommandOutput = {ResourceTagMappingList: []};
     try {
         getResourcesCommandOutput = await client.send(getResourcesCommand);
     } catch (error) {
@@ -393,7 +395,7 @@ async function initialInstrumentationWithSpecifiedFunctionNames(functionNames, c
     }
     const ddAwsAccountNumber = config.DD_AWS_ACCOUNT_NUMBER
 
-    const client = new LambdaClient({ region: config.AWS_REGION });
+    const client = new LambdaClient({region: config.AWS_REGION});
     const instrumentedFunctionArns = [];
     for (let functionName of functionNames) {
         console.log(`=== processing ${functionName}`)
@@ -473,10 +475,10 @@ async function tagResourcesWithSlsTag(functionArns, config) {
     }
     console.log(`\n version: ${DD_SLS_REMOTE_INSTRUMENTER_VERSION}:v${VERSION}`);
 
-    const client = new ResourceGroupsTaggingAPIClient({ region: config.AWS_REGION });
+    const client = new ResourceGroupsTaggingAPIClient({region: config.AWS_REGION});
     const input = {
         ResourceARNList: functionArns,
-        Tags: { DD_SLS_REMOTE_INSTRUMENTER_VERSION: `v${VERSION}` }
+        Tags: {DD_SLS_REMOTE_INSTRUMENTER_VERSION: `v${VERSION}`}
     }
     const tagResourcesCommand = new TagResourcesCommand(input);
     try {
@@ -493,7 +495,7 @@ async function untagResourcesOfSlsTag(functionArns, config) {
         return;
     }
 
-    const client = new ResourceGroupsTaggingAPIClient({ region: config.AWS_REGION });
+    const client = new ResourceGroupsTaggingAPIClient({region: config.AWS_REGION});
     const input = {
         ResourceARNList: functionArns,
         TagKeys: [DD_SLS_REMOTE_INSTRUMENTER_VERSION]
