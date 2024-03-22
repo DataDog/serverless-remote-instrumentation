@@ -217,8 +217,6 @@ async function instrumentWithEvent(event, specifiedFunctionNames, config) {
         return;
     }
 
-
-
     validateEventIsExpected(event)
 
     const specifiedFunctionNameSet = new Set(specifiedFunctionNames)
