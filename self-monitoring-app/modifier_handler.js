@@ -21,9 +21,25 @@ exports.handler = async (event, context, callback) => {
     console.log(`\n process: ${JSON.stringify(process.env)}`)
     const config = getConfig();
 
-    // await uninstrument(config);
-    // await sleep(120000);  // 120 seconds
-    //
+    if (!event.hasOwnProperty("eventName")) {
+        console.log(`The event doesn't have "eventName" field.`)
+        return;
+    }
+
+    if (event.eventName === "Uninstrument") {
+        await uninstrument(config);
+        // await sleep(120000);  // 120 seconds
+    } else if (event.eventName === "DeleteStack") {
+        await deleteStack(config);
+        // await sleep(120000);  // 120 seconds
+    } else if (event.eventName === "CreateStack") {
+        await createStack(config);
+        // await sleep(180000);  // 180 seconds
+    } else if (event.eventName === "UpdateStack") {
+         await updateStack(config);
+         // await sleep(120000);  // 120 seconds
+    }
+
     // await deleteStack(config);
     // console.log(`deleting stack...`);
     // await sleep(120000);  // 120 seconds
@@ -39,9 +55,7 @@ exports.handler = async (event, context, callback) => {
     // await deleteStack(config);
     // console.log(`deleting stack...`);
     // await sleep(120000);  // 120 seconds
-
-
-    return `✅ All done.`;
+    return `✅`;
 };
 
 // delete all objects in a bucket
