@@ -497,6 +497,13 @@ Resources:
         - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ModifierLambdaFunctionName}
           Id: "UninstrumentRemoteInstrumentSelfMonitor"
           Input: '{"eventName": "Uninstrument"}'
+  UninstrumentScheduledRulePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ModifierLambdaFunctionName
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt UninstrumentScheduledRule.Arn
   DeleteStackScheduledRule:
     Type: 'AWS::Events::Rule'
     DependsOn:
@@ -509,6 +516,13 @@ Resources:
         - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ModifierLambdaFunctionName}
           Id: "DeleteStackRemoteInstrumentSelfMonitor"
           Input: '{"eventName": "DeleteStack"}'
+  DeleteStackScheduledRulePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ModifierLambdaFunctionName
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt DeleteStackScheduledRule.Arn
   CreateStackScheduledRule:
     Type: 'AWS::Events::Rule'
     DependsOn:
@@ -521,6 +535,13 @@ Resources:
         - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ModifierLambdaFunctionName}
           Id: "CreateStackRemoteInstrumentSelfMonitor"
           Input: '{"eventName": "CreateStack"}'
+  CreateStackScheduledRulePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ModifierLambdaFunctionName
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt CreateStackScheduledRule.Arn
   UpdateStackScheduledRule:
     Type: 'AWS::Events::Rule'
     DependsOn:
@@ -533,12 +554,19 @@ Resources:
         - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ModifierLambdaFunctionName}
           Id: "UpdateStackRemoteInstrumentSelfMonitor"
           Input: '{"eventName": "UpdateStack"}'
-  EveryFiveMinutesScheduledRule:
+  UpdateStackScheduledRulePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ModifierLambdaFunctionName
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt UpdateStackScheduledRule.Arn
+  EveryNMinutesScheduledRule:
     Type: 'AWS::Events::Rule'
     DependsOn:
       - ModifierLambdaFunction
     Properties:
-      Description: "Triggered every 5 minutes"
+      Description: "Triggered every N minutes"
       ScheduleExpression: "cron(0/5 * * * ? *)"
       State: "ENABLED"
       Targets:
@@ -550,3 +578,10 @@ Resources:
           Id: "FunctionWithTags"
         - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:remote-instrument-self-monitor-without-specified-tags
           Id: "FunctionWithoutTags"
+  EveryNMinutesScheduledRulePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ModifierLambdaFunctionName
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt EveryNMinutesScheduledRule.Arn

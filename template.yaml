@@ -273,14 +273,14 @@ Resources:
           status-details:
             status:
               - UPDATE_COMPLETE
-  EventBridgeLambdaPermission:
+  LambdaEventRulePermission:
     Type: AWS::Lambda::Permission
     Properties:
       FunctionName: !Ref InstrumenterFunctionName
       Action: lambda:InvokeFunction
       Principal: events.amazonaws.com
       SourceArn: !GetAtt LambdaEventRule.Arn
-  EventBridgeLambdaPermission2:
+  StackUpdateEventRulePermission:
     Type: AWS::Lambda::Permission
     Properties:
       FunctionName: !Ref InstrumenterFunctionName
