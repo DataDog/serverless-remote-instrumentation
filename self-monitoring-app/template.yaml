@@ -580,7 +580,7 @@ Resources:
       - ModifierLambdaFunction
     Properties:
       Description: "Triggered every N minutes"
-      ScheduleExpression: "cron(0/5 * * * ? *)"
+      ScheduleExpression: "cron(0/2 * * * ? *)"
       State: "ENABLED"
       Targets:
         - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:remote-instrument-self-monitor-node
