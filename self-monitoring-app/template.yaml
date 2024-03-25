@@ -522,13 +522,32 @@ Resources:
       Action: lambda:InvokeFunction
       Principal: events.amazonaws.com
       SourceArn: !GetAtt UninstrumentScheduledRule.Arn
-  DeleteStackScheduledRule:
+  UpdateStackScheduledRule:
     Type: 'AWS::Events::Rule'
     DependsOn:
       - ModifierLambdaFunction
     Properties:
       Description: "Triggered every hour at minute 5"
       ScheduleExpression: "cron(5,35 * * * ? *)"
+      State: "ENABLED"
+      Targets:
+        - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ModifierLambdaFunctionName}
+          Id: "UpdateStackRemoteInstrumentSelfMonitor"
+          Input: '{"eventName": "UpdateStack"}'
+  UpdateStackScheduledRulePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ModifierLambdaFunctionName
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt UpdateStackScheduledRule.Arn
+  DeleteStackScheduledRule:
+    Type: 'AWS::Events::Rule'
+    DependsOn:
+      - ModifierLambdaFunction
+    Properties:
+      Description: "Triggered every hour at minute 5"
+      ScheduleExpression: "cron(10,40 * * * ? *)"
       State: "ENABLED"
       Targets:
         - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ModifierLambdaFunctionName}
@@ -547,7 +566,7 @@ Resources:
       - ModifierLambdaFunction
     Properties:
       Description: "Triggered every hour at minute 5"
-      ScheduleExpression: "cron(10,40 * * * ? *)"
+      ScheduleExpression: "cron(15,45 * * * ? *)"
       State: "ENABLED"
       Targets:
         - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ModifierLambdaFunctionName}
@@ -566,7 +585,7 @@ Resources:
       - ModifierLambdaFunction
     Properties:
       Description: "Triggered every hour at minute 5"
-      ScheduleExpression: "cron(15,45 * * * ? *)"
+      ScheduleExpression: "cron(20,50 * * * ? *)"
       State: "ENABLED"
       Targets:
         - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ModifierLambdaFunctionName}
@@ -579,25 +598,6 @@ Resources:
       Action: lambda:InvokeFunction
       Principal: events.amazonaws.com
       SourceArn: !GetAtt CreateStackScheduledRule.Arn
-  UpdateStackScheduledRule:
-    Type: 'AWS::Events::Rule'
-    DependsOn:
-      - ModifierLambdaFunction
-    Properties:
-      Description: "Triggered every hour at minute 5"
-      ScheduleExpression: "cron(20,50 * * * ? *)"
-      State: "ENABLED"
-      Targets:
-        - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ModifierLambdaFunctionName}
-          Id: "UpdateStackRemoteInstrumentSelfMonitor"
-          Input: '{"eventName": "UpdateStack"}'
-  UpdateStackScheduledRulePermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref ModifierLambdaFunctionName
-      Action: lambda:InvokeFunction
-      Principal: events.amazonaws.com
-      SourceArn: !GetAtt UpdateStackScheduledRule.Arn
   EveryNMinutesScheduledRule:
     Type: 'AWS::Events::Rule'
     DependsOn:
