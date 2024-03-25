@@ -12,8 +12,11 @@ const SELF_MONITOR_STACK_NAME = "remote-instrument-self-monitor";
 const INSTRUMENTER_STACK_NAME = "datadog-remote-instrument";
 const S3_BUCKET_NAME = "remote-instrument-self-monitor";
 const NODE = "node"
-const PYTHON = "python"
 const DD_AWS_ACCOUNT_NUMBER = "425362996713"
+
+const UPDATED_EXTENSION_VERSION = process.env.UpdatedDdExtensionLayerVersion
+const ORIGINAL_EXTENSION_VERSION = process.env.DdExtensionLayerVersion
+
 
 exports.handler = async (event, context, callback) => {
 
@@ -28,16 +31,24 @@ exports.handler = async (event, context, callback) => {
 
     if (event.eventName === "Uninstrument") {
         await uninstrument(config);
-        // await sleep(120000);  // 120 seconds
+        await sleep(120000);  // 120 seconds
+        await checkFunctionsInstrumentedWithExpectedExtnesionVersionAndEmitMetrics(ORIGINAL_EXTENSION_VERSION);
+
+    } else if (event.eventName === "UpdateStack") {
+        await updateStack(config);
+        await sleep(180000);  // 180 seconds
+        await checkFunctionsInstrumentedWithExpectedExtnesionVersionAndEmitMetrics(UPDATED_EXTENSION_VERSION);
+
     } else if (event.eventName === "DeleteStack") {
         await deleteStack(config);
-        // await sleep(120000);  // 120 seconds
+
+    } else if (event.eventName === "UninstrumentAfterDeleteStack") {
+        await uninstrument(config);
+
     } else if (event.eventName === "CreateStack") {
         await createStack(config);
-        // await sleep(180000);  // 180 seconds
-    } else if (event.eventName === "UpdateStack") {
-         await updateStack(config);
-         // await sleep(120000);  // 120 seconds
+        await sleep(180000);  // 180 seconds
+        await checkFunctionsInstrumentedWithExpectedExtnesionVersionAndEmitMetrics(ORIGINAL_EXTENSION_VERSION);
     }
 
     // await deleteStack(config);
@@ -57,6 +68,10 @@ exports.handler = async (event, context, callback) => {
     // await sleep(120000);  // 120 seconds
     return `✅`;
 };
+
+async function checkFunctionsInstrumentedWithExpectedExtnesionVersionAndEmitMetrics(expectedExtensionVersion) {
+
+}
 
 // delete all objects in a bucket
 async function emptyBucket(bucketName, config) {
@@ -197,7 +212,7 @@ const createStackInput = {
         },
         {
             ParameterKey: "DdExtensionLayerVersion",
-            ParameterValue: "50",
+            ParameterValue: ORIGINAL_EXTENSION_VERSION,
             UsePreviousValue: true,
         },
         {
@@ -264,7 +279,7 @@ async function updateStack(config) {
     updateStackInput.Parameters = [
         {
             ParameterKey: "DdExtensionLayerVersion",
-            ParameterValue: "49",  // was "50"
+            ParameterValue: UPDATED_EXTENSION_VERSION,  // was "50"
             UsePreviousValue: false,
         },
         // Only the extension version changed. Every other parameters below are not changed.

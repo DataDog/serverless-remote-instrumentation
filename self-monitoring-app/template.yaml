@@ -59,6 +59,9 @@ Parameters:
   DdExtensionLayerVersion:
     Type: String
     Default: '50'
+  UpdatedDdExtensionLayerVersion:
+    Type: String
+    Default: '49'
   DdPythonLayerVersion:
     Type: String
     Default: '70'
@@ -87,6 +90,7 @@ Resources:
         TagRule: !Ref TagRule
         DenyList: !Ref DenyList
         DdExtensionLayerVersion: !Ref DdExtensionLayerVersion
+        UpdatedDdExtensionLayerVersion: !Ref UpdatedDdExtensionLayerVersion
         DdPythonLayerVersion: !Ref DdPythonLayerVersion
         DdNodeLayerVersion: !Ref DdNodeLayerVersion
   ModifierLambdaFunction:
@@ -504,7 +508,7 @@ Resources:
       - ModifierLambdaFunction
     Properties:
       Description: "Triggered every hour at minute 5"
-      ScheduleExpression: "cron(0,10,30,40 * * * ? *)"
+      ScheduleExpression: "cron(0,30 * * * ? *)"
       State: "ENABLED"
       Targets:
         - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ModifierLambdaFunctionName}
@@ -536,6 +540,25 @@ Resources:
       Action: lambda:InvokeFunction
       Principal: events.amazonaws.com
       SourceArn: !GetAtt DeleteStackScheduledRule.Arn
+  UninstrumentAfterDeleteStackScheduledRule:
+    Type: 'AWS::Events::Rule'
+    DependsOn:
+      - ModifierLambdaFunction
+    Properties:
+      Description: "Triggered every hour at minute 5"
+      ScheduleExpression: "cron(10,40 * * * ? *)"
+      State: "ENABLED"
+      Targets:
+        - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ModifierLambdaFunctionName}
+          Id: "UninstrumentRemoteInstrumentSelfMonitor"
+          Input: '{"eventName": "UninstrumentAfterDeleteStack"}'
+  UninstrumentAfterDeleteStackScheduledRulePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ModifierLambdaFunctionName
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt UninstrumentAfterDeleteStackScheduledRule.Arn
   CreateStackScheduledRule:
     Type: 'AWS::Events::Rule'
     DependsOn:
