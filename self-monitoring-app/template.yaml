@@ -124,6 +124,10 @@ Resources:
           DD_ENV: dev
           DD_VERSION: 0.1.0
           DD_SITE: !Ref DdSite
+          NodeLambdaFunctionName: !Ref NodeLambdaFunctionName
+          PythonLambdaFunctionName: !Ref PythonLambdaFunctionName
+          LambdaWithSpecifiedTagsFunctionName: !Ref LambdaWithSpecifiedTagsFunctionName
+          LambdaWithoutSpecifiedTagsFunctionName: !Ref LambdaWithoutSpecifiedTagsFunctionName
           DdExtensionLayerVersion: !Ref DdExtensionLayerVersion
           UpdatedDdExtensionLayerVersion: !Ref UpdatedDdExtensionLayerVersion
 
