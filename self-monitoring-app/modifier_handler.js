@@ -31,6 +31,8 @@ exports.handler = async (event, context, callback) => {
     console.log(`\n process: ${JSON.stringify(process.env)}`)
     const config = getConfig();
 
+    await checkNodeFunction(config, ORIGINAL_EXTENSION_VERSION);
+
     if (!event.hasOwnProperty("eventName")) {
         console.log(`The event doesn't have "eventName" field.`)
         return;
@@ -71,6 +73,7 @@ async function checkFunctionsInstrumentedWithExpectedExtnesionVersionAndEmitMetr
 }
 
 async function checkNodeFunction(config, expectedExtensionVersion) {
+    const extraTags = [`function_name:${config.NODE_FUNCTION_NAME}`];
     const getFunctionCommandOutput = await getFunction(config, config.NODE_FUNCTION_NAME);
     if (getFunctionCommandOutput == null) {
         incrementMetric('serverless.remote_instrument.instrument_by_function_name.aws_request_failed');
@@ -88,20 +91,20 @@ async function checkNodeFunction(config, expectedExtensionVersion) {
                 let arr = layer.Arn.split(":");
                 let layerVersion = arr[arr.length - 1]
                 if (layerVersion === expectedExtensionVersion) {
-                    incrementMetric('serverless.remote_instrument.instrument_by_function_name.extension_version_matched');
+                    incrementMetric('serverless.remote_instrument.instrument_by_function_name.extension_version_matched', extraTags);
                 } else {
-                    incrementMetric('serverless.remote_instrument.instrument_by_function_name.extension_version_unmatched');
+                    incrementMetric('serverless.remote_instrument.instrument_by_function_name.extension_version_unmatched', extraTags);
                 }
             }
         }
         if (!hasExtensionLayer) {
             console.error(`The Extension layer is not found on the ${config.NODE_FUNCTION_NAME}. Function config is: ${JSON.stringify(getFunctionCommandOutput)}`)
-            incrementMetric('serverless.remote_instrument.instrument_by_function_name.failed');
+            incrementMetric('serverless.remote_instrument.instrument_by_function_name.failed', extraTags);
         } else {
-            incrementMetric('serverless.remote_instrument.instrument_by_function_name.succeeded');
+            incrementMetric('serverless.remote_instrument.instrument_by_function_name.succeeded', extraTags);
         }
     } else {
-        incrementMetric('serverless.remote_instrument.instrument_by_function_name.failed');
+        incrementMetric('serverless.remote_instrument.instrument_by_function_name.failed', extraTags);
     }
 }
 
@@ -440,11 +443,12 @@ function getConfig() {
     return config;
 }
 
-function incrementMetric(metricName) {
+function incrementMetric(metricName, extraTags) {
     sendDistributionMetric(
         metricName,
         1,                      // Metric value
         "env:dev",
         `service:${SERVICE_NAME}`,
+        ...extraTags
     );
 }
