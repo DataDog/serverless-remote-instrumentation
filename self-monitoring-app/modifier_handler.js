@@ -28,7 +28,7 @@ const ORIGINAL_EXTENSION_VERSION = process.env.DdExtensionLayerVersion
 exports.handler = async (event, context, callback) => {
 
     console.log('\n event:', JSON.stringify(event))
-    console.log(`\n process: ${JSON.stringify(process.env)}`)
+    console.log(`\n process.env: ${JSON.stringify(process.env)}`)
     const config = getConfig();
 
     await checkNodeFunction(config, ORIGINAL_EXTENSION_VERSION);
@@ -76,7 +76,7 @@ async function checkNodeFunction(config, expectedExtensionVersion) {
     const extraTags = [`function_name:${config.NODE_FUNCTION_NAME}`];
     const getFunctionCommandOutput = await getFunction(config, config.NODE_FUNCTION_NAME);
     if (getFunctionCommandOutput == null) {
-        incrementMetric('serverless.remote_instrument.instrument_by_function_name.aws_request_failed');
+        incrementMetric('serverless.remote_instrument.instrument_by_function_name.aws_request_failed', extraTags);
         return;
     }
 
