@@ -79,7 +79,7 @@ async function checkNodeFunction(config, expectedExtensionVersion) {
         incrementMetric('serverless.remote_instrument.instrument_by_function_name.aws_request_failed', extraTags);
         return;
     }
-
+    console.log(`getFunctionCommandOutput: ${JSON.stringify(getFunctionCommandOutput)}`)
     // check if lambda has layer
     if (getFunctionCommandOutput?.Configuration?.Layers !== undefined) {
         let hasExtensionLayer = false;
