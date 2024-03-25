@@ -5,14 +5,19 @@ const {
     DeleteStackCommand,
     DescribeStackResourcesCommand
 } = require("@aws-sdk/client-cloudformation");
-
-const datadogCi = require('@datadog/datadog-ci/dist/cli.js');
 const {S3Client, ListObjectsV2Command, DeleteObjectsCommand} = require("@aws-sdk/client-s3");
+const {LambdaClient, GetFunctionCommand} = require("@aws-sdk/client-lambda");
+const datadogCi = require('@datadog/datadog-ci/dist/cli.js');
+
+// dd imports
+const {sendDistributionMetric} = require('datadog-lambda-js');
+
+// Constants
 const SELF_MONITOR_STACK_NAME = "remote-instrument-self-monitor";
 const INSTRUMENTER_STACK_NAME = "datadog-remote-instrument";
 const S3_BUCKET_NAME = "remote-instrument-self-monitor";
 const NODE = "node"
-const DD_AWS_ACCOUNT_NUMBER = "425362996713"
+const DD_AWS_ACCOUNT_NUMBER = "425362996713"  // serverless sandbox
 
 const UPDATED_EXTENSION_VERSION = process.env.UpdatedDdExtensionLayerVersion
 const ORIGINAL_EXTENSION_VERSION = process.env.DdExtensionLayerVersion
@@ -32,12 +37,14 @@ exports.handler = async (event, context, callback) => {
     if (event.eventName === "Uninstrument") {
         await uninstrument(config);
         await sleep(120000);  // 120 seconds
-        await checkFunctionsInstrumentedWithExpectedExtnesionVersionAndEmitMetrics(ORIGINAL_EXTENSION_VERSION);
+        await checkFunctionsInstrumentedWithExpectedExtnesionVersionAndEmitMetrics(
+            config, ORIGINAL_EXTENSION_VERSION);
 
     } else if (event.eventName === "UpdateStack") {
         await updateStack(config);
         await sleep(180000);  // 180 seconds
-        await checkFunctionsInstrumentedWithExpectedExtnesionVersionAndEmitMetrics(UPDATED_EXTENSION_VERSION);
+        await checkFunctionsInstrumentedWithExpectedExtnesionVersionAndEmitMetrics(
+            config, UPDATED_EXTENSION_VERSION);
 
     } else if (event.eventName === "DeleteStack") {
         await deleteStack(config);
@@ -48,7 +55,8 @@ exports.handler = async (event, context, callback) => {
     } else if (event.eventName === "CreateStack") {
         await createStack(config);
         await sleep(180000);  // 180 seconds
-        await checkFunctionsInstrumentedWithExpectedExtnesionVersionAndEmitMetrics(ORIGINAL_EXTENSION_VERSION);
+        await checkFunctionsInstrumentedWithExpectedExtnesionVersionAndEmitMetrics(
+            config, ORIGINAL_EXTENSION_VERSION);
     }
 
     // await deleteStack(config);
@@ -69,8 +77,48 @@ exports.handler = async (event, context, callback) => {
     return `✅`;
 };
 
-async function checkFunctionsInstrumentedWithExpectedExtnesionVersionAndEmitMetrics(expectedExtensionVersion) {
+async function checkFunctionsInstrumentedWithExpectedExtnesionVersionAndEmitMetrics(config, expectedExtensionVersion) {
+    await checkNodeFunction();
+    await checkPythonFunction();
+    await checkTaggedFunction();
+    await checkUntaggedFunction();
+}
 
+async function checkNodeFunction(config) {
+    const getFunctionCommandOutput = await getFunction()
+    sendDistributionMetric(
+        'kimi.test', // Metric name
+        1,                      // Metric value
+        "env:dev"
+    );
+}
+
+async function getFunction(functionName) {
+    const params = {
+        FunctionName: functionName
+    };
+    const client = new LambdaClient({region: process.env.AWS_REGION});
+    const command = new GetFunctionCommand(params);
+
+    try {
+        const getFunctionCommandOutput = await client.send(command);
+
+        const layers = getFunctionCommandOutput.Configuration.Layers || [];
+        const targetLambdaRuntime = getFunctionCommandOutput.Configuration.Runtime || "";
+        if (functionIsInstrumentedWithSpecifiedLayerVersions(layers, config, targetLambdaRuntime)) {
+            console.log(`\n=== Function ${functionName} is already instrumented with correct extension and tracer layer versions! `);
+            return;
+        }
+
+        const specifiedTags = getAutoInstrumentTagsFromConfig(config)  // tags: ['k1:v1', 'k2:v2']
+        if (typeof (specifiedTags) === "object" && specifiedTags.length !== 0 && !shouldBeAutoInstrumentedByTag(getFunctionCommandOutput, specifiedTags)) {
+            console.log(`\n=== Skipping auto instrumentation for function ${functionName}. It should not be auto instrumented by tag nor by specified function names`)
+            return;
+        }
+    } catch (error) {
+        // simply skip this current instrumentation of the function.
+        console.log(`\nError is caught for functionName ${functionName}. Skipping instrumenting this function. Error is: ${error}`);
+    }
 }
 
 // delete all objects in a bucket
@@ -380,6 +428,10 @@ function getConfig() {
     const config = {
         // AWS
         AWS_REGION: process.env.AWS_REGION,
+        NODE_FUNCTION_NAME: process.env.NodeLambdaFunctionName,
+        PYTHON_FUNCTION_NAME: process.env.PythonLambdaFunctionName,
+        LAMBDA_WITH_SPECIFIED_TAGS_FUNCTION_NAME: process.env.LambdaWithSpecifiedTagsFunctionName,
+        LAMBDA_WITHOUT_SPECIFIED_TAGS_FUNCTION_NAME: process.env.LambdaWithoutSpecifiedTagsFunctionName,
     };
     console.log(`\n config: ${JSON.stringify(config)}`)
     return config;
