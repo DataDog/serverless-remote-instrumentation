@@ -64,22 +64,13 @@ exports.handler = async (event, context, callback) => {
 };
 
 async function checkFunctionsInstrumentedWithExpectedExtnesionVersionAndEmitMetrics(config, expectedExtensionVersion) {
-    await checkNodeFunction(config);
+    await checkNodeFunction(config, expectedExtensionVersion);
     await checkPythonFunction();
     await checkTaggedFunction();
     await checkUntaggedFunction();
 }
 
-function incrementMetric(metricName) {
-    sendDistributionMetric(
-        metricName,
-        1,                      // Metric value
-        "env:dev",
-        `service:${SERVICE_NAME}`,
-    );
-}
-
-async function checkNodeFunction(config) {
+async function checkNodeFunction(config, expectedExtensionVersion) {
     const getFunctionCommandOutput = await getFunction(config, config.NODE_FUNCTION_NAME);
     if (getFunctionCommandOutput == null) {
         incrementMetric('serverless.remote_instrument.instrument_by_function_name.aws_request_failed');
@@ -88,8 +79,18 @@ async function checkNodeFunction(config) {
 
     // check if lambda has layer
     if (getFunctionCommandOutput?.Configuration?.Layers !== undefined) {
-
-        incrementMetric('serverless.remote_instrument.instrument_by_function_name.succeeded');
+        let hasExtensionLayer = false;
+        for (let layer of getFunctionCommandOutput.Configuration.Layers) {
+            if (layer.Arn.includes("arn:aws:lambda:us-west-1:464622532012:layer:Datadog-Extension-ARM")){
+                hasExtensionLayer = true;
+            }
+        }
+        if (!hasExtensionLayer) {
+            console.error(`The Extension layer is not found on the ${config.NODE_FUNCTION_NAME}. Function config is: ${JSON.stringify(getFunctionCommandOutput)}`)
+            incrementMetric('serverless.remote_instrument.instrument_by_function_name.failed');
+        } else {
+            incrementMetric('serverless.remote_instrument.instrument_by_function_name.succeeded');
+        }
     } else {
         incrementMetric('serverless.remote_instrument.instrument_by_function_name.failed');
     }
@@ -113,6 +114,7 @@ async function getFunction(config, functionName) {
     }
     return null;
 }
+
 
 // delete all objects in a bucket
 async function emptyBucket(bucketName, config) {
@@ -166,8 +168,6 @@ async function emptyBucket(bucketName, config) {
         .catch((error) => console.error("An error occurred:", error));
 
 }
-
-
 async function getNestedInstrumenterStackName(config) {
 // const { CloudFormationClient, DescribeStackResourcesCommand } = require("@aws-sdk/client-cloudformation"); // CommonJS import
     const client = new CloudFormationClient({region: config.AWS_REGION});
@@ -185,6 +185,8 @@ async function getNestedInstrumenterStackName(config) {
     console.log(`nestedStackName: ${nestedStackName}`)
     return nestedStackName;
 }
+
+
 
 // delete stack
 async function deleteStack(config) {
@@ -211,7 +213,6 @@ async function deleteStack(config) {
         console.log(`DeleteStackCommand response: ${JSON.stringify(response)}`);
     }
 }
-
 const createStackInput = {
     StackName: INSTRUMENTER_STACK_NAME,
     TemplateURL: "https://datadog-cloudformation-template-serverless-sandbox.s3.sa-east-1.amazonaws.com/aws/remote-instrument-dev/latest.yaml",
@@ -304,6 +305,7 @@ const createStackInput = {
     // RetainExceptOnCreate: true || false,
 };
 
+
 // create stack
 async function createStack(config) {
     const clientConfig = {region: config.AWS_REGION};
@@ -377,14 +379,12 @@ async function uninstrument(config) {
     ]
     await uninstrumentFunctions(functionNamesToUninstrument, config);
 }
-
 function sleep(ms) {
     console.log(`sleeping for ${ms} ms`);
     return new Promise((resolve) => {
         setTimeout(resolve, ms);
     });
 }
-
 
 async function uninstrumentFunctions(functionNamesToUninstrument, config) {
     console.log(`\n functionNamesToUninstrument: ${functionNamesToUninstrument}`)
@@ -396,6 +396,7 @@ async function uninstrumentFunctions(functionNamesToUninstrument, config) {
         await uninstrumentWithDatadogCi(functionArn, NODE, config, uninstrumentedFunctionArns);
     }
 }
+
 
 async function uninstrumentWithDatadogCi(functionArn, runtime = NODE, config, functionArns) {
     console.log(`instrumentWithDatadogCi: functionArns: ${functionArns}`)
@@ -428,4 +429,13 @@ function getConfig() {
     };
     console.log(`\n config: ${JSON.stringify(config)}`)
     return config;
+}
+
+function incrementMetric(metricName) {
+    sendDistributionMetric(
+        metricName,
+        1,                      // Metric value
+        "env:dev",
+        `service:${SERVICE_NAME}`,
+    );
 }
