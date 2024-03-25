@@ -83,6 +83,8 @@ async function checkNodeFunction(config, expectedExtensionVersion) {
         for (let layer of getFunctionCommandOutput.Configuration.Layers) {
             if (layer.Arn.includes("arn:aws:lambda:us-west-1:464622532012:layer:Datadog-Extension-ARM")) {
                 hasExtensionLayer = true;
+
+                // check if layer version matched
                 let arr = layer.Arn.split(":");
                 let layerVersion = arr[arr.length - 1]
                 if (layerVersion === expectedExtensionVersion) {
