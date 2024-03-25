@@ -387,7 +387,7 @@ Resources:
   LambdaFunctionWithoutSpecifiedTags:
     Type: 'AWS::Lambda::Function'
     Properties:
-      FunctionName: !Ref LambdaWithSpecifiedTagsFunctionName
+      FunctionName: !Ref LambdaWithoutSpecifiedTagsFunctionName
       Architectures:
       - arm64
       Runtime: nodejs20.x
