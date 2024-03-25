@@ -81,8 +81,15 @@ async function checkNodeFunction(config, expectedExtensionVersion) {
     if (getFunctionCommandOutput?.Configuration?.Layers !== undefined) {
         let hasExtensionLayer = false;
         for (let layer of getFunctionCommandOutput.Configuration.Layers) {
-            if (layer.Arn.includes("arn:aws:lambda:us-west-1:464622532012:layer:Datadog-Extension-ARM")){
+            if (layer.Arn.includes("arn:aws:lambda:us-west-1:464622532012:layer:Datadog-Extension-ARM")) {
                 hasExtensionLayer = true;
+                let arr = layer.Arn.split(":");
+                let layerVersion = arr[arr.length - 1]
+                if (layerVersion === expectedExtensionVersion) {
+                    incrementMetric('serverless.remote_instrument.instrument_by_function_name.extension_version_matched');
+                } else {
+                    incrementMetric('serverless.remote_instrument.instrument_by_function_name.extension_version_unmatched');
+                }
             }
         }
         if (!hasExtensionLayer) {
@@ -94,8 +101,6 @@ async function checkNodeFunction(config, expectedExtensionVersion) {
     } else {
         incrementMetric('serverless.remote_instrument.instrument_by_function_name.failed');
     }
-
-
 }
 
 async function getFunction(config, functionName) {
@@ -168,6 +173,7 @@ async function emptyBucket(bucketName, config) {
         .catch((error) => console.error("An error occurred:", error));
 
 }
+
 async function getNestedInstrumenterStackName(config) {
 // const { CloudFormationClient, DescribeStackResourcesCommand } = require("@aws-sdk/client-cloudformation"); // CommonJS import
     const client = new CloudFormationClient({region: config.AWS_REGION});
@@ -185,7 +191,6 @@ async function getNestedInstrumenterStackName(config) {
     console.log(`nestedStackName: ${nestedStackName}`)
     return nestedStackName;
 }
-
 
 
 // delete stack
@@ -213,6 +218,7 @@ async function deleteStack(config) {
         console.log(`DeleteStackCommand response: ${JSON.stringify(response)}`);
     }
 }
+
 const createStackInput = {
     StackName: INSTRUMENTER_STACK_NAME,
     TemplateURL: "https://datadog-cloudformation-template-serverless-sandbox.s3.sa-east-1.amazonaws.com/aws/remote-instrument-dev/latest.yaml",
@@ -379,6 +385,7 @@ async function uninstrument(config) {
     ]
     await uninstrumentFunctions(functionNamesToUninstrument, config);
 }
+
 function sleep(ms) {
     console.log(`sleeping for ${ms} ms`);
     return new Promise((resolve) => {
