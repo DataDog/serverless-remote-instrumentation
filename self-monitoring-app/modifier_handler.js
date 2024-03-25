@@ -181,7 +181,7 @@ async function getNestedInstrumenterStackName(config) {
     const client = new CloudFormationClient({region: config.AWS_REGION});
     const input = { // DescribeStackResourcesInput
         StackName: SELF_MONITOR_STACK_NAME,
-        LogicalResourceId: "RemoteInstrumentStack",
+        LogicalResourceId: "RemoteInstrumentNestedStack",
         // PhysicalResourceId: "STRING_VALUE",
     };
     const command = new DescribeStackResourcesCommand(input);
