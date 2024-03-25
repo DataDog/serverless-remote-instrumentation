@@ -18,6 +18,8 @@ const INSTRUMENTER_STACK_NAME = "datadog-remote-instrument";
 const S3_BUCKET_NAME = "remote-instrument-self-monitor";
 const NODE = "node"
 const DD_AWS_ACCOUNT_NUMBER = "425362996713"  // serverless sandbox
+const DD_SLS_REMOTE_INSTRUMENTER_VERSION = "dd_sls_remote_instrumenter_version"
+const SERVICE_NAME = "remote-instrument-self-monitor"
 
 const UPDATED_EXTENSION_VERSION = process.env.UpdatedDdExtensionLayerVersion
 const ORIGINAL_EXTENSION_VERSION = process.env.DdExtensionLayerVersion
@@ -58,42 +60,44 @@ exports.handler = async (event, context, callback) => {
         await checkFunctionsInstrumentedWithExpectedExtnesionVersionAndEmitMetrics(
             config, ORIGINAL_EXTENSION_VERSION);
     }
-
-    // await deleteStack(config);
-    // console.log(`deleting stack...`);
-    // await sleep(120000);  // 120 seconds
-    //
-    // await createStack(config);
-    // console.log(`creating stack...`);
-    // await sleep(180000);  // 180 seconds
-    //
-    // await updateStack(config);
-    // console.log(`updating stack...`);
-    // await sleep(120000);  // 120 seconds
-    //
-    // await deleteStack(config);
-    // console.log(`deleting stack...`);
-    // await sleep(120000);  // 120 seconds
     return `✅`;
 };
 
 async function checkFunctionsInstrumentedWithExpectedExtnesionVersionAndEmitMetrics(config, expectedExtensionVersion) {
-    await checkNodeFunction();
+    await checkNodeFunction(config);
     await checkPythonFunction();
     await checkTaggedFunction();
     await checkUntaggedFunction();
 }
 
-async function checkNodeFunction(config) {
-    const getFunctionCommandOutput = await getFunction()
+function incrementMetric(metricName) {
     sendDistributionMetric(
-        'kimi.test', // Metric name
+        metricName,
         1,                      // Metric value
-        "env:dev"
+        "env:dev",
+        `service:${SERVICE_NAME}`,
     );
 }
 
-async function getFunction(functionName) {
+async function checkNodeFunction(config) {
+    const getFunctionCommandOutput = await getFunction(config, config.NODE_FUNCTION_NAME);
+    if (getFunctionCommandOutput == null) {
+        incrementMetric('serverless.remote_instrument.instrument_by_function_name.aws_request_failed');
+        return;
+    }
+
+    // check if lambda has layer
+    if (getFunctionCommandOutput?.Configuration?.Layers !== undefined) {
+
+        incrementMetric('serverless.remote_instrument.instrument_by_function_name.succeeded');
+    } else {
+        incrementMetric('serverless.remote_instrument.instrument_by_function_name.failed');
+    }
+
+
+}
+
+async function getFunction(config, functionName) {
     const params = {
         FunctionName: functionName
     };
@@ -101,24 +105,13 @@ async function getFunction(functionName) {
     const command = new GetFunctionCommand(params);
 
     try {
-        const getFunctionCommandOutput = await client.send(command);
-
-        const layers = getFunctionCommandOutput.Configuration.Layers || [];
-        const targetLambdaRuntime = getFunctionCommandOutput.Configuration.Runtime || "";
-        if (functionIsInstrumentedWithSpecifiedLayerVersions(layers, config, targetLambdaRuntime)) {
-            console.log(`\n=== Function ${functionName} is already instrumented with correct extension and tracer layer versions! `);
-            return;
-        }
-
-        const specifiedTags = getAutoInstrumentTagsFromConfig(config)  // tags: ['k1:v1', 'k2:v2']
-        if (typeof (specifiedTags) === "object" && specifiedTags.length !== 0 && !shouldBeAutoInstrumentedByTag(getFunctionCommandOutput, specifiedTags)) {
-            console.log(`\n=== Skipping auto instrumentation for function ${functionName}. It should not be auto instrumented by tag nor by specified function names`)
-            return;
-        }
+        let getFunctionCommandOutput = await client.send(command);
+        return getFunctionCommandOutput;
     } catch (error) {
         // simply skip this current instrumentation of the function.
-        console.log(`\nError is caught for functionName ${functionName}. Skipping instrumenting this function. Error is: ${error}`);
+        console.error(`\nError is caught for functionName ${functionName}. Skipping instrumenting this function. Error is: ${error}`);
     }
+    return null;
 }
 
 // delete all objects in a bucket
