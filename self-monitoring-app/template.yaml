@@ -72,7 +72,7 @@ Parameters:
     Type: String
     Default: '425362996713'
 Resources:
-  RemoteInstrumentStack:
+  RemoteInstrumentNestedStack:
     Type: AWS::CloudFormation::Stack
     DependsOn:
       - NodeLambdaFunction
@@ -90,13 +90,12 @@ Resources:
         TagRule: !Ref TagRule
         DenyList: !Ref DenyList
         DdExtensionLayerVersion: !Ref DdExtensionLayerVersion
-        UpdatedDdExtensionLayerVersion: !Ref UpdatedDdExtensionLayerVersion
         DdPythonLayerVersion: !Ref DdPythonLayerVersion
         DdNodeLayerVersion: !Ref DdNodeLayerVersion
   ModifierLambdaFunction:
     Type: 'AWS::Lambda::Function'
     DependsOn:
-      - RemoteInstrumentStack
+      - RemoteInstrumentNestedStack
       - NodeLambdaFunction
       - PythonLambdaFunction
       - LambdaFunctionWithSpecifiedTags
@@ -125,6 +124,8 @@ Resources:
           DD_ENV: dev
           DD_VERSION: 0.1.0
           DD_SITE: !Ref DdSite
+          DdExtensionLayerVersion: !Ref DdExtensionLayerVersion
+          UpdatedDdExtensionLayerVersion: !Ref UpdatedDdExtensionLayerVersion
 
       Code:
         ZipFile: |
@@ -606,13 +607,13 @@ Resources:
       ScheduleExpression: "cron(0/2 * * * ? *)"
       State: "ENABLED"
       Targets:
-        - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:remote-instrument-self-monitor-node
+        - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${NodeLambdaFunctionName}
           Id: "NodeFunction"
-        - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:remote-instrument-self-monitor-python
+        - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${PythonLambdaFunctionName}
           Id: "PythonFunction"
-        - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:remote-instrument-self-monitor-with-specified-tags
+        - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${LambdaWithSpecifiedTagsFunctionName}
           Id: "FunctionWithTags"
-        - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:remote-instrument-self-monitor-without-specified-tags
+        - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${LambdaWithoutSpecifiedTagsFunctionName}
           Id: "FunctionWithoutTags"
   EveryNMinutesScheduledRuleForNodePermission:
     Type: AWS::Lambda::Permission
