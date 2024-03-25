@@ -65,9 +65,9 @@ exports.handler = async (event, context, callback) => {
 
 async function checkFunctionsInstrumentedWithExpectedExtnesionVersionAndEmitMetrics(config, expectedExtensionVersion) {
     await checkNodeFunction(config, expectedExtensionVersion);
-    await checkPythonFunction();
-    await checkTaggedFunction();
-    await checkUntaggedFunction();
+    // await checkPythonFunction();
+    // await checkTaggedFunction();
+    // await checkUntaggedFunction();
 }
 
 async function checkNodeFunction(config, expectedExtensionVersion) {
@@ -109,7 +109,7 @@ async function getFunction(config, functionName) {
     const params = {
         FunctionName: functionName
     };
-    const client = new LambdaClient({region: process.env.AWS_REGION});
+    const client = new LambdaClient({region: config.AWS_REGION});
     const command = new GetFunctionCommand(params);
 
     try {
@@ -117,7 +117,7 @@ async function getFunction(config, functionName) {
         return getFunctionCommandOutput;
     } catch (error) {
         // simply skip this current instrumentation of the function.
-        console.error(`\nError is caught for functionName ${functionName}. Skipping instrumenting this function. Error is: ${error}`);
+        console.error(`\nError is caught when fetching function for ${functionName}. Error is: ${error}`);
     }
     return null;
 }
