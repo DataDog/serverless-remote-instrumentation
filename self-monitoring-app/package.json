@@ -1,4 +1,8 @@
 {
   "version": "1.0.0",
-  "dependencies": {}
+  "dependencies": {
+    "@aws-sdk/client-lambda": "3.476.0",
+    "@aws-sdk/client-resource-groups-tagging-api": "3.477.0",
+    "@datadog/datadog-ci": "2.30.1",
+  }
 }
