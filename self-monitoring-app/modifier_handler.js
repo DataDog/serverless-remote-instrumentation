@@ -71,7 +71,7 @@ async function checkFunctionsInstrumentedWithExpectedExtensionVersionAndEmitMetr
 }
 
 async function checkFunction(config, functionName, expectedExtensionVersion) {
-    const extraTags = [`function_name:${functionName}`];
+    const extraTags = [`function_name:${functionName}`, `expected_extension_version:${expectedExtensionVersion}`];
     const getFunctionCommandOutput = await getFunction(config, functionName);
     if (getFunctionCommandOutput == null) {
         incrementMetric('serverless.remote_instrument.instrument_by_function_name.aws_request_failed', extraTags);
