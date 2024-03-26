@@ -460,5 +460,7 @@ function sendDistributionMetricWrapper(metricName, extraTags) {
 }
 
 function sendGauge(gaugeName, gaugeValue, extraTagsObject){
+    const tracer = require('dd-trace');
+    tracer.init();
     tracer.dogstatsd.gauge(gaugeName, gaugeValue, { env: ENV, ...extraTagsObject });
 }
