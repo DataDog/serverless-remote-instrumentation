@@ -93,6 +93,8 @@ async function checkNodeFunction(config, functionName, expectedExtensionVersion)
                 if (layerVersion === expectedExtensionVersion) {
                     incrementMetric('serverless.remote_instrument.instrument_by_function_name.extension_version_matched', extraTags);
                 } else {
+                    console.error(`extension layer version unmatched!`)
+                    console.log(`getFunctionCommandOutput: ${JSON.stringify(getFunctionCommandOutput)}`)
                     incrementMetric('serverless.remote_instrument.instrument_by_function_name.extension_version_unmatched', extraTags);
                 }
             }
