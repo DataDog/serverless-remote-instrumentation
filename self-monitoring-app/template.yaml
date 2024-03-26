@@ -34,7 +34,7 @@ Parameters:
       Define the Lambda function name which is remote instrumenting the other Lambda functions.
   BucketName:
     Type: String
-    Default: remote-instrument-self-monitor-2
+    Default: remote-instrument-self-monitor
   AllowList:
     Type: String
     Default: remote-instrument-self-monitor-node,remote-instrument-self-monitor-python,some-function-does-not-exist-for-testing-purpose
@@ -44,9 +44,24 @@ Parameters:
   DenyList:
     Type: String
     Default: remote-instrument-self-monitor-to-be-uninstrumented
+  NodeLambdaFunctionName:
+    Type: String
+    Default: remote-instrument-self-monitor-node
+  PythonLambdaFunctionName:
+    Type: String
+    Default: remote-instrument-self-monitor-python
+  LambdaWithSpecifiedTagsFunctionName:
+    Type: String
+    Default: remote-instrument-self-monitor-with-specified-tags
+  LambdaWithoutSpecifiedTagsFunctionName:
+    Type: String
+    Default: remote-instrument-self-monitor-without-specified-tags
   DdExtensionLayerVersion:
     Type: String
     Default: '50'
+  UpdatedDdExtensionLayerVersion:
+    Type: String
+    Default: '49'
   DdPythonLayerVersion:
     Type: String
     Default: '70'
@@ -57,7 +72,7 @@ Parameters:
     Type: String
     Default: '425362996713'
 Resources:
-  RemoteInstrumentStack:
+  RemoteInstrumentNestedStack:
     Type: AWS::CloudFormation::Stack
     DependsOn:
       - NodeLambdaFunction
@@ -80,7 +95,7 @@ Resources:
   ModifierLambdaFunction:
     Type: 'AWS::Lambda::Function'
     DependsOn:
-      - RemoteInstrumentStack
+      - RemoteInstrumentNestedStack
       - NodeLambdaFunction
       - PythonLambdaFunction
       - LambdaFunctionWithSpecifiedTags
@@ -109,6 +124,12 @@ Resources:
           DD_ENV: dev
           DD_VERSION: 0.1.0
           DD_SITE: !Ref DdSite
+          NodeLambdaFunctionName: !Ref NodeLambdaFunctionName
+          PythonLambdaFunctionName: !Ref PythonLambdaFunctionName
+          LambdaWithSpecifiedTagsFunctionName: !Ref LambdaWithSpecifiedTagsFunctionName
+          LambdaWithoutSpecifiedTagsFunctionName: !Ref LambdaWithoutSpecifiedTagsFunctionName
+          DdExtensionLayerVersion: !Ref DdExtensionLayerVersion
+          UpdatedDdExtensionLayerVersion: !Ref UpdatedDdExtensionLayerVersion
 
       Code:
         ZipFile: |
@@ -137,21 +158,62 @@ Resources:
             Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
           - Effect: Allow
             Action:
-              - lambda:InvokeFunction
-              - lambda:GetFunction
-              - lambda:UpdateFunctionConfiguration
-              - lambda:TagResource
-              - lambda:UntagResource
+#              - lambda:InvokeFunction
+#              - lambda:GetFunction
+#              - lambda:UpdateFunctionConfiguration
+#              - lambda:TagResource
+#              - lambda:UntagResource
+#              - lambda:CreateFunction
+#              - lambda:AddPermission
+              # TODO: new hire task to remove this iam:* and limit the permissions
+              - lambda:*
             Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*
           - Effect: Allow
             Action:
               - lambda:GetLayerVersion
             Resource: !Sub arn:aws:lambda:${AWS::Region}:464622532012:layer:*
+          - Effect: Allow
+            Action:
+              - cloudformation:CreateStack
+              - cloudformation:DeleteStack
+              - cloudformation:UpdateStack
+              - cloudformation:DescribeStackResources
+            Resource: !Sub arn:aws:cloudformation:${AWS::Region}:425362996713:stack/*
+          - Effect: Allow
+            Action:
+              - s3:*
+            Resource: '*'
+          - Effect: Allow
+            Action:
+#              - iam:CreateRole
+#              - iam:PutRolePolicy
+#              - iam:GetRole
+#              - iam:TagRole
+#              - iam:PassRole
+#              - iam:DeleteRolePolicy
+#              - iam:DeleteRole
+              # TODO: new hire task to remove this iam:* and limit the permissions
+              - iam:*
+            Resource:
+            - arn:aws:iam::425362996713:role/*
+            - arn:aws:iam::425362996713:policy/*
+          - Effect: Allow
+            Action:
+              -  cloudtrail:*
+            Resource: !Sub arn:aws:cloudtrail:${AWS::Region}:425362996713:trail/*
+          - Effect: Allow
+            Action:
+              -  events:*
+            Resource: !Sub arn:aws:events:${AWS::Region}:425362996713:rule/*
+          - Effect: Allow
+            Action:
+              - s3:*
+            Resource: !Sub arn:aws:s3:::${BucketName}
 
   NodeLambdaFunction:
     Type: 'AWS::Lambda::Function'
     Properties:
-      FunctionName: "remote-instrument-self-monitor-node"
+      FunctionName: !Ref NodeLambdaFunctionName
       Architectures:
       - arm64
       Runtime: nodejs20.x
@@ -170,7 +232,7 @@ Resources:
           DD_SITE: !Ref DdSite
       Tags:
         - Key: "service"
-          Value: "datadog-remote-instrumentation"
+          Value: "remote-instrument-self-monitor"
         - Key: "DD_REMOTE_INSTRUMENT_ENABLED"
           Value: "true"
       Code:
@@ -217,7 +279,7 @@ Resources:
       Timeout: 90
       MemorySize: 256
       Role: !GetAtt PythonLambdaRole.Arn
-      Handler: index.handler
+      Handler: index.lambda_handler
       Environment:
         Variables:
 #          DD_LAMBDA_HANDLER: index.handler
@@ -229,7 +291,7 @@ Resources:
           DD_SITE: !Ref DdSite
       Tags:
         - Key: "service"
-          Value: "datadog-remote-instrumentation"
+          Value: "remote-instrument-self-monitor"
         - Key: "DD_REMOTE_INSTRUMENT_ENABLED"
           Value: "true"
       Code:
@@ -269,7 +331,7 @@ Resources:
   LambdaFunctionWithSpecifiedTags:
     Type: 'AWS::Lambda::Function'
     Properties:
-      FunctionName: "remote-instrument-self-monitor-with-specified-tags"
+      FunctionName: !Ref LambdaWithSpecifiedTagsFunctionName
       Architectures:
       - arm64
       Runtime: nodejs20.x
@@ -288,7 +350,7 @@ Resources:
           DD_SITE: !Ref DdSite
       Tags:
         - Key: "service"
-          Value: "datadog-remote-instrumentation"
+          Value: "remote-instrument-self-monitor"
         - Key: "DD_REMOTE_INSTRUMENT_ENABLED"
           Value: "true"
         - Key: "another-tag"
@@ -330,7 +392,7 @@ Resources:
   LambdaFunctionWithoutSpecifiedTags:
     Type: 'AWS::Lambda::Function'
     Properties:
-      FunctionName: "remote-instrument-self-monitor-without-specified-tags"
+      FunctionName: !Ref LambdaWithoutSpecifiedTagsFunctionName
       Architectures:
       - arm64
       Runtime: nodejs20.x
@@ -349,7 +411,9 @@ Resources:
           DD_SITE: !Ref DdSite
       Tags:
         - Key: "service"
-          Value: "datadog-remote-instrumentation"
+          Value: "remote-instrument-self-monitor"
+        - Key: "another-tag"
+          Value: "true"
       Code:
         ZipFile: |
           exports.handler = async (event, context, callback) => {
@@ -384,61 +448,202 @@ Resources:
               - lambda:GetLayerVersion
             Resource: !Sub arn:aws:lambda:${AWS::Region}:464622532012:layer:*
 
-  LambdaToBeUninstrumentedFunction:
-    Type: 'AWS::Lambda::Function'
-    Properties:
-      FunctionName: "remote-instrument-self-monitor-to-be-uninstrumented"
-      Architectures:
-        - arm64
-      Runtime: nodejs20.x
-      Timeout: 90
-      MemorySize: 256
-      Role: !GetAtt LambdaToBeUninstrumentedRole.Arn
-      Handler: /opt/nodejs/node_modules/datadog-lambda-js/handler.handler
-      Environment:
-        Variables:
-          DD_LAMBDA_HANDLER: index.handler
-          DD_TRACE_ENABLED: true
-          DD_API_KEY: !Ref DdApiKey
-          DD_SERVICE: remote-instrument-self-monitor
-          DD_ENV: dev
-          DD_VERSION: 0.1.0
-          DD_SITE: !Ref DdSite
-      Tags:
-        - Key: "service"
-          Value: "datadog-remote-instrumentation"
-        - Key: "DD_REMOTE_INSTRUMENT_ENABLED"
-          Value: "true"
-      Code:
-        ZipFile: |
-          exports.handler = async (event, context, callback) => {
-            console.log('\n event:', JSON.stringify(event))
-            return `Succeeded.`;
-          };
+#  LambdaToBeUninstrumentedFunction:
+#    Type: 'AWS::Lambda::Function'
+#    Properties:
+#      FunctionName: "remote-instrument-self-monitor-to-be-uninstrumented"
+#      Architectures:
+#        - arm64
+#      Runtime: nodejs20.x
+#      Timeout: 90
+#      MemorySize: 256
+#      Role: !GetAtt LambdaToBeUninstrumentedRole.Arn
+#      Handler: /opt/nodejs/node_modules/datadog-lambda-js/handler.handler
+#      Environment:
+#        Variables:
+#          DD_LAMBDA_HANDLER: index.handler
+#          DD_TRACE_ENABLED: true
+#          DD_API_KEY: !Ref DdApiKey
+#          DD_SERVICE: remote-instrument-self-monitor
+#          DD_ENV: dev
+#          DD_VERSION: 0.1.0
+#          DD_SITE: !Ref DdSite
+#      Tags:
+#        - Key: "service"
+#          Value: "remote-instrument-self-monitor"
+#        - Key: "DD_REMOTE_INSTRUMENT_ENABLED"
+#          Value: "true"
+#      Code:
+#        ZipFile: |
+#          exports.handler = async (event, context, callback) => {
+#            console.log('\n event:', JSON.stringify(event))
+#            return `Succeeded.`;
+#          };
+#
+#  LambdaToBeUninstrumentedRole:
+#    Type: 'AWS::IAM::Role'
+#    Properties:
+#      Path: "/"
+#      AssumeRolePolicyDocument:
+#        Version: "2012-10-17"
+#        Statement:
+#          - Effect: Allow
+#            Principal:
+#              Service: lambda.amazonaws.com
+#            Action: 'sts:AssumeRole'
+#      Policies:
+#        - PolicyName: root
+#          PolicyDocument:
+#            Version: "2012-10-17"
+#            Statement:
+#              - Effect: Allow
+#                Action:
+#                  - logs:CreateLogStream
+#                  - logs:CreateLogGroup
+#                  - logs:PutLogEvents
+#                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
+#              - Effect: Allow
+#                Action:
+#                  - lambda:GetLayerVersion
+#                Resource: !Sub arn:aws:lambda:${AWS::Region}:464622532012:layer:*
 
-  LambdaToBeUninstrumentedRole:
-    Type: 'AWS::IAM::Role'
+  UninstrumentScheduledRule:
+    Type: 'AWS::Events::Rule'
+    DependsOn:
+      - ModifierLambdaFunction
     Properties:
-      Path: "/"
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action: 'sts:AssumeRole'
-      Policies:
-        - PolicyName: root
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - logs:CreateLogStream
-                  - logs:CreateLogGroup
-                  - logs:PutLogEvents
-                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
-              - Effect: Allow
-                Action:
-                  - lambda:GetLayerVersion
-                Resource: !Sub arn:aws:lambda:${AWS::Region}:464622532012:layer:*
+      Description: "Triggered every hour at minute 5"
+      ScheduleExpression: "cron(0,30 * * * ? *)"
+      State: "ENABLED"
+      Targets:
+        - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ModifierLambdaFunctionName}
+          Id: "UninstrumentRemoteInstrumentSelfMonitor"
+          Input: '{"eventName": "Uninstrument"}'
+  UninstrumentScheduledRulePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ModifierLambdaFunctionName
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt UninstrumentScheduledRule.Arn
+  UpdateStackScheduledRule:
+    Type: 'AWS::Events::Rule'
+    DependsOn:
+      - ModifierLambdaFunction
+    Properties:
+      Description: "Triggered every hour at minute 5"
+      ScheduleExpression: "cron(5,35 * * * ? *)"
+      State: "ENABLED"
+      Targets:
+        - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ModifierLambdaFunctionName}
+          Id: "UpdateStackRemoteInstrumentSelfMonitor"
+          Input: '{"eventName": "UpdateStack"}'
+  UpdateStackScheduledRulePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ModifierLambdaFunctionName
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt UpdateStackScheduledRule.Arn
+  DeleteStackScheduledRule:
+    Type: 'AWS::Events::Rule'
+    DependsOn:
+      - ModifierLambdaFunction
+    Properties:
+      Description: "Triggered every hour at minute 5"
+      ScheduleExpression: "cron(10,40 * * * ? *)"
+      State: "ENABLED"
+      Targets:
+        - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ModifierLambdaFunctionName}
+          Id: "DeleteStackRemoteInstrumentSelfMonitor"
+          Input: '{"eventName": "DeleteStack"}'
+  DeleteStackScheduledRulePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ModifierLambdaFunctionName
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt DeleteStackScheduledRule.Arn
+  UninstrumentAfterDeleteStackScheduledRule:
+    Type: 'AWS::Events::Rule'
+    DependsOn:
+      - ModifierLambdaFunction
+    Properties:
+      Description: "Triggered every hour at minute 5"
+      ScheduleExpression: "cron(15,45 * * * ? *)"
+      State: "ENABLED"
+      Targets:
+        - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ModifierLambdaFunctionName}
+          Id: "UninstrumentRemoteInstrumentSelfMonitor"
+          Input: '{"eventName": "UninstrumentAfterDeleteStack"}'
+  UninstrumentAfterDeleteStackScheduledRulePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ModifierLambdaFunctionName
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt UninstrumentAfterDeleteStackScheduledRule.Arn
+  CreateStackScheduledRule:
+    Type: 'AWS::Events::Rule'
+    DependsOn:
+      - ModifierLambdaFunction
+    Properties:
+      Description: "Triggered every hour at minute 5"
+      ScheduleExpression: "cron(20,50 * * * ? *)"
+      State: "ENABLED"
+      Targets:
+        - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ModifierLambdaFunctionName}
+          Id: "CreateStackRemoteInstrumentSelfMonitor"
+          Input: '{"eventName": "CreateStack"}'
+  CreateStackScheduledRulePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ModifierLambdaFunctionName
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt CreateStackScheduledRule.Arn
+  EveryNMinutesScheduledRule:
+    Type: 'AWS::Events::Rule'
+    DependsOn:
+      - ModifierLambdaFunction
+    Properties:
+      Description: "Triggered every N minutes"
+      ScheduleExpression: "cron(0/2 * * * ? *)"
+      State: "ENABLED"
+      Targets:
+        - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${NodeLambdaFunctionName}
+          Id: "NodeFunction"
+        - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${PythonLambdaFunctionName}
+          Id: "PythonFunction"
+        - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${LambdaWithSpecifiedTagsFunctionName}
+          Id: "FunctionWithTags"
+        - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${LambdaWithoutSpecifiedTagsFunctionName}
+          Id: "FunctionWithoutTags"
+  EveryNMinutesScheduledRuleForNodePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref NodeLambdaFunctionName
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt EveryNMinutesScheduledRule.Arn
+  EveryNMinutesScheduledRuleForPythonPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref PythonLambdaFunctionName
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt EveryNMinutesScheduledRule.Arn
+  EveryNMinutesScheduledRuleForWithTagsPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref LambdaWithSpecifiedTagsFunctionName
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt EveryNMinutesScheduledRule.Arn
+  EveryNMinutesScheduledRuleForWithoutTagsPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref LambdaWithoutSpecifiedTagsFunctionName
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt EveryNMinutesScheduledRule.Arn
