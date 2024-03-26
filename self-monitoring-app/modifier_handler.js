@@ -93,19 +93,19 @@ async function checkNodeFunction(config, functionName, expectedExtensionVersion)
                 if (layerVersion === expectedExtensionVersion) {
                     incrementMetric('serverless.remote_instrument.instrument_by_function_name.extension_version_matched', extraTags);
                 } else {
-                    console.error(`extension layer version unmatched!`)
-                    console.log(`getFunctionCommandOutput: ${JSON.stringify(getFunctionCommandOutput)}`)
+                    console.error(`\n serverless.remote_instrument.instrument_by_function_name.extension_version_unmatched \n The extension layer version unmatched! getFunctionCommandOutput: ${JSON.stringify(getFunctionCommandOutput)}`)
                     incrementMetric('serverless.remote_instrument.instrument_by_function_name.extension_version_unmatched', extraTags);
                 }
             }
         }
         if (!hasExtensionLayer) {
-            console.error(`The Extension layer is not found on the ${config.NODE_FUNCTION_NAME}. Function config is: ${JSON.stringify(getFunctionCommandOutput)}`)
+            console.error(`\n serverless.remote_instrument.instrument_by_function_name.failed \n The Extension layer is not found on the ${config.NODE_FUNCTION_NAME}. Function config is: ${JSON.stringify(getFunctionCommandOutput)}`)
             incrementMetric('serverless.remote_instrument.instrument_by_function_name.failed', extraTags);
         } else {
             incrementMetric('serverless.remote_instrument.instrument_by_function_name.succeeded', extraTags);
         }
     } else {
+        console.error(`\n serverless.remote_instrument.instrument_by_function_name.failed \n The extension layer version unmatched! getFunctionCommandOutput: ${JSON.stringify(getFunctionCommandOutput)}`)
         incrementMetric('serverless.remote_instrument.instrument_by_function_name.failed', extraTags);
     }
 }
