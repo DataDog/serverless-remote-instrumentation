@@ -89,10 +89,9 @@ async function checkFunction(config, functionName, expectedExtensionVersion) {
                 // check if layer version matched
                 let arr = layer.Arn.split(":");
                 let layerVersion = arr[arr.length - 1]
-                sendGauge(
+                sendDistributionMetricWrapper(
                     "serverless.remote_instrument.target_function.current_extension_version",
-                    parseInt(layerVersion, 10),
-                    {function_name: functionName, expected_extension_version: expectedExtensionVersion}
+                    [...extraTags, `current_extension_version:${layerVersion}`]
                 )
                 if (layerVersion === expectedExtensionVersion) {
                     sendDistributionMetricWrapper('serverless.remote_instrument.instrument_function.extension_version_matched', extraTags);
