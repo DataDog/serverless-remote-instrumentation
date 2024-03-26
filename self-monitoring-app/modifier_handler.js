@@ -41,13 +41,13 @@ exports.handler = async (event, context, callback) => {
     if (event.eventName === "Uninstrument") {
         await uninstrument(config);
         await sleep(120000);  // 120 seconds
-        await checkFunctionsInstrumentedWithExpectedExtnesionVersionAndEmitMetrics(
+        await checkFunctionsInstrumentedWithExpectedExtensionVersionAndEmitMetrics(
             config, ORIGINAL_EXTENSION_VERSION);
 
     } else if (event.eventName === "UpdateStack") {
         await updateStack(config);
         await sleep(180000);  // 180 seconds
-        await checkFunctionsInstrumentedWithExpectedExtnesionVersionAndEmitMetrics(
+        await checkFunctionsInstrumentedWithExpectedExtensionVersionAndEmitMetrics(
             config, UPDATED_EXTENSION_VERSION);
 
     } else if (event.eventName === "DeleteStack") {
@@ -59,22 +59,22 @@ exports.handler = async (event, context, callback) => {
     } else if (event.eventName === "CreateStack") {
         await createStack(config);
         await sleep(180000);  // 180 seconds
-        await checkFunctionsInstrumentedWithExpectedExtnesionVersionAndEmitMetrics(
+        await checkFunctionsInstrumentedWithExpectedExtensionVersionAndEmitMetrics(
             config, ORIGINAL_EXTENSION_VERSION);
     }
     return `✅`;
 };
 
-async function checkFunctionsInstrumentedWithExpectedExtnesionVersionAndEmitMetrics(config, expectedExtensionVersion) {
-    await checkNodeFunction(config, expectedExtensionVersion);
+async function checkFunctionsInstrumentedWithExpectedExtensionVersionAndEmitMetrics(config, expectedExtensionVersion) {
+    await checkNodeFunction(config, config.NODE_FUNCTION_NAME, expectedExtensionVersion);
     // await checkPythonFunction();
     // await checkTaggedFunction();
     // await checkUntaggedFunction();
 }
 
-async function checkNodeFunction(config, expectedExtensionVersion) {
-    const extraTags = [`function_name:${config.NODE_FUNCTION_NAME}`];
-    const getFunctionCommandOutput = await getFunction(config, config.NODE_FUNCTION_NAME);
+async function checkNodeFunction(config, functionName, expectedExtensionVersion) {
+    const extraTags = [`function_name:${functionName}`];
+    const getFunctionCommandOutput = await getFunction(config, functionName);
     if (getFunctionCommandOutput == null) {
         incrementMetric('serverless.remote_instrument.instrument_by_function_name.aws_request_failed', extraTags);
         return;
