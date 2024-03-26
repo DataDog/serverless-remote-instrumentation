@@ -279,7 +279,7 @@ Resources:
       Timeout: 90
       MemorySize: 256
       Role: !GetAtt PythonLambdaRole.Arn
-      Handler: index.handler
+      Handler: index.lambda_handler
       Environment:
         Variables:
 #          DD_LAMBDA_HANDLER: index.handler
