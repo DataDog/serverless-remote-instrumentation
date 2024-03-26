@@ -31,8 +31,6 @@ exports.handler = async (event, context, callback) => {
     console.log(`\n process.env: ${JSON.stringify(process.env)}`)
     const config = getConfig();
 
-    await checkFunction(config, ORIGINAL_EXTENSION_VERSION);
-
     if (!event.hasOwnProperty("eventName")) {
         console.log(`The event doesn't have "eventName" field.`)
         return;
@@ -67,8 +65,8 @@ exports.handler = async (event, context, callback) => {
 
 async function checkFunctionsInstrumentedWithExpectedExtensionVersionAndEmitMetrics(config, expectedExtensionVersion) {
     await checkFunction(config, config.NODE_FUNCTION_NAME, expectedExtensionVersion);
-    // await checkPythonFunction();
-    // await checkTaggedFunction();
+    await checkFunction(config, config.PYTHON_FUNCTION_NAME, expectedExtensionVersion);
+    await checkFunction(config, config.LAMBDA_WITH_SPECIFIED_TAGS_FUNCTION_NAME, expectedExtensionVersion);
     // await checkUntaggedFunction();
 }
 
