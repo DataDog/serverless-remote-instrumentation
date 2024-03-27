@@ -226,10 +226,11 @@ async function instrumentWithEvent(event, specifiedFunctionNames, config) {
 
     // special handling for specific event
     // event.detail.requestParameters.functionName for update function event can be ARN or function name
-    if (event.hasOwnProperty("eventName") && event.eventName === "UpdateFunctionConfiguration20150331v2") {
+    if (event.hasOwnProperty("detail") && event.detail.hasOwnProperty("eventName") && event.detail.eventName === "UpdateFunctionConfiguration20150331v2") {
         let actuallyFunctionArn = event.detail.requestParameters.functionName;
         let arnParts = actuallyFunctionArn.split(':');
         functionName = arnParts[arnParts.length - 1];
+        console.log(`actuallyFunctionArn: ${actuallyFunctionArn}  arnParts: ${JSON.stringify(arnParts)}  functionName:${functionName}`);
     }
 
     // check if lambda management events is for function that are specified to be instrumented
@@ -263,7 +264,7 @@ async function instrumentWithEvent(event, specifiedFunctionNames, config) {
 
             const specifiedTags = getRemoteInstrumentTagsFromConfig(config)  // tags: ['k1:v1', 'k2:v2']
             if (typeof (specifiedTags) === "object" && specifiedTags.length !== 0 && !shouldBeRemoteInstrumentedByTag(getFunctionCommandOutput, specifiedTags)) {
-                console.log(`\n=== Skipping remote instrumentation for function ${functionName}. It should not be remote instrumented by tag nor by specified function names`)
+                console.log(`\n=== Skipping remote instrumentation for function ${functionName}. It should not be remote instrumented by TagRule nor by AllowList`)
                 return;
             }
         } catch (error) {
