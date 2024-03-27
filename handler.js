@@ -225,6 +225,7 @@ async function instrumentWithEvent(event, specifiedFunctionNames, config) {
     let functionName = event.detail.requestParameters.functionName;
 
     // special handling for specific event
+    // event.detail.requestParameters.functionName for update function event can be ARN or function name
     if (event.hasOwnProperty("eventName") && event.eventName === "UpdateFunctionConfiguration20150331v2") {
         let actuallyFunctionArn = event.detail.requestParameters.functionName;
         let arnParts = actuallyFunctionArn.split(':');
