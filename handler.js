@@ -235,9 +235,9 @@ async function instrumentWithEvent(event, specifiedFunctionNames, config) {
     // check if lambda management events is for function that are specified to be instrumented
     if (specifiedFunctionNameSet.has(functionName)) {
         functionFromEventIsInAllowList = true
-        console.log(`=== ${event.detail.requestParameters.functionName} in the specifiedFunctionNameSet: ${JSON.stringify(specifiedFunctionNames)} ===`)
+        console.log(`=== ${functionName} in the specifiedFunctionNameSet: ${JSON.stringify(specifiedFunctionNames)} ===`)
     } else {
-        console.log(`=== ${event.detail.requestParameters.functionName} is NOT in the specifiedFunctionNameSet: ${JSON.stringify(specifiedFunctionNames)} ===`)
+        console.log(`=== ${functionName} is NOT in the specifiedFunctionNameSet: ${JSON.stringify(specifiedFunctionNames)} ===`)
     }
 
     // check if the function has the tags that pass TagRule
