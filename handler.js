@@ -73,7 +73,7 @@ exports.handler = async (event, context, callback) => {
     if (config.DenyList !== '') {
         const functionNamesToUninstrument = getFunctionNamesFromString(config.DenyList)
         await uninstrumentFunctions_withTrace(functionNamesToUninstrument, config);
-        return `✅↩ Lambda uninstrument already-auto-instrumented function(s) finished without failing.`;
+        return `✅↩ Lambda uninstrument already-remote-instrumented function(s) finished without failing.`;
     }
     return `✅ Lambda instrument function(s) finished without failing.`;
 };
@@ -169,9 +169,9 @@ async function uninstrumentFunctions(functionNamesToUninstrument, config) {
     await untagResourcesOfSlsTag(uninstrumentedFunctionArns, config);
 }
 
-function getAutoInstrumentTagsFromConfig(config) {
-    const ddAutoInstrumentLambdaTags = config.TagRule
-    const tags = ddAutoInstrumentLambdaTags.split(',')
+function getRemoteInstrumentTagsFromConfig(config) {
+    const ddRemoteInstrumentLambdaTags = config.TagRule
+    const tags = ddRemoteInstrumentLambdaTags.split(',')
     console.log(`tags from env var are: ${JSON.stringify(tags)}`);
     return tags
 }
@@ -230,7 +230,7 @@ async function instrumentWithEvent(event, specifiedFunctionNames, config) {
         console.log(`=== ${event.detail.requestParameters.functionName} not in the specifiedFunctionNameSet: ${JSON.stringify(specifiedFunctionNames)} ===`)
     }
 
-    // check if the function should be auto instrumented by tags
+    // check if the function should be remote instrumented by tags
     if (functionFromEventIsNotInSpecifiedFunctionNames) {
         // call get function api to get tags and check if the function should be instrumented by tags
         const params = {
@@ -251,9 +251,9 @@ async function instrumentWithEvent(event, specifiedFunctionNames, config) {
                 return;
             }
 
-            const specifiedTags = getAutoInstrumentTagsFromConfig(config)  // tags: ['k1:v1', 'k2:v2']
-            if (typeof (specifiedTags) === "object" && specifiedTags.length !== 0 && !shouldBeAutoInstrumentedByTag(getFunctionCommandOutput, specifiedTags)) {
-                console.log(`\n=== Skipping auto instrumentation for function ${functionName}. It should not be auto instrumented by tag nor by specified function names`)
+            const specifiedTags = getRemoteInstrumentTagsFromConfig(config)  // tags: ['k1:v1', 'k2:v2']
+            if (typeof (specifiedTags) === "object" && specifiedTags.length !== 0 && !shouldBeRemoteInstrumentedByTag(getFunctionCommandOutput, specifiedTags)) {
+                console.log(`\n=== Skipping remote instrumentation for function ${functionName}. It should not be remote instrumented by tag nor by specified function names`)
                 return;
             }
         } catch (error) {
@@ -288,7 +288,7 @@ async function instrumentWithEvent(event, specifiedFunctionNames, config) {
     await tagResourcesWithSlsTag(instrumentedFunctionArns, config);
 }
 
-function shouldBeAutoInstrumentedByTag(getFunctionCommandOutput, specifiedTags) {
+function shouldBeRemoteInstrumentedByTag(getFunctionCommandOutput, specifiedTags) {
     const awsFunctionTags = getFunctionCommandOutput.Tags;  // {"env:prod", "team":"serverless"}
     if (typeof (awsFunctionTags) === 'undefined') {
         console.log(`=== no tags found on the function`)
@@ -299,17 +299,17 @@ function shouldBeAutoInstrumentedByTag(getFunctionCommandOutput, specifiedTags) 
 
     for (const [k, shouldBeInstrumentedValueList] of Object.entries(specifiedTagsKvMapping)) {
         if (!awsFunctionTags.hasOwnProperty(k)) {
-            console.log(`=== this function should NOT be auto instrumented by tags`);
+            console.log(`=== this function should NOT be remote instrumented by tags`);
             return false;
         }
 
         // AWS resource with tag k should have value specified in the list
         if (!shouldBeInstrumentedValueList.includes(awsFunctionTags[k])) {
-            console.log(`=== this function should NOT be auto instrumented by tags`);
+            console.log(`=== this function should NOT be remote instrumented by tags`);
             return false;
         }
     }
-    console.log(`=== this function should be auto instrumented by tags`);
+    console.log(`=== this function should be remote instrumented by tags`);
     return true;
 }
 
@@ -358,12 +358,12 @@ async function getFunctionNamesFromResourceGroupsTaggingAPI(tagFilters, config) 
 const initialInstrumentationWithSpecifiedTags_withTrace = tracer.wrap('BulkInstrument.SpecifiedTags', initialInstrumentationWithSpecifiedTags)
 
 async function initialInstrumentationWithSpecifiedTags(config) {
-    const specifiedTags = getAutoInstrumentTagsFromConfig(config);  // tags: ['k1:v1', 'k2:v2']
+    const specifiedTags = getRemoteInstrumentTagsFromConfig(config);  // tags: ['k1:v1', 'k2:v2']
     console.log(`== specifiedTags: ${specifiedTags}`);
     if (specifiedTags === undefined || specifiedTags.length === 0) {
         return;
     }
-    console.log(`== AutoInstrumentTagsFromEnvVar: ${specifiedTags}`);
+    console.log(`== RemoteInstrumentTagsFromEnvVar: ${specifiedTags}`);
 
     const tagKvMapping = getSpecifiedTagsKvMapping(specifiedTags);
 

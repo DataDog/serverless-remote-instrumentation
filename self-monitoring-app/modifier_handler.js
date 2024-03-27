@@ -13,8 +13,9 @@ const datadogCi = require('@datadog/datadog-ci/dist/cli.js');
 const {sendDistributionMetric} = require('datadog-lambda-js');
 
 // Constants
-const SELF_MONITOR_STACK_NAME = "remote-instrument-self-monitor";
+const ENV = "self-monitor-dev"
 const INSTRUMENTER_STACK_NAME = "datadog-remote-instrument";
+const SELF_MONITOR_STACK_NAME = "remote-instrument-self-monitor";
 const S3_BUCKET_NAME = "remote-instrument-self-monitor";
 const NODE = "node"
 const DD_AWS_ACCOUNT_NUMBER = "425362996713"  // serverless sandbox
@@ -30,8 +31,6 @@ exports.handler = async (event, context, callback) => {
     console.log('\n event:', JSON.stringify(event))
     console.log(`\n process.env: ${JSON.stringify(process.env)}`)
     const config = getConfig();
-
-    await checkFunction(config, ORIGINAL_EXTENSION_VERSION);
 
     if (!event.hasOwnProperty("eventName")) {
         console.log(`The event doesn't have "eventName" field.`)
@@ -67,16 +66,16 @@ exports.handler = async (event, context, callback) => {
 
 async function checkFunctionsInstrumentedWithExpectedExtensionVersionAndEmitMetrics(config, expectedExtensionVersion) {
     await checkFunction(config, config.NODE_FUNCTION_NAME, expectedExtensionVersion);
-    // await checkPythonFunction();
-    // await checkTaggedFunction();
+    await checkFunction(config, config.PYTHON_FUNCTION_NAME, expectedExtensionVersion);
+    await checkFunction(config, config.LAMBDA_WITH_SPECIFIED_TAGS_FUNCTION_NAME, expectedExtensionVersion);
     // await checkUntaggedFunction();
 }
 
 async function checkFunction(config, functionName, expectedExtensionVersion) {
-    const extraTags = [`function_name:${functionName}`];
+    const extraTags = [`function_name:${functionName}`, `expected_extension_version:${expectedExtensionVersion}`];
     const getFunctionCommandOutput = await getFunction(config, functionName);
     if (getFunctionCommandOutput == null) {
-        incrementMetric('serverless.remote_instrument.instrument_by_function_name.aws_request_failed', extraTags);
+        sendDistributionMetricWrapper('serverless.remote_instrument.instrument_function.aws_request_failed', extraTags);
         return;
     }
     console.log(`getFunctionCommandOutput: ${JSON.stringify(getFunctionCommandOutput)}`)
@@ -90,23 +89,27 @@ async function checkFunction(config, functionName, expectedExtensionVersion) {
                 // check if layer version matched
                 let arr = layer.Arn.split(":");
                 let layerVersion = arr[arr.length - 1]
+                sendDistributionMetricWrapper(
+                    "serverless.remote_instrument.target_function.current_extension_version",
+                    [...extraTags, `current_extension_version:${layerVersion}`]
+                )
                 if (layerVersion === expectedExtensionVersion) {
-                    incrementMetric('serverless.remote_instrument.instrument_by_function_name.extension_version_matched', extraTags);
+                    sendDistributionMetricWrapper('serverless.remote_instrument.instrument_function.extension_version_matched', extraTags);
                 } else {
-                    console.error(`\n serverless.remote_instrument.instrument_by_function_name.extension_version_unmatched \n The extension layer version unmatched! getFunctionCommandOutput: ${JSON.stringify(getFunctionCommandOutput)}`)
-                    incrementMetric('serverless.remote_instrument.instrument_by_function_name.extension_version_unmatched', extraTags);
+                    console.error(`\n serverless.remote_instrument.instrument_function.extension_version_unmatched \n The extension layer version unmatched! getFunctionCommandOutput: ${JSON.stringify(getFunctionCommandOutput)}`)
+                    sendDistributionMetricWrapper('serverless.remote_instrument.instrument_function.extension_version_unmatched', extraTags);
                 }
             }
         }
         if (!hasExtensionLayer) {
-            console.error(`\n serverless.remote_instrument.instrument_by_function_name.failed \n The Extension layer is not found on the ${config.NODE_FUNCTION_NAME}. Function config is: ${JSON.stringify(getFunctionCommandOutput)}`)
-            incrementMetric('serverless.remote_instrument.instrument_by_function_name.failed', extraTags);
+            console.error(`\n serverless.remote_instrument.instrument_function.failed \n The Extension layer is not found on the ${config.NODE_FUNCTION_NAME}. Function config is: ${JSON.stringify(getFunctionCommandOutput)}`)
+            sendDistributionMetricWrapper('serverless.remote_instrument.instrument_function.failed', extraTags);
         } else {
-            incrementMetric('serverless.remote_instrument.instrument_by_function_name.succeeded', extraTags);
+            sendDistributionMetricWrapper('serverless.remote_instrument.instrument_function.succeeded', extraTags);
         }
     } else {
-        console.error(`\n serverless.remote_instrument.instrument_by_function_name.failed \n The extension layer version unmatched! getFunctionCommandOutput: ${JSON.stringify(getFunctionCommandOutput)}`)
-        incrementMetric('serverless.remote_instrument.instrument_by_function_name.failed', extraTags);
+        console.error(`\n serverless.remote_instrument.instrument_function.failed \n The extension layer version unmatched! getFunctionCommandOutput: ${JSON.stringify(getFunctionCommandOutput)}`)
+        sendDistributionMetricWrapper('serverless.remote_instrument.instrument_function.failed', extraTags);
     }
 }
 
@@ -445,12 +448,18 @@ function getConfig() {
     return config;
 }
 
-function incrementMetric(metricName, extraTags) {
+function sendDistributionMetricWrapper(metricName, extraTags) {
     sendDistributionMetric(
         metricName,
         1,                      // Metric value
-        "env:dev",
+        `env:${ENV}`,
         `service:${SERVICE_NAME}`,
         ...extraTags
     );
+}
+
+function sendGauge(gaugeName, gaugeValue, extraTagsObject){
+    const tracer = require('dd-trace');
+    tracer.init();
+    tracer.dogstatsd.gauge(gaugeName, gaugeValue, { env: ENV, ...extraTagsObject });
 }
