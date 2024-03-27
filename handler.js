@@ -222,7 +222,14 @@ async function instrumentWithEvent(event, specifiedFunctionNames, config) {
     const specifiedFunctionNameSet = new Set(specifiedFunctionNames)
 
     let functionFromEventIsInAllowList = false;
-    const functionName = event.detail.requestParameters.functionName
+    let functionName = event.detail.requestParameters.functionName;
+
+    // special handling for specific event
+    if (event.hasOwnProperty("eventName") && event.eventName === "UpdateFunctionConfiguration20150331v2") {
+        let actuallyFunctionArn = event.detail.requestParameters.functionName;
+        let arnParts = actuallyFunctionArn.split(':');
+        functionName = arnParts[arnParts.length - 1];
+    }
 
     // check if lambda management events is for function that are specified to be instrumented
     if (specifiedFunctionNameSet.has(functionName)) {
