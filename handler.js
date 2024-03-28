@@ -35,7 +35,7 @@ exports.handler = async (event, context, callback) => {
         if (eventNamesToSkip.has(event.detail?.eventName)) {
             return;
         }
-        await instrumentWithEvents_withTrace(event, functionNamesToInstrument, config);
+        await instrumentBySingleEvents_withTrace(event, config);
         return;  // do not run initial bulk instrument nor uninstrument
     }
 
@@ -46,7 +46,7 @@ exports.handler = async (event, context, callback) => {
             await cfnResponse.send(event, context, "SUCCESS");  // send to response to CloudFormation custom resource endpoint to continue stack deletion
             return;  // do not continue with initial instrumentation
         }
-        await initialInstrumentationByAllowList_withTrace(functionNamesToInstrument, config);
+        await initialInstrumentationByAllowList_withTrace(config);
         await initialInstrumentationByTagRule_withTrace(config);
         console.log(`\n === sending SUCCESS back to cloudformation`);
         await cfnResponse.send(event, context, "SUCCESS");  // send to response to CloudFormation custom resource endpoint to continue stack creation
@@ -58,7 +58,7 @@ exports.handler = async (event, context, callback) => {
         && event.detail["status-details"] !== undefined
         && event.detail["status-details"].status === "UPDATE_COMPLETE") {
         // CloudTrail event triggered by CloudFormation stack update completed
-        await initialInstrumentationByAllowList_withTrace(functionNamesToInstrument, config);
+        await initialInstrumentationByAllowList_withTrace(config);
         await initialInstrumentationByTagRule_withTrace(config);
         console.log(`Re-instrument when CloudFormation stack is updated.`)
     }
@@ -74,7 +74,7 @@ exports.handler = async (event, context, callback) => {
 };
 
 const uninstrumentFunctions_withTrace = tracer.wrap("BulkUninstrumentFunctions", uninstrumentFunctions)
-const instrumentWithEvents_withTrace = tracer.wrap('Instrument.SingleEvent', instrumentWithEvent)
+const instrumentBySingleEvents_withTrace = tracer.wrap('InstrumentBySingleEvent', instrumentByEvent)
 
 async function getConfig() {
 
@@ -123,6 +123,7 @@ async function getConfig() {
 
         // instrumentation and uninstrumentation
         AllowList: process.env.AllowList,
+        AllowListFunctionNameSet: new Set(getFunctionNamesFromString(process.env.AllowList)),
         TagRule: process.env.TagRule,
         DenyList: process.env.DenyList,
         DenyListFunctionNameSet: new Set(getFunctionNamesFromString(process.env.DenyList)),
@@ -190,7 +191,7 @@ function validateEventIsExpected(event) {
     }
 }
 
-async function instrumentWithEvent(event, specifiedFunctionNames, config) {
+async function instrumentByEvent(event, config) {
     if (event["detail"]["eventName"] === 'UntagResource20170331v2' ||
         event["detail"]["eventName"] === 'TagResource20170331v2') {
         console.log(`TODO: (Un)TagResource20170331v2 is not yet implemented yet.`)
@@ -207,9 +208,7 @@ async function instrumentWithEvent(event, specifiedFunctionNames, config) {
         return;
     }
 
-    validateEventIsExpected(event)
-
-    const specifiedFunctionNameSet = new Set(specifiedFunctionNames)
+    validateEventIsExpected(event);
 
     let functionFromEventIsInAllowList = false;
     let functionName = event.detail.requestParameters.functionName;
@@ -223,12 +222,18 @@ async function instrumentWithEvent(event, specifiedFunctionNames, config) {
         console.log(`actuallyFunctionArn: ${actuallyFunctionArn}  arnParts: ${JSON.stringify(arnParts)}  functionName:${functionName}`);
     }
 
+    // filter out functions that are on the DenyList
+    if (config.DenyListFunctionNameSet.contains(functionName)) {
+        console.log(`function ${functionName} is on the DenyList ${JSON.stringify(config.DenyListFunctionNameSet)}`)
+        return;
+    }
+
     // check if lambda management events is for function that are specified to be instrumented
-    if (specifiedFunctionNameSet.has(functionName)) {
+    if (config.AllowListFunctionNameSet.has(functionName)) {
         functionFromEventIsInAllowList = true
-        console.log(`=== ${functionName} in the specifiedFunctionNameSet: ${JSON.stringify(specifiedFunctionNames)} ===`)
+        console.log(`=== ${functionName} in the AllowListFunctionNameSet: ${JSON.stringify(config.AllowListFunctionNameSet)} ===`)
     } else {
-        console.log(`=== ${functionName} is NOT in the specifiedFunctionNameSet: ${JSON.stringify(specifiedFunctionNames)} ===`)
+        console.log(`=== ${functionName} is NOT in the AllowListFunctionNameSet: ${JSON.stringify(config.AllowListFunctionNameSet)} ===`)
     }
 
     // check if the function has the tags that pass TagRule
@@ -356,7 +361,7 @@ async function getFunctionNamesFromResourceGroupsTaggingAPI(tagFilters, config) 
     return functionNames;
 }
 
-const initialInstrumentationByTagRule_withTrace = tracer.wrap('BulkInstrument.SpecifiedTags', initialInstrumentationByTagRule)
+const initialInstrumentationByTagRule_withTrace = tracer.wrap('FirstTimeBulkInstrument.ByTagRule', initialInstrumentationByTagRule)
 
 async function initialInstrumentationByTagRule(config) {
     const specifiedTags = getRemoteInstrumentTagsFromConfig(config);  // tags: ['k1:v1', 'k2:v2']
@@ -378,7 +383,7 @@ async function initialInstrumentationByTagRule(config) {
     console.log(`== tagFilters: ${JSON.stringify(tagFilters)}`);
 
     const functionNames = await getFunctionNamesFromResourceGroupsTaggingAPI(tagFilters, config);
-    await initialInstrumentationByAllowList_withTrace(functionNames, config);
+    await initialInstrumentationByFunctionNames_withTrace(functionNames, config);
 }
 
 function getSpecifiedTagsKvMapping(specifiedTags) {  // return e.g. {"env": ["staging", "prod"], "team": ["serverless"]}
@@ -394,9 +399,11 @@ function getSpecifiedTagsKvMapping(specifiedTags) {  // return e.g. {"env": ["st
     return tagKvMapping;
 }
 
-const initialInstrumentationByAllowList_withTrace = tracer.wrap('BulkInstrument.SpecifiedFunctionNames', initialInstrumentationByAllowList)
+// same two wrapper but to show different span name on the trace
+const initialInstrumentationByFunctionNames_withTrace = tracer.wrap('FirstTimeBulkInstrument.ByFunctionNames', initialInstrumentationByFunctionNames)
+const initialInstrumentationByAllowList_withTrace = tracer.wrap('FirstTimeBulkInstrument.ByAllowList', initialInstrumentationByFunctionNames)
 
-async function initialInstrumentationByAllowList(functionNames, config) {
+async function initialInstrumentationByFunctionNames(functionNames, config) {
     if (typeof (functionNames) !== 'object' || functionNames.length === 0) {
         console.log(`functionNames is empty in initialInstrumentationWithNames().`);
         return;
@@ -407,8 +414,10 @@ async function initialInstrumentationByAllowList(functionNames, config) {
     const instrumentedFunctionArns = [];
     for (let functionName of functionNames) {
         console.log(`=== processing ${functionName}`)
-        if (config.DenyListFunctionNameSet.contains(functionName)){
-            console.log(`function ${functionName} is in the DenyList ${JSON.stringify(config.DenyListFunctionNameSet)}`)
+
+        // filter out functions that are on the DenyList
+        if (config.DenyListFunctionNameSet.contains(functionName)) {
+            console.log(`function ${functionName} is on the DenyList ${JSON.stringify(config.DenyListFunctionNameSet)}`)
             continue;
         }
 
