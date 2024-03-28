@@ -28,12 +28,6 @@ exports.handler = async (event, context, callback) => {
     const config = await getConfig();
     const functionNamesToInstrument = getFunctionNamesFromString(config.AllowList)
 
-    const span = tracer.scope().active();
-    if (span !== null) {
-        span.setTag('event', event)
-        span.setTag('context', context)
-    }
-
     // *** Instrument ***
     // CloudTrail Lambda event
     if (event.hasOwnProperty("detail-type") && event.hasOwnProperty("source") && event.source === "aws.lambda") {
@@ -52,8 +46,8 @@ exports.handler = async (event, context, callback) => {
             await cfnResponse.send(event, context, "SUCCESS");  // send to response to CloudFormation custom resource endpoint to continue stack deletion
             return;  // do not continue with initial instrumentation
         }
-        await initialInstrumentationWithSpecifiedFunctionNames_withTrace(functionNamesToInstrument, config);
-        await initialInstrumentationWithSpecifiedTags_withTrace(config);
+        await initialInstrumentationByAllowList_withTrace(functionNamesToInstrument, config);
+        await initialInstrumentationByTagRule_withTrace(config);
         console.log(`\n === sending SUCCESS back to cloudformation`);
         await cfnResponse.send(event, context, "SUCCESS");  // send to response to CloudFormation custom resource endpoint to continue stack creation
 
@@ -64,12 +58,13 @@ exports.handler = async (event, context, callback) => {
         && event.detail["status-details"] !== undefined
         && event.detail["status-details"].status === "UPDATE_COMPLETE") {
         // CloudTrail event triggered by CloudFormation stack update completed
-        await initialInstrumentationWithSpecifiedFunctionNames_withTrace(functionNamesToInstrument, config);
-        await initialInstrumentationWithSpecifiedTags_withTrace(config);
+        await initialInstrumentationByAllowList_withTrace(functionNamesToInstrument, config);
+        await initialInstrumentationByTagRule_withTrace(config);
         console.log(`Re-instrument when CloudFormation stack is updated.`)
     }
 
     // *** Uninstrument ***
+    // TODO: change denylist functions to be checked before instrumentation
     if (config.DenyList !== '') {
         const functionNamesToUninstrument = getFunctionNamesFromString(config.DenyList)
         await uninstrumentFunctions_withTrace(functionNamesToUninstrument, config);
@@ -130,6 +125,7 @@ async function getConfig() {
         AllowList: process.env.AllowList,
         TagRule: process.env.TagRule,
         DenyList: process.env.DenyList,
+        DenyListFunctionNameSet: new Set(getFunctionNamesFromString(process.env.DenyList)),
 
         // layer version
         DD_EXTENSION_LAYER_VERSION: process.env.DD_EXTENSION_LAYER_VERSION,
@@ -145,12 +141,6 @@ async function getConfig() {
 }
 
 async function uninstrumentFunctions(functionNamesToUninstrument, config) {
-    const span = tracer.scope().active();
-    if (span !== null) {
-        span.setTag('functionNamesToUninstrument', functionNamesToUninstrument)
-    }
-    console.log(`\n functionNamesToUninstrument: ${functionNamesToUninstrument}`)
-
     function sleep(ms) {
         return new Promise((resolve) => {
             setTimeout(resolve, ms);
@@ -366,9 +356,9 @@ async function getFunctionNamesFromResourceGroupsTaggingAPI(tagFilters, config) 
     return functionNames;
 }
 
-const initialInstrumentationWithSpecifiedTags_withTrace = tracer.wrap('BulkInstrument.SpecifiedTags', initialInstrumentationWithSpecifiedTags)
+const initialInstrumentationByTagRule_withTrace = tracer.wrap('BulkInstrument.SpecifiedTags', initialInstrumentationByTagRule)
 
-async function initialInstrumentationWithSpecifiedTags(config) {
+async function initialInstrumentationByTagRule(config) {
     const specifiedTags = getRemoteInstrumentTagsFromConfig(config);  // tags: ['k1:v1', 'k2:v2']
     console.log(`== specifiedTags: ${specifiedTags}`);
     if (specifiedTags === undefined || specifiedTags.length === 0) {
@@ -388,7 +378,7 @@ async function initialInstrumentationWithSpecifiedTags(config) {
     console.log(`== tagFilters: ${JSON.stringify(tagFilters)}`);
 
     const functionNames = await getFunctionNamesFromResourceGroupsTaggingAPI(tagFilters, config);
-    await initialInstrumentationWithSpecifiedFunctionNames_withTrace(functionNames, config);
+    await initialInstrumentationByAllowList_withTrace(functionNames, config);
 }
 
 function getSpecifiedTagsKvMapping(specifiedTags) {  // return e.g. {"env": ["staging", "prod"], "team": ["serverless"]}
@@ -404,13 +394,9 @@ function getSpecifiedTagsKvMapping(specifiedTags) {  // return e.g. {"env": ["st
     return tagKvMapping;
 }
 
-const initialInstrumentationWithSpecifiedFunctionNames_withTrace = tracer.wrap('BulkInstrument.SpecifiedFunctionNames', initialInstrumentationWithSpecifiedFunctionNames)
+const initialInstrumentationByAllowList_withTrace = tracer.wrap('BulkInstrument.SpecifiedFunctionNames', initialInstrumentationByAllowList)
 
-async function initialInstrumentationWithSpecifiedFunctionNames(functionNames, config) {
-    const span = tracer.scope().active();
-    if (span !== null) {
-        span.setTag('specifiedFunctionNames', functionNames);
-    }
+async function initialInstrumentationByAllowList(functionNames, config) {
     if (typeof (functionNames) !== 'object' || functionNames.length === 0) {
         console.log(`functionNames is empty in initialInstrumentationWithNames().`);
         return;
@@ -421,6 +407,11 @@ async function initialInstrumentationWithSpecifiedFunctionNames(functionNames, c
     const instrumentedFunctionArns = [];
     for (let functionName of functionNames) {
         console.log(`=== processing ${functionName}`)
+        if (config.DenyListFunctionNameSet.contains(functionName)){
+            console.log(`function ${functionName} is in the DenyList ${JSON.stringify(config.DenyListFunctionNameSet)}`)
+            continue;
+        }
+
         // call get function api
         const params = {
             FunctionName: functionName
