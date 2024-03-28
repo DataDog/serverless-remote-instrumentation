@@ -223,7 +223,7 @@ async function instrumentByEvent(event, config) {
     }
 
     // filter out functions that are on the DenyList
-    if (config.DenyListFunctionNameSet.contains(functionName)) {
+    if (config.DenyListFunctionNameSet.has(functionName)) {
         console.log(`function ${functionName} is on the DenyList ${JSON.stringify(config.DenyListFunctionNameSet)}`)
         return;
     }
@@ -416,7 +416,7 @@ async function initialInstrumentationByFunctionNames(functionNames, config) {
         console.log(`=== processing ${functionName}`)
 
         // filter out functions that are on the DenyList
-        if (config.DenyListFunctionNameSet.contains(functionName)) {
+        if (config.DenyListFunctionNameSet.has(functionName)) {
             console.log(`function ${functionName} is on the DenyList ${JSON.stringify(config.DenyListFunctionNameSet)}`)
             continue;
         }
