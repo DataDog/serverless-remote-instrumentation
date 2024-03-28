@@ -221,17 +221,28 @@ async function instrumentWithEvent(event, specifiedFunctionNames, config) {
 
     const specifiedFunctionNameSet = new Set(specifiedFunctionNames)
 
-    let functionFromEventIsNotInSpecifiedFunctionNames = false;
-    const functionName = event.detail.requestParameters.functionName
+    let functionFromEventIsInAllowList = false;
+    let functionName = event.detail.requestParameters.functionName;
 
-    // skip lambda management events that is not specified by function name
-    if (!specifiedFunctionNameSet.has(functionName)) {
-        functionFromEventIsNotInSpecifiedFunctionNames = true
-        console.log(`=== ${event.detail.requestParameters.functionName} not in the specifiedFunctionNameSet: ${JSON.stringify(specifiedFunctionNames)} ===`)
+    // special handling for specific event
+    // event.detail.requestParameters.functionName for update function event can be ARN or function name
+    if (event.hasOwnProperty("detail") && event.detail.hasOwnProperty("eventName") && event.detail.eventName === "UpdateFunctionConfiguration20150331v2") {
+        let actuallyFunctionArn = event.detail.requestParameters.functionName;
+        let arnParts = actuallyFunctionArn.split(':');
+        functionName = arnParts[arnParts.length - 1];
+        console.log(`actuallyFunctionArn: ${actuallyFunctionArn}  arnParts: ${JSON.stringify(arnParts)}  functionName:${functionName}`);
     }
 
-    // check if the function should be remote instrumented by tags
-    if (functionFromEventIsNotInSpecifiedFunctionNames) {
+    // check if lambda management events is for function that are specified to be instrumented
+    if (specifiedFunctionNameSet.has(functionName)) {
+        functionFromEventIsInAllowList = true
+        console.log(`=== ${functionName} in the specifiedFunctionNameSet: ${JSON.stringify(specifiedFunctionNames)} ===`)
+    } else {
+        console.log(`=== ${functionName} is NOT in the specifiedFunctionNameSet: ${JSON.stringify(specifiedFunctionNames)} ===`)
+    }
+
+    // check if the function has the tags that pass TagRule
+    if (!functionFromEventIsInAllowList) {
         // call get function api to get tags and check if the function should be instrumented by tags
         const params = {
             FunctionName: functionName
@@ -253,7 +264,7 @@ async function instrumentWithEvent(event, specifiedFunctionNames, config) {
 
             const specifiedTags = getRemoteInstrumentTagsFromConfig(config)  // tags: ['k1:v1', 'k2:v2']
             if (typeof (specifiedTags) === "object" && specifiedTags.length !== 0 && !shouldBeRemoteInstrumentedByTag(getFunctionCommandOutput, specifiedTags)) {
-                console.log(`\n=== Skipping remote instrumentation for function ${functionName}. It should not be remote instrumented by tag nor by specified function names`)
+                console.log(`\n=== Skipping remote instrumentation for function ${functionName}. It should not be remote instrumented by TagRule nor by AllowList`)
                 return;
             }
         } catch (error) {
