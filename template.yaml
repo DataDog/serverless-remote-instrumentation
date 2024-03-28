@@ -31,7 +31,7 @@ Parameters:
     Type: String
     Default: datadog-remote-instrumenter
     Description: >-
-      Define the Lambda fulnction name which is instrumenting the other Lambda functions.
+      Define the Lambda function name which is instrumenting the other Lambda functions.
   BucketName:
     Type: String
     Default: remote-instrument-sa-east-1
