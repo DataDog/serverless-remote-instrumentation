@@ -34,7 +34,7 @@ Parameters:
       Define the Lambda fulnction name which is instrumenting the other Lambda functions.
   BucketName:
     Type: String
-    Default: datadog-serverless-instrumentation-5
+    Default: remote-instrument-sa-east-1
   TrailName:
     Type: String
     Default: datadog-serverless-instrumentation-trail
