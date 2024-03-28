@@ -46,7 +46,7 @@ exports.handler = async (event, context, callback) => {
             await cfnResponse.send(event, context, "SUCCESS");  // send to response to CloudFormation custom resource endpoint to continue stack deletion
             return;  // do not continue with initial instrumentation
         }
-        await initialInstrumentationByAllowList_withTrace(config);
+        await initialInstrumentationByAllowList_withTrace(functionNamesToInstrument, config);
         await initialInstrumentationByTagRule_withTrace(config);
         console.log(`\n === sending SUCCESS back to cloudformation`);
         await cfnResponse.send(event, context, "SUCCESS");  // send to response to CloudFormation custom resource endpoint to continue stack creation
@@ -58,7 +58,7 @@ exports.handler = async (event, context, callback) => {
         && event.detail["status-details"] !== undefined
         && event.detail["status-details"].status === "UPDATE_COMPLETE") {
         // CloudTrail event triggered by CloudFormation stack update completed
-        await initialInstrumentationByAllowList_withTrace(config);
+        await initialInstrumentationByAllowList_withTrace(functionNamesToInstrument, config);
         await initialInstrumentationByTagRule_withTrace(config);
         console.log(`Re-instrument when CloudFormation stack is updated.`)
     }
