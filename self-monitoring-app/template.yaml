@@ -105,6 +105,7 @@ Resources:
       Architectures:
       - arm64
       Runtime: nodejs20.x
+      ReservedConcurrentExecutions: 1
       Timeout: 900
       MemorySize: 512
       Role: !GetAtt ModifierLambdaExecutionRole.Arn
