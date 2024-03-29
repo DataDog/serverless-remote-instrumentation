@@ -35,7 +35,7 @@ exports.handler = async (event, context, callback) => {
         if (eventNamesToSkip.has(event.detail?.eventName)) {
             return;
         }
-        await instrumentBySingleEvents_withTrace(event, config);
+        await instrumentBySingleEvents_addExtraSpan(event, config);
         return;  // do not run initial bulk instrument nor uninstrument
     }
 
@@ -46,7 +46,7 @@ exports.handler = async (event, context, callback) => {
             await cfnResponse.send(event, context, "SUCCESS");  // send to response to CloudFormation custom resource endpoint to continue stack deletion
             return;  // do not continue with initial instrumentation
         }
-        await initialInstrumentationByAllowList_withTrace(functionNamesToInstrument, config);
+        await initialInstrumentationByAllowList_addExtraSpan(functionNamesToInstrument, config);
         await initialInstrumentationByTagRule_withTrace(config);
         console.log(`\n === sending SUCCESS back to cloudformation`);
         await cfnResponse.send(event, context, "SUCCESS");  // send to response to CloudFormation custom resource endpoint to continue stack creation
@@ -59,7 +59,7 @@ exports.handler = async (event, context, callback) => {
         && event.detail["status-details"].status === "UPDATE_COMPLETE") {
         // CloudTrail event triggered by CloudFormation stack update completed
         // await uninstrumentBasedOnAllowListAndTagRule(config);
-        await initialInstrumentationByAllowList_withTrace(functionNamesToInstrument, config);
+        await initialInstrumentationByAllowList_addExtraSpan(functionNamesToInstrument, config);
         await initialInstrumentationByTagRule_withTrace(config);
         console.log(`Re-instrument when CloudFormation stack is updated.`)
     }
@@ -68,14 +68,14 @@ exports.handler = async (event, context, callback) => {
     // TODO: change denylist functions to be checked before instrumentation
     if (config.DenyList !== '') {
         const functionNamesToUninstrument = getFunctionNamesFromString(config.DenyList)
-        await uninstrumentFunctions_withTrace(functionNamesToUninstrument, config);
+        await uninstrumentFunctions_addExtraSpan(functionNamesToUninstrument, config);
         return `✅↩ Lambda uninstrument already-remote-instrumented function(s) finished without failing.`;
     }
     return `✅ Lambda instrument function(s) finished without failing.`;
 };
 
-const uninstrumentFunctions_withTrace = tracer.wrap("Uninstrument.BasedOnAllowListAndTagRule", uninstrumentFunctions)
-const instrumentBySingleEvents_withTrace = tracer.wrap('Instrument.BySingleEvent', instrumentByEvent)
+const uninstrumentFunctions_addExtraSpan = tracer.wrap("Uninstrument.BasedOnAllowListAndTagRule", uninstrumentFunctions)
+const instrumentBySingleEvents_addExtraSpan = tracer.wrap('Instrument.BySingleEvent', instrumentByEvent)
 
 async function getConfig() {
 
@@ -384,7 +384,7 @@ async function initialInstrumentationByTagRule(config) {
     console.log(`== tagFilters: ${JSON.stringify(tagFilters)}`);
 
     const functionNames = await getFunctionNamesFromResourceGroupsTaggingAPI(tagFilters, config);
-    await initialInstrumentationByFunctionNames_withTrace(functionNames, config);
+    await initialInstrumentationByFunctionNames_addExtraSpan(functionNames, config);
 }
 
 function getSpecifiedTagsKvMapping(specifiedTags) {  // return e.g. {"env": ["staging", "prod"], "team": ["serverless"]}
@@ -401,8 +401,8 @@ function getSpecifiedTagsKvMapping(specifiedTags) {  // return e.g. {"env": ["st
 }
 
 // same two wrapper but to show different span name on the trace
-const initialInstrumentationByFunctionNames_withTrace = tracer.wrap('Instrument.FirstTimeBulk.ByFunctionNames', initialInstrumentationByFunctionNames)
-const initialInstrumentationByAllowList_withTrace = tracer.wrap('Instrument.FirstTimeBulk.ByAllowList', initialInstrumentationByFunctionNames)
+const initialInstrumentationByFunctionNames_addExtraSpan = tracer.wrap('Instrument.FirstTimeBulk.ByFunctionNames', initialInstrumentationByFunctionNames)
+const initialInstrumentationByAllowList_addExtraSpan = tracer.wrap('Instrument.FirstTimeBulk.ByAllowList', initialInstrumentationByFunctionNames)
 
 async function initialInstrumentationByFunctionNames(functionNames, config) {
     if (typeof (functionNames) !== 'object' || functionNames.length === 0) {
