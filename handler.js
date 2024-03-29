@@ -58,6 +58,7 @@ exports.handler = async (event, context, callback) => {
         && event.detail["status-details"] !== undefined
         && event.detail["status-details"].status === "UPDATE_COMPLETE") {
         // CloudTrail event triggered by CloudFormation stack update completed
+        // await uninstrumentBasedOnAllowListAndTagRule(config);
         await initialInstrumentationByAllowList_withTrace(functionNamesToInstrument, config);
         await initialInstrumentationByTagRule_withTrace(config);
         console.log(`Re-instrument when CloudFormation stack is updated.`)
@@ -73,8 +74,8 @@ exports.handler = async (event, context, callback) => {
     return `✅ Lambda instrument function(s) finished without failing.`;
 };
 
-const uninstrumentFunctions_withTrace = tracer.wrap("BulkUninstrumentFunctions", uninstrumentFunctions)
-const instrumentBySingleEvents_withTrace = tracer.wrap('InstrumentBySingleEvent', instrumentByEvent)
+const uninstrumentFunctions_withTrace = tracer.wrap("Uninstrument.BasedOnAllowListAndTagRule", uninstrumentFunctions)
+const instrumentBySingleEvents_withTrace = tracer.wrap('Instrument.BySingleEvent', instrumentByEvent)
 
 async function getConfig() {
 
@@ -361,7 +362,7 @@ async function getFunctionNamesFromResourceGroupsTaggingAPI(tagFilters, config) 
     return functionNames;
 }
 
-const initialInstrumentationByTagRule_withTrace = tracer.wrap('FirstTimeBulkInstrument.ByTagRule', initialInstrumentationByTagRule)
+const initialInstrumentationByTagRule_withTrace = tracer.wrap('Instrument.FirstTimeBulkByTagRule', initialInstrumentationByTagRule)
 
 async function initialInstrumentationByTagRule(config) {
     const specifiedTags = getRemoteInstrumentTagsFromConfig(config);  // tags: ['k1:v1', 'k2:v2']
@@ -400,8 +401,8 @@ function getSpecifiedTagsKvMapping(specifiedTags) {  // return e.g. {"env": ["st
 }
 
 // same two wrapper but to show different span name on the trace
-const initialInstrumentationByFunctionNames_withTrace = tracer.wrap('FirstTimeBulkInstrument.ByFunctionNames', initialInstrumentationByFunctionNames)
-const initialInstrumentationByAllowList_withTrace = tracer.wrap('FirstTimeBulkInstrument.ByAllowList', initialInstrumentationByFunctionNames)
+const initialInstrumentationByFunctionNames_withTrace = tracer.wrap('Instrument.FirstTimeBulk.ByFunctionNames', initialInstrumentationByFunctionNames)
+const initialInstrumentationByAllowList_withTrace = tracer.wrap('Instrument.FirstTimeBulk.ByAllowList', initialInstrumentationByFunctionNames)
 
 async function initialInstrumentationByFunctionNames(functionNames, config) {
     if (typeof (functionNames) !== 'object' || functionNames.length === 0) {
