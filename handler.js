@@ -143,52 +143,37 @@ async function getConfig() {
 }
 
 async function uninstrumentBasedOnAllowListAndTagRule(config) {
-    // get the function that has sls_xxx tag
+    // get the function that has DD_SLS_REMOTE_INSTRUMENTER_VERSION tag
+    const additionalFilteringTags = {DD_SLS_REMOTE_INSTRUMENTER_VERSION: []}
+    const remoteInstrumentedFunctionNames = await getFunctionNamesByTagRule(config, additionalFilteringTags);
+    console.log(`=== functionNames in uninstrumentBasedOnAllowListAndTagRule: ${remoteInstrumentedFunctionNames}`);
     // filter for the functions that is a) on the deny list b) not on the allow list and does not match tag rule
     // return function name
+
+    const functionNamesByTagRule = await getFunctionNamesByTagRule(config);
+
+    const remoteInstrumentedFunctionsSet = new Set(remoteInstrumentedFunctionNames);
+    const functionsThatShouldBeRemoteInstrumented = new Set(functionNamesByTagRule);
+
+    const functionsThatShouldBeUninstrumentedSet = new Set(Array.from(remoteInstrumentedFunctionsSet)
+        .filter(functionName => (
+                    !functionsThatShouldBeRemoteInstrumented.has(functionName)
+                    && !config.AllowListFunctionNameSet.has(functionName)
+                )
+                || (
+                    config.DenyListFunctionNameSet.has(functionName)
+                )
+        )
+    );
+
+    const functionsShouldBeUninstrumented = Array.from(functionsThatShouldBeUninstrumentedSet);
+
+
+    const functionNamesToUninstrument = [];
+
     // pass to uninstrumentFunctions(functionNamesToUninstrument, config)
-
-    // aws-vault exec sso-serverless-sandbox-account-admin-8h -- aws resourcegroupstaggingapi get-resources --tag-filters Key=DD_AUTO_INSTRUMENT_ENABLED,Values=true --resource-type-filters="lambda:function" --region us-west-1
-    const client = new ResourceGroupsTaggingAPIClient({region: config.AWS_REGION});
-    const tagFilters = {
-
-    }
-    const input = {
-        TagFilters: tagFilters,
-        ResourceTypeFilters: ["lambda:function"]
-    }
-    const getResourcesCommand = new GetResourcesCommand(input);
-    let getResourcesCommandOutput = {ResourceTagMappingList: []};
-    try {
-        getResourcesCommandOutput = await client.send(getResourcesCommand);
-    } catch (error) {
-        console.error(`\n error: ${error}. \n Returning empty array for instrumenting functions by tags`);
-        return [];
-    }
-
-    console.log(`=== api call output of getResourcesCommandOutput: ${JSON.stringify(getResourcesCommandOutput)}`)
-    const functionArns = [];
-    for (let resourceTagMapping of getResourcesCommandOutput.ResourceTagMappingList) {
-        functionArns.push(resourceTagMapping.ResourceARN);
-    }
-    console.log(`== functionArns: ${functionArns}`);
-
-    if (functionArns.length === 0) {
-        return [];
-    }
-
-    const functionNames = [];
-    for (let functionArn of functionArns) {
-        if (typeof (functionArn) === 'string') {
-            functionNames.push(functionArn.split(":")[6]);
-        }
-    }
-    if (functionNames.length === 0) {
-        console.log(`No functions to be instrumented by specified tags ${JSON.stringify(specifiedTags)}.`);
-        return [];
-    }
-    console.log(`=== functionNames: ${functionNames}`);
-    return functionNames;
+    await uninstrumentFunctions(functionNamesToUninstrument, config)
+    return remoteInstrumentedFunctionNames;
 }
 
 async function uninstrumentFunctions(functionNamesToUninstrument, config) {
@@ -429,7 +414,7 @@ async function getFunctionNamesByTagRule(config, additionalFilteringTags = {}) {
 
     // additionalFilteringTags = { "service": ["service1", "service2"] }
     if (Object.keys(additionalFilteringTags).length !== 0) {
-        for (const [key, value] of Object.entries(additionalFilteringTags)){
+        for (const [key, value] of Object.entries(additionalFilteringTags)) {
             if (!tagsKvMapping.hasOwnProperty(key)) {  // in case of key collisions
                 tagsKvMapping[key] = value
             }
@@ -440,10 +425,16 @@ async function getFunctionNamesByTagRule(config, additionalFilteringTags = {}) {
 
     const tagFilters = [];
     for (const [key, value] of Object.entries(tagsKvMapping)) {
-        tagFilters.push({
-            Key: key,
-            Values: value,
-        })
+        if (value.length > 0) {
+            tagFilters.push({
+                Key: key,
+                Values: value,
+            })
+        } else {  // API returns all resources with `Key` no matter what `Values` field is
+            tagFilters.push({
+                Key: key,
+            })
+        }
     }
     console.log(`== tagFilters: ${JSON.stringify(tagFilters)}`);
 
