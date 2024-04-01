@@ -47,7 +47,7 @@ exports.handler = async (event, context, callback) => {
             return;  // do not continue with initial instrumentation
         }
         await initialInstrumentationByAllowList_addExtraSpan(functionNamesToInstrument, config);
-        await initialInstrumentationByTagRule_withTrace(config);
+        await initialInstrumentationByTagRule_addExtraSpan(config);
         console.log(`\n === sending SUCCESS back to cloudformation`);
         await cfnResponse.send(event, context, "SUCCESS");  // send to response to CloudFormation custom resource endpoint to continue stack creation
 
@@ -58,9 +58,9 @@ exports.handler = async (event, context, callback) => {
         && event.detail["status-details"] !== undefined
         && event.detail["status-details"].status === "UPDATE_COMPLETE") {
         // CloudTrail event triggered by CloudFormation stack update completed
-        // await uninstrumentBasedOnAllowListAndTagRule(config);
+        await uninstrumentBasedOnAllowListAndTagRule(config);
         await initialInstrumentationByAllowList_addExtraSpan(functionNamesToInstrument, config);
-        await initialInstrumentationByTagRule_withTrace(config);
+        await initialInstrumentationByTagRule_addExtraSpan(config);
         console.log(`Re-instrument when CloudFormation stack is updated.`)
     }
 
@@ -140,6 +140,55 @@ async function getConfig() {
     };
     console.log(`\n config: ${JSON.stringify(config)}`)
     return config;
+}
+
+async function uninstrumentBasedOnAllowListAndTagRule(config) {
+    // get the function that has sls_xxx tag
+    // filter for the functions that is a) on the deny list b) not on the allow list and does not match tag rule
+    // return function name
+    // pass to uninstrumentFunctions(functionNamesToUninstrument, config)
+
+    // aws-vault exec sso-serverless-sandbox-account-admin-8h -- aws resourcegroupstaggingapi get-resources --tag-filters Key=DD_AUTO_INSTRUMENT_ENABLED,Values=true --resource-type-filters="lambda:function" --region us-west-1
+    const client = new ResourceGroupsTaggingAPIClient({region: config.AWS_REGION});
+    const tagFilters = {
+
+    }
+    const input = {
+        TagFilters: tagFilters,
+        ResourceTypeFilters: ["lambda:function"]
+    }
+    const getResourcesCommand = new GetResourcesCommand(input);
+    let getResourcesCommandOutput = {ResourceTagMappingList: []};
+    try {
+        getResourcesCommandOutput = await client.send(getResourcesCommand);
+    } catch (error) {
+        console.error(`\n error: ${error}. \n Returning empty array for instrumenting functions by tags`);
+        return [];
+    }
+
+    console.log(`=== api call output of getResourcesCommandOutput: ${JSON.stringify(getResourcesCommandOutput)}`)
+    const functionArns = [];
+    for (let resourceTagMapping of getResourcesCommandOutput.ResourceTagMappingList) {
+        functionArns.push(resourceTagMapping.ResourceARN);
+    }
+    console.log(`== functionArns: ${functionArns}`);
+
+    if (functionArns.length === 0) {
+        return [];
+    }
+
+    const functionNames = [];
+    for (let functionArn of functionArns) {
+        if (typeof (functionArn) === 'string') {
+            functionNames.push(functionArn.split(":")[6]);
+        }
+    }
+    if (functionNames.length === 0) {
+        console.log(`No functions to be instrumented by specified tags ${JSON.stringify(specifiedTags)}.`);
+        return [];
+    }
+    console.log(`=== functionNames: ${functionNames}`);
+    return functionNames;
 }
 
 async function uninstrumentFunctions(functionNamesToUninstrument, config) {
@@ -322,7 +371,6 @@ function shouldBeRemoteInstrumentedByTag(getFunctionCommandOutput, specifiedTags
 
 async function getFunctionNamesFromResourceGroupsTaggingAPI(tagFilters, config) {
     // aws-vault exec sso-serverless-sandbox-account-admin-8h -- aws resourcegroupstaggingapi get-resources --tag-filters Key=DD_AUTO_INSTRUMENT_ENABLED,Values=true --resource-type-filters="lambda:function" --region sa-east-1
-    // aws-vault exec sso-serverless-sandbox-account-admin-8h -- aws resourcegroupstaggingapi get-resources --tag-filters Key=createdBy,Values=kimi --resource-type-filters="lambda:function" --region sa-east-1
     const client = new ResourceGroupsTaggingAPIClient({region: config.AWS_REGION});
     const input = {
         TagFilters: tagFilters,
@@ -362,9 +410,14 @@ async function getFunctionNamesFromResourceGroupsTaggingAPI(tagFilters, config) 
     return functionNames;
 }
 
-const initialInstrumentationByTagRule_withTrace = tracer.wrap('Instrument.FirstTimeBulkByTagRule', initialInstrumentationByTagRule)
+const initialInstrumentationByTagRule_addExtraSpan = tracer.wrap('Instrument.FirstTimeBulkByTagRule', initialInstrumentationByTagRule)
 
 async function initialInstrumentationByTagRule(config) {
+    const functionNames = await getFunctionNamesByTagRule(config);
+    await initialInstrumentationByFunctionNames_addExtraSpan(functionNames, config);
+}
+
+async function getFunctionNamesByTagRule(config, additionalFilteringTags = {}) {
     const specifiedTags = getRemoteInstrumentTagsFromConfig(config);  // tags: ['k1:v1', 'k2:v2']
     console.log(`== specifiedTags: ${specifiedTags}`);
     if (specifiedTags === undefined || specifiedTags.length === 0) {
@@ -372,10 +425,21 @@ async function initialInstrumentationByTagRule(config) {
     }
     console.log(`== RemoteInstrumentTagsFromEnvVar: ${specifiedTags}`);
 
-    const tagKvMapping = getSpecifiedTagsKvMapping(specifiedTags);
+    const tagsKvMapping = getSpecifiedTagsKvMapping(specifiedTags);
+
+    // additionalFilteringTags = { "service": ["service1", "service2"] }
+    if (Object.keys(additionalFilteringTags).length !== 0) {
+        for (const [key, value] of Object.entries(additionalFilteringTags)){
+            if (!tagsKvMapping.hasOwnProperty(key)) {  // in case of key collisions
+                tagsKvMapping[key] = value
+            }
+        }
+    }
+
+    console.log(`After merging tagsKvMapping and additionalFilteringTags, tagsKvMapping is ${JSON.stringify(tagsKvMapping)}`);
 
     const tagFilters = [];
-    for (const [key, value] of Object.entries(tagKvMapping)) {
+    for (const [key, value] of Object.entries(tagsKvMapping)) {
         tagFilters.push({
             Key: key,
             Values: value,
@@ -384,20 +448,20 @@ async function initialInstrumentationByTagRule(config) {
     console.log(`== tagFilters: ${JSON.stringify(tagFilters)}`);
 
     const functionNames = await getFunctionNamesFromResourceGroupsTaggingAPI(tagFilters, config);
-    await initialInstrumentationByFunctionNames_addExtraSpan(functionNames, config);
+    return functionNames;
 }
 
 function getSpecifiedTagsKvMapping(specifiedTags) {  // return e.g. {"env": ["staging", "prod"], "team": ["serverless"]}
-    const tagKvMapping = {};  // default dict of list to hold values of the same key
+    const tagsKvMapping = {};  // default dict of list to hold values of the same key
     for (let tag of specifiedTags) {
         let [k, v] = tag.split(':');
-        if (!tagKvMapping.hasOwnProperty(k)) {
-            tagKvMapping[k] = []
+        if (!tagsKvMapping.hasOwnProperty(k)) {
+            tagsKvMapping[k] = []
         }
-        tagKvMapping[k].push(v)
+        tagsKvMapping[k].push(v)
     }
-    console.log(`== tagKvMapping: ${JSON.stringify(tagKvMapping)}`)
-    return tagKvMapping;
+    console.log(`== tagKvMapping: ${JSON.stringify(tagsKvMapping)}`)
+    return tagsKvMapping;
 }
 
 // same two wrapper but to show different span name on the trace
