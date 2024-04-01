@@ -507,6 +507,13 @@ async function initialInstrumentationByFunctionNames(functionNames, config) {
 
 async function instrumentWithDatadogCi(functionArn, uninstrument = false, runtime = NODE, config, functionArns) {
     console.log(`instrumentWithDatadogCi: functionArns: ${functionArns} , uninstrument: ${uninstrument}`)
+
+    // filter out functions that are on the DenyList
+    if (uninstrument === false && config.DenyListFunctionNameSet.has(functionName)) {
+        console.log(`function ${functionName} will not be instrumented because it is on the DenyList ${JSON.stringify(config.DenyListFunctionNameSet)}.`);
+        return;
+    }
+
     const cli = datadogCi.cli;
     const layerVersionObj = await getLayerAndRuntimeVersion(runtime, config);
 
