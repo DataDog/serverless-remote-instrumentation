@@ -67,7 +67,7 @@ exports.handler = async (event, context, callback) => {
     return `✅ Lambda instrument function(s) finished without failing.`;
 };
 
-const uninstrumentFunctions_addExtraSpan = tracer.wrap("Uninstrument.BasedOnAllowListAndTagRule", uninstrumentFunctions)
+const uninstrumentFunctions_addExtraSpan = tracer.wrap("StackUpdate.Uninstrument.BasedOnAllowListAndTagRule", uninstrumentFunctions)
 const instrumentBySingleEvents_addExtraSpan = tracer.wrap('Instrument.BySingleEvent', instrumentByEvent)
 
 async function getConfig() {
@@ -159,7 +159,7 @@ async function uninstrumentBasedOnAllowListAndTagRule(config) {
             )
         )
     console.log(`functionsToBeUninstrumented: ${JSON.stringify(functionsToBeUninstrumented)}`);
-    await uninstrumentFunctions(functionsToBeUninstrumented, config);
+    await uninstrumentFunctions_addExtraSpan(functionsToBeUninstrumented, config);
 }
 
 async function uninstrumentFunctions(functionNamesToUninstrument, config) {
