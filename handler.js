@@ -64,13 +64,6 @@ exports.handler = async (event, context, callback) => {
         console.log(`Re-instrument when CloudFormation stack is updated.`)
     }
 
-    // *** Uninstrument ***
-    // TODO: change denylist functions to be checked before instrumentation
-    if (config.DenyList !== '') {
-        const functionNamesToUninstrument = getFunctionNamesFromString(config.DenyList)
-        await uninstrumentFunctions_addExtraSpan(functionNamesToUninstrument, config);
-        return `✅↩ Lambda uninstrument already-remote-instrumented function(s) finished without failing.`;
-    }
     return `✅ Lambda instrument function(s) finished without failing.`;
 };
 
@@ -113,7 +106,7 @@ async function getConfig() {
                 layerVersions.rubyLayerVersion = getVersionFromLayerArn(jsonData, 'Datadog-Ruby3-2')
             }
         } catch (error) {
-            console.error('Error parsing s3 layer JSON:', error);
+            console.error('Error parsing s3 layer JSON:', error)
         }
     }
 
