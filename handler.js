@@ -176,8 +176,8 @@ async function uninstrumentFunctions(functionNamesToUninstrument, config) {
         });
     }
 
-    console.log(`\n waiting for 5 seconds for instrument to complete before running unistrument to avoid "The operation cannot be performed at this time. An update is in progress."`)
-    await sleep(5000);
+    console.log(`\n waiting for 10 seconds for instrument to complete before running unistrument to avoid "The operation cannot be performed at this time. An update is in progress."`)
+    await sleep(10000);
 
     const uninstrumentedFunctionArns = [];
     for (let functionName of functionNamesToUninstrument) {
