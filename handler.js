@@ -155,24 +155,18 @@ async function uninstrumentBasedOnAllowListAndTagRule(config) {
     const remoteInstrumentedFunctionsSet = new Set(remoteInstrumentedFunctionNames);
     const functionsThatShouldBeRemoteInstrumented = new Set(functionNamesByTagRule);
 
+    // uninstrument these functions:
     const functionsThatShouldBeUninstrumentedSet = new Set(Array.from(remoteInstrumentedFunctionsSet)
         .filter(functionName => (
-                    !functionsThatShouldBeRemoteInstrumented.has(functionName)
-                    && !config.AllowListFunctionNameSet.has(functionName)
-                )
-                || (
-                    config.DenyListFunctionNameSet.has(functionName)
-                )
+                !functionsThatShouldBeRemoteInstrumented.has(functionName)
+                || config.DenyListFunctionNameSet.has(functionName)
+            )
         )
-    );
+    )
 
     const functionsShouldBeUninstrumented = Array.from(functionsThatShouldBeUninstrumentedSet);
 
-
-    const functionNamesToUninstrument = [];
-
-    // pass to uninstrumentFunctions(functionNamesToUninstrument, config)
-    await uninstrumentFunctions(functionNamesToUninstrument, config)
+    await uninstrumentFunctions(functionsShouldBeUninstrumented, config)
     return remoteInstrumentedFunctionNames;
 }
 
