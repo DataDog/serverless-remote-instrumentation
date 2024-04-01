@@ -228,6 +228,10 @@ async function instrumentByEvent(event, config) {
         console.log(`An "UpdateFunctionCode20150331v2" event is received. Do nothing and end the invocation now.`)
         return;
     }
+    if (event["detail"]["eventName"] === 'PublishLayerVersion20181031') {
+        console.log(`An "PublishLayerVersion20181031" event is received. Do nothing and end the invocation now.`)
+        return;
+    }
 
     validateEventIsExpected(event);
 
@@ -574,7 +578,7 @@ async function untagResourcesOfSlsTag(functionArns, config) {
     const untagResourcesCommand = new UntagResourcesCommand(input);
     try {
         const untagResourcesCommandOutput = await client.send(untagResourcesCommand);
-        console.log(`=== api call output of getResourcesCommand: ${JSON.stringify(untagResourcesCommandOutput.ResourceTagMappingList)}`)
+        console.log(`=== api call output of untagResourcesCommandOutput: ${JSON.stringify(untagResourcesCommandOutput.ResourceTagMappingList)}`)
     } catch (error) {
         console.error(`\n error: ${error.toString()} when untagging resources`);
     }
