@@ -103,7 +103,7 @@ Resources:
           DD_SERVICE: Datadog-Instrument
           DD_ENV: dev
           # DD_VERSION can be used to select trace by
-          DD_VERSION: 0.0.2
+          DD_VERSION: 0.0.3
           DD_SITE: !Ref DdSite
           DD_AWS_ACCOUNT_NUMBER: !Ref DdAwsAccountNumber
           AllowList: !Ref AllowList

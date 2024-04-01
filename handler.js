@@ -31,7 +31,7 @@ exports.handler = async (event, context, callback) => {
     // *** Instrument ***
     // CloudTrail Lambda event
     if (event.hasOwnProperty("detail-type") && event.hasOwnProperty("source") && event.source === "aws.lambda") {
-        const eventNamesToSkip = new Set(["DeleteFunction20150331", "AddPermission20150331"])
+        const eventNamesToSkip = new JSONSet(["DeleteFunction20150331", "AddPermission20150331"])
         if (eventNamesToSkip.has(event.detail?.eventName)) {
             return;
         }
@@ -117,10 +117,10 @@ async function getConfig() {
 
         // instrumentation and uninstrumentation
         AllowList: process.env.AllowList,
-        AllowListFunctionNameSet: new Set(getFunctionNamesFromString(process.env.AllowList)),
+        AllowListFunctionNameSet: JSON.stringify(getFunctionNamesFromString(process.env.AllowList)),
         TagRule: process.env.TagRule,
         DenyList: process.env.DenyList,
-        DenyListFunctionNameSet: new Set(getFunctionNamesFromString(process.env.DenyList)),
+        DenyListFunctionNameSet: JSON.stringify(getFunctionNamesFromString(process.env.DenyList)),
 
         // layer version
         DD_EXTENSION_LAYER_VERSION: process.env.DD_EXTENSION_LAYER_VERSION,
@@ -145,8 +145,8 @@ async function uninstrumentBasedOnAllowListAndTagRule(config) {
 
     const functionNamesByTagRule = await getFunctionNamesByTagRule(config);
 
-    const remoteInstrumentedFunctionsSet = new Set(remoteInstrumentedFunctionNames);
-    const functionsThatShouldBeRemoteInstrumented = new Set(functionNamesByTagRule);
+    const remoteInstrumentedFunctionsSet = new JSONSet(remoteInstrumentedFunctionNames);
+    const functionsThatShouldBeRemoteInstrumented = new JSONSet(functionNamesByTagRule);
 
     // uninstrument these functions:
     const functionsToBeUninstrumented = Array.from(remoteInstrumentedFunctionsSet)
@@ -190,14 +190,14 @@ function getRemoteInstrumentTagsFromConfig(config) {
 
 function getFunctionNamesFromString(s) {
     const functionNamesArray = s.split(',');
-    console.log("Functions specified to be instrumented/uninstrumented are:", functionNamesArray)
+    console.log("Function names parsed by getFunctionNamesFromString:", functionNamesArray)
     return functionNamesArray;
 }
 
 function validateEventIsExpected(event) {
     // safety guard against unexpected event format that should have been filtered by EventBridge Rule
 
-    const expectedEventNameSet = new Set(["UpdateFunctionConfiguration20150331v2", "CreateFunction20150331", "DeleteLayerVersion20181031"])
+    const expectedEventNameSet = new JSONSet(["UpdateFunctionConfiguration20150331v2", "CreateFunction20150331", "DeleteLayerVersion20181031"])
     if (event["detail-type"] !== "AWS API Call via CloudTrail") {
         throw new Error(`event.detail-type is unexpected. Event: ${JSON.stringify(event)}`)
     }
@@ -208,7 +208,6 @@ function validateEventIsExpected(event) {
 
     if (!expectedEventNameSet.has(event["detail"]["eventName"])) {
         throw new Error(`event.detail.eventName is not expected. Event: ${JSON.stringify(event)}`);
-        return false;
     }
 }
 
@@ -679,5 +678,11 @@ async function getLatestLayersFromS3() {
         return await axios.get(layerURL);
     } catch (error) {
         console.error(error);
+    }
+}
+
+class JSONSet extends Set {
+    toJSON () {
+        return [...this]
     }
 }
