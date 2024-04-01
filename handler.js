@@ -31,7 +31,7 @@ exports.handler = async (event, context, callback) => {
     // *** Instrument ***
     // CloudTrail Lambda event
     if (event.hasOwnProperty("detail-type") && event.hasOwnProperty("source") && event.source === "aws.lambda") {
-        const eventNamesToSkip = new JSONSet(["DeleteFunction20150331", "AddPermission20150331"])
+        const eventNamesToSkip = new Set(["DeleteFunction20150331", "AddPermission20150331"])
         if (eventNamesToSkip.has(event.detail?.eventName)) {
             return;
         }
@@ -145,8 +145,8 @@ async function uninstrumentBasedOnAllowListAndTagRule(config) {
 
     const functionNamesByTagRule = await getFunctionNamesByTagRule(config);
 
-    const remoteInstrumentedFunctionsSet = new JSONSet(remoteInstrumentedFunctionNames);
-    const functionsThatShouldBeRemoteInstrumented = new JSONSet(functionNamesByTagRule);
+    const remoteInstrumentedFunctionsSet = new Set(remoteInstrumentedFunctionNames);
+    const functionsThatShouldBeRemoteInstrumented = new Set(functionNamesByTagRule);
 
     // uninstrument these functions:
     const functionsToBeUninstrumented = Array.from(remoteInstrumentedFunctionsSet)
@@ -174,7 +174,7 @@ async function uninstrumentFunctions(functionNamesToUninstrument, config) {
 
     const uninstrumentedFunctionArns = [];
     for (let functionName of functionNamesToUninstrument) {
-        console.log(`\n functionName in functionNamesToUninstrument : ${functionName}`)
+        console.log(`\n functionName in functionNamesToUninstrument: ${functionName}`)
         const functionArn = `arn:aws:lambda:${config.AWS_REGION}:${config.DD_AWS_ACCOUNT_NUMBER}:function:${functionName}`;
         await instrumentWithDatadogCi(functionArn, true, NODE, config, uninstrumentedFunctionArns);
     }
@@ -197,7 +197,7 @@ function getFunctionNamesFromString(s) {
 function validateEventIsExpected(event) {
     // safety guard against unexpected event format that should have been filtered by EventBridge Rule
 
-    const expectedEventNameSet = new JSONSet(["UpdateFunctionConfiguration20150331v2", "CreateFunction20150331", "DeleteLayerVersion20181031"])
+    const expectedEventNameSet = new Set(["UpdateFunctionConfiguration20150331v2", "CreateFunction20150331", "DeleteLayerVersion20181031"])
     if (event["detail-type"] !== "AWS API Call via CloudTrail") {
         throw new Error(`event.detail-type is unexpected. Event: ${JSON.stringify(event)}`)
     }
@@ -678,11 +678,5 @@ async function getLatestLayersFromS3() {
         return await axios.get(layerURL);
     } catch (error) {
         console.error(error);
-    }
-}
-
-class JSONSet extends Set {
-    toJSON () {
-        return [...this]
     }
 }
