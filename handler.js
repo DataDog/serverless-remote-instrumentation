@@ -552,9 +552,11 @@ async function tagResourcesWithSlsTag(functionArns, config) {
     console.log(`\n version: ${DD_SLS_REMOTE_INSTRUMENTER_VERSION}:v${VERSION}`);
 
     const client = new ResourceGroupsTaggingAPIClient({region: config.AWS_REGION});
+    const tagsObj = {}
+    tagsObj[DD_SLS_REMOTE_INSTRUMENTER_VERSION] = `v${VERSION}`
     const input = {
         ResourceARNList: functionArns,
-        Tags: {DD_SLS_REMOTE_INSTRUMENTER_VERSION: `v${VERSION}`}
+        Tags: tagsObj,  // taking the obj to above so that DD_SLS_REMOTE_INSTRUMENTER_VERSION would not be taken as literal upper case string
     }
     const tagResourcesCommand = new TagResourcesCommand(input);
     try {
