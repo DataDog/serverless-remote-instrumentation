@@ -35,18 +35,18 @@ exports.handler = async (event, context, callback) => {
         if (eventNamesToSkip.has(event.detail?.eventName)) {
             return;
         }
-        await instrumentBySingleEvents_addExtraSpan(event, config);
+        await instrumentBySingleEvent(event, config);
         return;  // do not run initial bulk instrument nor uninstrument
     }
 
-    // initial instrumentation for CloudFormation lifeCycle custom resource
+    // first time instrumentation by CloudFormation lifeCycle custom resource
     if (event.hasOwnProperty("RequestType")) {
         if (event.RequestType === "Delete") {
             console.log(`\n === Getting CloudFormation Delete event.`);
             await cfnResponse.send(event, context, "SUCCESS");  // send to response to CloudFormation custom resource endpoint to continue stack deletion
             return;  // do not continue with initial instrumentation
         }
-        await firstTimeInstrumentationByAllowList_firstTime(functionNamesToInstrument, config);
+        await firstTimeInstrumentationByAllowList(functionNamesToInstrument, config);
         await firstTimeInstrumentationByTagRule(config);
         console.log(`\n === sending SUCCESS back to cloudformation`);
         await cfnResponse.send(event, context, "SUCCESS");  // send to response to CloudFormation custom resource endpoint to continue stack creation
@@ -67,8 +67,16 @@ exports.handler = async (event, context, callback) => {
     return `✅ Lambda instrument function(s) finished without failing.`;
 };
 
-const uninstrumentFunctions_addExtraSpan = tracer.wrap("StackUpdate.Uninstrument.BasedOnAllowListAndTagRule", uninstrumentFunctions)
-const instrumentBySingleEvents_addExtraSpan = tracer.wrap('Instrument.BySingleEvent', instrumentByEvent)
+//// wrappers
+// single
+const instrumentBySingleEvent = tracer.wrap('Instrument.BySingleEvent', instrumentByEvent)
+// first time instrumentation
+const firstTimeInstrumentationByAllowList = tracer.wrap('FirstTimeBulkInstrument.ByAllowList', instrumentByFunctionNames)
+const firstTimeInstrumentationByTagRule = tracer.wrap('FirstTimeBulkInstrument.ByTagRule', instrumentationByTagRule)
+// stack update
+const stackUpdateUninstrumentBasedOnAllowListAndTagRule = tracer.wrap('StackUpdate.Uninstrument', uninstrumentBasedOnAllowListAndTagRule)
+const stackUpdateInstrumentByAllowList = tracer.wrap('StackUpdate.Instrument.ByAllowList', instrumentByFunctionNames)
+const stackUpdateInstrumentByTagRule = tracer.wrap('StackUpdate.Instrument.ByTagRule', instrumentationByTagRule)
 
 async function getConfig() {
 
@@ -137,7 +145,7 @@ async function getConfig() {
     return config;
 }
 
-async function stackUpdateUninstrumentBasedOnAllowListAndTagRule(config) {
+async function uninstrumentBasedOnAllowListAndTagRule(config) {
     // get the function that has DD_SLS_REMOTE_INSTRUMENTER_VERSION tag
     const additionalFilteringTags = {DD_SLS_REMOTE_INSTRUMENTER_VERSION: []}
     const remoteInstrumentedFunctionNames = await getFunctionNamesByTagRule(config, additionalFilteringTags);
@@ -161,7 +169,7 @@ async function stackUpdateUninstrumentBasedOnAllowListAndTagRule(config) {
             )
         )
     console.log(`functionsToBeUninstrumented: ${JSON.stringify(functionsToBeUninstrumented)}`);
-    await uninstrumentFunctions_addExtraSpan(functionsToBeUninstrumented, config);
+    await uninstrumentFunctions(functionsToBeUninstrumented, config);
 }
 
 async function uninstrumentFunctions(functionNamesToUninstrument, config) {
@@ -386,9 +394,6 @@ async function getFunctionNamesFromResourceGroupsTaggingAPI(tagFilters, config) 
     return functionNames;
 }
 
-const firstTimeInstrumentationByTagRule = tracer.wrap('FirstTimeBulkInstrument.ByTagRule', instrumentationByTagRule)
-const stackUpdateInstrumentByTagRule = tracer.wrap('StackUpdateInstrument.ByTagRule', instrumentationByTagRule)
-
 async function instrumentationByTagRule(config) {
     const functionNames = await getFunctionNamesByTagRule(config);
     await instrumentByFunctionNames(functionNames, config);
@@ -446,12 +451,6 @@ function getSpecifiedTagsKvMapping(specifiedTags) {  // return e.g. {"env": ["st
     console.log(`== tagKvMapping: ${JSON.stringify(tagsKvMapping)}`)
     return tagsKvMapping;
 }
-
-// wrappers
-const initialInstrumentationByFunctionNames_firstTime = tracer.wrap('FirstTimeBulkInstrument.ByFunctionNames', instrumentByFunctionNames)
-const firstTimeInstrumentationByAllowList_firstTime = tracer.wrap('FirstTimeBulkInstrument.ByAllowList', instrumentByFunctionNames)
-const stackUpdateInstrumentByAllowList = tracer.wrap('StackUpdateInstrument.ByAllowList', instrumentByFunctionNames)
-
 
 async function instrumentByFunctionNames(functionNames, config) {
     if (typeof (functionNames) !== 'object' || functionNames.length === 0) {
