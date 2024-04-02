@@ -77,7 +77,7 @@ async function getConfig() {
 
     // Get layer configs from CloudFormation params. If they don't exist, use latest layer from S3
     const response = await getLatestLayersFromS3();
-    var layerVersions = {
+    let layerVersions = {
         extensionVersion: process.env.DD_EXTENSION_LAYER_VERSION,
         pythonLayerVersion: process.env.DD_PYTHON_LAYER_VERSION,
         nodeLayerVersion: process.env.DD_NODE_LAYER_VERSION,
@@ -223,6 +223,7 @@ async function instrumentByEvent(event, config) {
         "DeleteFunction20150331",
         "PublishLayerVersion20181031",
         "RemovePermission20150331",
+        "PutFunctionConcurrency20171031",
         "RemovePermission20150331v2",
         "UpdateFunctionCode20150331v2",
     ])
