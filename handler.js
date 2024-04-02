@@ -117,10 +117,10 @@ async function getConfig() {
 
         // instrumentation and uninstrumentation
         AllowList: process.env.AllowList,
-        AllowListFunctionNameSet: JSON.stringify(getFunctionNamesFromString(process.env.AllowList)),
+        AllowListFunctionNameSet: new Set(getFunctionNamesFromString(process.env.AllowList)),
         TagRule: process.env.TagRule,
         DenyList: process.env.DenyList,
-        DenyListFunctionNameSet: JSON.stringify(getFunctionNamesFromString(process.env.DenyList)),
+        DenyListFunctionNameSet: new Set(getFunctionNamesFromString(process.env.DenyList)),
 
         // layer version
         DD_EXTENSION_LAYER_VERSION: process.env.DD_EXTENSION_LAYER_VERSION,
@@ -132,6 +132,8 @@ async function getConfig() {
         DD_LAYER_VERSIONS: layerVersions,
     };
     console.log(`\n config: ${JSON.stringify(config)}`)
+    console.log(`\n AllowListFunctionNameSet: ${JSON.stringify([...config.AllowListFunctionNameSet])}`)
+    console.log(`\n DenyListFunctionNameSet: ${JSON.stringify([...config.DenyListFunctionNameSet])}`)
     return config;
 }
 
@@ -174,7 +176,7 @@ async function uninstrumentFunctions(functionNamesToUninstrument, config) {
 
     const uninstrumentedFunctionArns = [];
     for (let functionName of functionNamesToUninstrument) {
-        console.log(`\n functionName in functionNamesToUninstrument: ${functionName}`)
+        console.log(`functionName in functionNamesToUninstrument: ${functionName}`)
         const functionArn = `arn:aws:lambda:${config.AWS_REGION}:${config.DD_AWS_ACCOUNT_NUMBER}:function:${functionName}`;
         await instrumentWithDatadogCi(functionArn, true, NODE, config, uninstrumentedFunctionArns);
     }
@@ -248,16 +250,16 @@ async function instrumentByEvent(event, config) {
 
     // filter out functions that are on the DenyList
     if (config.DenyListFunctionNameSet.has(functionName)) {
-        console.log(`function ${functionName} is on the DenyList ${JSON.stringify(config.DenyListFunctionNameSet)}`)
+        console.log(`function ${functionName} is on the DenyList ${JSON.stringify([...config.DenyListFunctionNameSet])}`)
         return;
     }
 
     // check if lambda management events is for function that are specified to be instrumented
     if (config.AllowListFunctionNameSet.has(functionName)) {
         functionFromEventIsInAllowList = true
-        console.log(`=== ${functionName} in the AllowListFunctionNameSet: ${JSON.stringify(config.AllowListFunctionNameSet)} ===`)
+        console.log(`=== ${functionName} in the AllowListFunctionNameSet: ${JSON.stringify([...config.AllowListFunctionNameSet])} ===`)
     } else {
-        console.log(`=== ${functionName} is NOT in the AllowListFunctionNameSet: ${JSON.stringify(config.AllowListFunctionNameSet)} ===`)
+        console.log(`=== ${functionName} is NOT in the AllowListFunctionNameSet: ${JSON.stringify([...config.AllowListFunctionNameSet])} ===`)
     }
 
     // check if the function has the tags that pass TagRule
