@@ -26,6 +26,7 @@ exports.handler = async (event, context, callback) => {
     console.log(`\n process: ${JSON.stringify(process.env)}`)
 
     const config = await getConfig();
+    const allowListFunctionNames = getFunctionNamesFromString(config.AllowList);
 
     // One Lambda CloudTrail management event, only at most one Lambda will be updated
     if (event.hasOwnProperty("detail-type") && event.hasOwnProperty("source") && event.source === "aws.lambda") {
@@ -40,7 +41,7 @@ exports.handler = async (event, context, callback) => {
             await cfnResponse.send(event, context, "SUCCESS");  // send to response to CloudFormation custom resource endpoint to continue stack deletion
             return;  // do not continue with initial instrumentation
         }
-        await firstTimeInstrumentationByAllowList(config);
+        await firstTimeInstrumentationByAllowList(allowListFunctionNames, config);
         await firstTimeInstrumentationByTagRule(config);
         console.log(`\n === sending SUCCESS back to cloudformation`);
         await cfnResponse.send(event, context, "SUCCESS");  // send to response to CloudFormation custom resource endpoint to continue stack creation
@@ -53,7 +54,7 @@ exports.handler = async (event, context, callback) => {
         && event.detail["status-details"].status === "UPDATE_COMPLETE") {
         // CloudTrail event triggered by CloudFormation stack update completed
         await stackUpdateUninstrumentBasedOnAllowListAndTagRule(config);
-        await stackUpdateInstrumentByAllowList(config);
+        await stackUpdateInstrumentByAllowList(allowListFunctionNames, config);
         await stackUpdateInstrumentByTagRule(config);
         console.log(`Re-instrument when CloudFormation stack is updated.`)
     }
@@ -198,7 +199,7 @@ function getFunctionNamesFromString(s) {
     return functionNamesArray;
 }
 
-function validateEventIsExpected(event) {
+function validateEvent(event) {
     // safety guard against unexpected event format that should have been filtered by EventBridge Rule
 
     const expectedEventNameSet = new Set(["UpdateFunctionConfiguration20150331v2", "CreateFunction20150331", "DeleteLayerVersion20181031"])
@@ -235,7 +236,7 @@ async function instrumentByEvent(event, config) {
         return;
     }
 
-    validateEventIsExpected(event);
+    validateEvent(event);
 
     let functionFromEventIsInAllowList = false;
     let functionName = event.detail.requestParameters.functionName;
@@ -445,8 +446,7 @@ function getSpecifiedTagsKvMapping(specifiedTags) {  // return e.g. {"env": ["st
     return tagsKvMapping;
 }
 
-async function instrumentByFunctionNames(config) {
-    const functionNames = getFunctionNamesFromString(config.AllowList);
+async function instrumentByFunctionNames(functionNames, config) {
     if (typeof (functionNames) !== 'object' || functionNames.length === 0) {
         console.log(`functionNames is empty in initialInstrumentationWithNames().`);
         return;
