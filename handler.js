@@ -26,15 +26,9 @@ exports.handler = async (event, context, callback) => {
     console.log(`\n process: ${JSON.stringify(process.env)}`)
 
     const config = await getConfig();
-    const functionNamesToInstrument = getFunctionNamesFromString(config.AllowList)
 
-    // *** Instrument ***
-    // CloudTrail Lambda event
+    // One Lambda CloudTrail management event, only at most one Lambda will be updated
     if (event.hasOwnProperty("detail-type") && event.hasOwnProperty("source") && event.source === "aws.lambda") {
-        const eventNamesToSkip = new Set(["DeleteFunction20150331", "AddPermission20150331"])
-        if (eventNamesToSkip.has(event.detail?.eventName)) {
-            return;
-        }
         await instrumentBySingleEvent(event, config);
         return;  // do not run initial bulk instrument nor uninstrument
     }
@@ -46,7 +40,7 @@ exports.handler = async (event, context, callback) => {
             await cfnResponse.send(event, context, "SUCCESS");  // send to response to CloudFormation custom resource endpoint to continue stack deletion
             return;  // do not continue with initial instrumentation
         }
-        await firstTimeInstrumentationByAllowList(functionNamesToInstrument, config);
+        await firstTimeInstrumentationByAllowList(config);
         await firstTimeInstrumentationByTagRule(config);
         console.log(`\n === sending SUCCESS back to cloudformation`);
         await cfnResponse.send(event, context, "SUCCESS");  // send to response to CloudFormation custom resource endpoint to continue stack creation
@@ -59,7 +53,7 @@ exports.handler = async (event, context, callback) => {
         && event.detail["status-details"].status === "UPDATE_COMPLETE") {
         // CloudTrail event triggered by CloudFormation stack update completed
         await stackUpdateUninstrumentBasedOnAllowListAndTagRule(config);
-        await stackUpdateInstrumentByAllowList(functionNamesToInstrument, config);
+        await stackUpdateInstrumentByAllowList(config);
         await stackUpdateInstrumentByTagRule(config);
         console.log(`Re-instrument when CloudFormation stack is updated.`)
     }
@@ -222,23 +216,14 @@ function validateEventIsExpected(event) {
 }
 
 async function instrumentByEvent(event, config) {
+    const eventNamesToSkip = new Set(["DeleteFunction20150331", "AddPermission20150331", "AddPermission20150331v2", "UpdateFunctionCode20150331v2", "PublishLayerVersion20181031"])
+    if (eventNamesToSkip.has(event.detail?.eventName)) {
+        console.log(`${event.detail?.eventName} event is received. Skipping.`)
+        return;
+    }
     if (event["detail"]["eventName"] === 'UntagResource20170331v2' ||
         event["detail"]["eventName"] === 'TagResource20170331v2') {
         console.log(`TODO: (Un)TagResource20170331v2 is not yet implemented yet.`)
-        return;
-    }
-    // not sure why instrumenter is receiving this event. but skipping for now.
-    if (event["detail"]["eventName"] === 'AddPermission20150331v2') {
-        console.log(`An "AddPermission20150331v2" event is received. Do nothing and end the invocation now.`)
-        return;
-    }
-    // not sure why instrumenter is receiving this event. but skipping for now.
-    if (event["detail"]["eventName"] === 'UpdateFunctionCode20150331v2') {
-        console.log(`An "UpdateFunctionCode20150331v2" event is received. Do nothing and end the invocation now.`)
-        return;
-    }
-    if (event["detail"]["eventName"] === 'PublishLayerVersion20181031') {
-        console.log(`An "PublishLayerVersion20181031" event is received. Do nothing and end the invocation now.`)
         return;
     }
 
@@ -452,7 +437,8 @@ function getSpecifiedTagsKvMapping(specifiedTags) {  // return e.g. {"env": ["st
     return tagsKvMapping;
 }
 
-async function instrumentByFunctionNames(functionNames, config) {
+async function instrumentByFunctionNames(config) {
+    const functionNames = getFunctionNamesFromString(config.AllowList);
     if (typeof (functionNames) !== 'object' || functionNames.length === 0) {
         console.log(`functionNames is empty in initialInstrumentationWithNames().`);
         return;
