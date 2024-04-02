@@ -43,13 +43,13 @@ Parameters:
     Default: '425362996713'
   AllowList:
     Type: String
-    Default: test-auto-instrument-node,test-auto-instrument-another-node,test-auto-instrument-does-not-exist,test-auto-instrument-python
+    Default: test-remote-instrument-node,test-remote-instrument-another-node,test-remote-instrument-does-not-exist,test-remote-instrument-python
   TagRule:
     Type: String
     Default: DD_REMOTE_INSTRUMENT_ENABLED:true
   DenyList:
     Type: String
-    Default: test-auto-instrument-another-node
+    Default: test-remote-instrument-another-node
   DdExtensionLayerVersion:
     Type: String
     Default: '50'
