@@ -69,7 +69,7 @@ const instrumentBySingleEvent = tracer.wrap('Instrument.BySingleEvent', instrume
 const firstTimeInstrumentationByAllowList = tracer.wrap('FirstTimeBulkInstrument.ByAllowList', instrumentByFunctionNames)
 const firstTimeInstrumentationByTagRule = tracer.wrap('FirstTimeBulkInstrument.ByTagRule', instrumentationByTagRule)
 // stack update
-const stackUpdateUninstrumentBasedOnAllowListAndTagRule = tracer.wrap('StackUpdate.Uninstrument', uninstrumentBasedOnAllowListAndTagRule)
+const stackUpdateUninstrumentBasedOnAllowListAndTagRule = tracer.wrap('StackUpdate.CheckingAnythingToUninstrument', uninstrumentBasedOnAllowListAndTagRule)
 const stackUpdateInstrumentByAllowList = tracer.wrap('StackUpdate.Instrument.ByAllowList', instrumentByFunctionNames)
 const stackUpdateInstrumentByTagRule = tracer.wrap('StackUpdate.Instrument.ByTagRule', instrumentationByTagRule)
 
