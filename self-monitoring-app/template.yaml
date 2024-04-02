@@ -43,7 +43,7 @@ Parameters:
     Default: DD_REMOTE_INSTRUMENT_ENABLED:true,another-tag:true
   DenyList:
     Type: String
-    Default: remote-instrument-self-monitor-to-be-uninstrumented
+    Default: ""
   NodeLambdaFunctionName:
     Type: String
     Default: remote-instrument-self-monitor-node
@@ -132,6 +132,7 @@ Resources:
           PythonLambdaFunctionName: !Ref PythonLambdaFunctionName
           LambdaWithSpecifiedTagsFunctionName: !Ref LambdaWithSpecifiedTagsFunctionName
           LambdaWithoutSpecifiedTagsFunctionName: !Ref LambdaWithoutSpecifiedTagsFunctionName
+          LambdaWithTagsUpdatedToBeInDenyListFunctionName: !Ref LambdaWithTagsUpdatedToBeInDenyListFunctionName
           DdExtensionLayerVersion: !Ref DdExtensionLayerVersion
           UpdatedDdExtensionLayerVersion: !Ref UpdatedDdExtensionLayerVersion
 
