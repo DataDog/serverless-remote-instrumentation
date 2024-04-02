@@ -216,7 +216,15 @@ function validateEventIsExpected(event) {
 }
 
 async function instrumentByEvent(event, config) {
-    const eventNamesToSkip = new Set(["DeleteFunction20150331", "AddPermission20150331", "AddPermission20150331v2", "UpdateFunctionCode20150331v2", "PublishLayerVersion20181031"])
+    const eventNamesToSkip = new Set([
+        "AddPermission20150331",
+        "AddPermission20150331v2",
+        "DeleteFunction20150331",
+        "PublishLayerVersion20181031",
+        "RemovePermission20150331",
+        "RemovePermission20150331v2",
+        "UpdateFunctionCode20150331v2",
+    ])
     if (eventNamesToSkip.has(event.detail?.eventName)) {
         console.log(`${event.detail?.eventName} event is received. Skipping.`)
         return;
