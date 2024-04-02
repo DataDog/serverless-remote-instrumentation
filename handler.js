@@ -46,8 +46,8 @@ exports.handler = async (event, context, callback) => {
             await cfnResponse.send(event, context, "SUCCESS");  // send to response to CloudFormation custom resource endpoint to continue stack deletion
             return;  // do not continue with initial instrumentation
         }
-        await initialInstrumentationByAllowList_addExtraSpan(functionNamesToInstrument, config);
-        await initialInstrumentationByTagRule_addExtraSpan(config);
+        await firstTimeInstrumentationByAllowList_firstTime(functionNamesToInstrument, config);
+        await firstTimeInstrumentationByTagRule(config);
         console.log(`\n === sending SUCCESS back to cloudformation`);
         await cfnResponse.send(event, context, "SUCCESS");  // send to response to CloudFormation custom resource endpoint to continue stack creation
 
@@ -58,9 +58,9 @@ exports.handler = async (event, context, callback) => {
         && event.detail["status-details"] !== undefined
         && event.detail["status-details"].status === "UPDATE_COMPLETE") {
         // CloudTrail event triggered by CloudFormation stack update completed
-        await uninstrumentBasedOnAllowListAndTagRule(config);
-        await initialInstrumentationByAllowList_addExtraSpan(functionNamesToInstrument, config);
-        await initialInstrumentationByTagRule_addExtraSpan(config);
+        await stackUpdateUninstrumentBasedOnAllowListAndTagRule(config);
+        await stackUpdateInstrumentByAllowList(functionNamesToInstrument, config);
+        await stackUpdateInstrumentByTagRule(config);
         console.log(`Re-instrument when CloudFormation stack is updated.`)
     }
 
@@ -137,7 +137,7 @@ async function getConfig() {
     return config;
 }
 
-async function uninstrumentBasedOnAllowListAndTagRule(config) {
+async function stackUpdateUninstrumentBasedOnAllowListAndTagRule(config) {
     // get the function that has DD_SLS_REMOTE_INSTRUMENTER_VERSION tag
     const additionalFilteringTags = {DD_SLS_REMOTE_INSTRUMENTER_VERSION: []}
     const remoteInstrumentedFunctionNames = await getFunctionNamesByTagRule(config, additionalFilteringTags);
@@ -386,11 +386,12 @@ async function getFunctionNamesFromResourceGroupsTaggingAPI(tagFilters, config) 
     return functionNames;
 }
 
-const initialInstrumentationByTagRule_addExtraSpan = tracer.wrap('Instrument.FirstTimeBulkByTagRule', initialInstrumentationByTagRule)
+const firstTimeInstrumentationByTagRule = tracer.wrap('FirstTimeBulkInstrument.ByTagRule', instrumentationByTagRule)
+const stackUpdateInstrumentByTagRule = tracer.wrap('StackUpdateInstrument.ByTagRule', instrumentationByTagRule)
 
-async function initialInstrumentationByTagRule(config) {
+async function instrumentationByTagRule(config) {
     const functionNames = await getFunctionNamesByTagRule(config);
-    await initialInstrumentationByFunctionNames_addExtraSpan(functionNames, config);
+    await instrumentByFunctionNames(functionNames, config);
 }
 
 async function getFunctionNamesByTagRule(config, additionalFilteringTags = {}) {
@@ -446,11 +447,13 @@ function getSpecifiedTagsKvMapping(specifiedTags) {  // return e.g. {"env": ["st
     return tagsKvMapping;
 }
 
-// same two wrapper but to show different span name on the trace
-const initialInstrumentationByFunctionNames_addExtraSpan = tracer.wrap('Instrument.FirstTimeBulk.ByFunctionNames', initialInstrumentationByFunctionNames)
-const initialInstrumentationByAllowList_addExtraSpan = tracer.wrap('Instrument.FirstTimeBulk.ByAllowList', initialInstrumentationByFunctionNames)
+// wrappers
+const initialInstrumentationByFunctionNames_firstTime = tracer.wrap('FirstTimeBulkInstrument.ByFunctionNames', instrumentByFunctionNames)
+const firstTimeInstrumentationByAllowList_firstTime = tracer.wrap('FirstTimeBulkInstrument.ByAllowList', instrumentByFunctionNames)
+const stackUpdateInstrumentByAllowList = tracer.wrap('StackUpdateInstrument.ByAllowList', instrumentByFunctionNames)
 
-async function initialInstrumentationByFunctionNames(functionNames, config) {
+
+async function instrumentByFunctionNames(functionNames, config) {
     if (typeof (functionNames) !== 'object' || functionNames.length === 0) {
         console.log(`functionNames is empty in initialInstrumentationWithNames().`);
         return;
