@@ -305,7 +305,7 @@ const createStackInput = {
     //     "STRING_VALUE",
     // ],
     // RoleARN: "STRING_VALUE",
-    OnFailure: "DO_NOTHING",  // DO_NOTHING, ROLLBACK, or DELETE
+    OnFailure: "DELETE",  // DO_NOTHING, ROLLBACK, or DELETE
     // StackPolicyBody: "STRING_VALUE",
     // StackPolicyURL: "STRING_VALUE",
     Tags: [
