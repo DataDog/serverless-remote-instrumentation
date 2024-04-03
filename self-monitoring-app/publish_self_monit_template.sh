@@ -78,6 +78,6 @@ echo "BUCKET: $BUCKET"
 echo "Done uploading the CloudFormation template!"
 echo
 echo "Here is the CloudFormation quick launch URL:"
-echo "https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?stackName=datadog-remote-instrument-self-monitor&templateURL=${TEMPLATE_URL}"
+echo "https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?stackName=remote-instrument-self-monitor&templateURL=${TEMPLATE_URL}"
 echo
 echo "Serverless Self-Monitoring App for Remote Instrument release process complete!"
