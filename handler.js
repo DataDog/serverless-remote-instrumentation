@@ -64,7 +64,7 @@ exports.handler = async (event, context, callback) => {
 
 //// wrappers
 // single
-const instrumentBySingleEvent = tracer.wrap('Instrument.BySingleEvent', instrumentByEvent)
+const instrumentBySingleEvent = tracer.wrap('Instrument.BySingleLambdaEvent', instrumentByEvent)
 // first time instrumentation
 const firstTimeInstrumentationByAllowList = tracer.wrap('FirstTimeBulkInstrument.ByAllowList', instrumentByFunctionNames)
 const firstTimeInstrumentationByTagRule = tracer.wrap('FirstTimeBulkInstrument.ByTagRule', instrumentationByTagRule)
@@ -251,6 +251,9 @@ async function instrumentByEvent(event, config) {
         console.log(`actuallyFunctionArn: ${actuallyFunctionArn}  arnParts: ${JSON.stringify(arnParts)}  functionName:${functionName}`);
     }
 
+    const logger = new Logger();
+    logger.log(`instrumentByEvent`, functionName, null);
+
     // filter out functions that are on the DenyList
     if (config.DenyListFunctionNameSet.has(functionName)) {
         console.log(`function ${functionName} is on the DenyList ${JSON.stringify([...config.DenyListFunctionNameSet])}`)
@@ -313,6 +316,8 @@ async function instrumentByEvent(event, config) {
             runtime = event.detail?.requestParameters?.runtime;
         }
     }
+
+    logger.log(`instrumentByEvent`, functionName, functionArn);
 
     // get runtime
     if (typeof (runtime) !== "string") {
@@ -457,7 +462,9 @@ async function instrumentByFunctionNames(functionNames, config) {
     const client = new LambdaClient({region: config.AWS_REGION});
     const instrumentedFunctionArns = [];
     for (let functionName of functionNames) {
-        console.log(`=== processing ${functionName}`)
+        const logger = new Logger();
+        logger.log(`processing ${functionName}`, functionName, null);
+        // console.log(`processing ${functionName}`)
 
         // filter out functions that are on the DenyList
         if (config.DenyListFunctionNameSet.has(functionName)) {
@@ -486,6 +493,7 @@ async function instrumentByFunctionNames(functionNames, config) {
 
             // instrument
             let functionArn = `arn:aws:lambda:${config.AWS_REGION}:${ddAwsAccountNumber}:function:${functionName}`;
+            logger.log("instrumentByFunctionNames", functionName, functionArn);
             let runtime = getFunctionCommandOutput.Configuration?.Runtime;
             if (runtime === undefined) {
                 console.error(`Unexpected runtime: ${runtime} on getFunctionCommandOutput.Configuration?.Runtime`)
@@ -678,4 +686,30 @@ async function getLatestLayersFromS3() {
     } catch (error) {
         console.error(error);
     }
+}
+
+class Logger {
+    constructor() {}
+
+    log(message, targetFunctionName=null, targetFunctionArn=null) {
+        const logEntry = {
+            message: message,
+            targetFunctionName: targetFunctionName,
+            targetFunctionArn: targetFunctionArn,
+        };
+        console.log(JSON.stringify(logEntry));
+    }
+    // warn(message) {
+    //     const logEntry = {
+    //         message: message,
+    //     };
+    //     console.warn(JSON.stringify(logEntry));
+    // }
+    //
+    // error(message) {
+    //     const logEntry = {
+    //         message: message,
+    //     };
+    //     console.error(JSON.stringify(logEntry));
+    // }
 }
