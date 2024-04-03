@@ -185,12 +185,10 @@ async function emptyBucket(bucketName, config) {
 }
 
 async function getNestedInstrumenterStackName(config) {
-// const { CloudFormationClient, DescribeStackResourcesCommand } = require("@aws-sdk/client-cloudformation"); // CommonJS import
     const client = new CloudFormationClient({region: config.AWS_REGION});
     const input = { // DescribeStackResourcesInput
         StackName: SELF_MONITOR_STACK_NAME,
         LogicalResourceId: "RemoteInstrumentNestedStack",
-        // PhysicalResourceId: "STRING_VALUE",
     };
     const command = new DescribeStackResourcesCommand(input);
     const response = await client.send(command);

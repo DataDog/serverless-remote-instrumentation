@@ -69,7 +69,7 @@ const instrumentBySingleEvent = tracer.wrap('Instrument.BySingleEvent', instrume
 const firstTimeInstrumentationByAllowList = tracer.wrap('FirstTimeBulkInstrument.ByAllowList', instrumentByFunctionNames)
 const firstTimeInstrumentationByTagRule = tracer.wrap('FirstTimeBulkInstrument.ByTagRule', instrumentationByTagRule)
 // stack update
-const stackUpdateUninstrumentBasedOnAllowListAndTagRule = tracer.wrap('StackUpdate.CheckingAnythingToUninstrument', uninstrumentBasedOnAllowListAndTagRule)
+const stackUpdateUninstrumentBasedOnAllowListAndTagRule = tracer.wrap('StackUpdate.CheckAnythingToUninstrument', uninstrumentBasedOnAllowListAndTagRule)
 const stackUpdateInstrumentByAllowList = tracer.wrap('StackUpdate.Instrument.ByAllowList', instrumentByFunctionNames)
 const stackUpdateInstrumentByTagRule = tracer.wrap('StackUpdate.Instrument.ByTagRule', instrumentationByTagRule)
 
@@ -142,7 +142,7 @@ async function getConfig() {
 
 async function uninstrumentBasedOnAllowListAndTagRule(config) {
     // get the function that has DD_SLS_REMOTE_INSTRUMENTER_VERSION tag
-    const additionalFilteringTags = {DD_SLS_REMOTE_INSTRUMENTER_VERSION: []}
+    const additionalFilteringTags = {[DD_SLS_REMOTE_INSTRUMENTER_VERSION]: []}
     const remoteInstrumentedFunctionNames = await getFunctionNamesByTagRule(config, additionalFilteringTags);
     console.log(`=== functionNames in uninstrumentBasedOnAllowListAndTagRule: ${remoteInstrumentedFunctionNames}`);
     // filter for the functions that is a) on the deny list b) not on the allow list and does not match tag rule
@@ -549,11 +549,9 @@ async function tagResourcesWithSlsTag(functionArns, config) {
     console.log(`\n version: ${DD_SLS_REMOTE_INSTRUMENTER_VERSION}:v${VERSION}`);
 
     const client = new ResourceGroupsTaggingAPIClient({region: config.AWS_REGION});
-    const tagsObj = {}
-    tagsObj[DD_SLS_REMOTE_INSTRUMENTER_VERSION] = `v${VERSION}`
     const input = {
         ResourceARNList: functionArns,
-        Tags: tagsObj,  // taking the obj to above so that DD_SLS_REMOTE_INSTRUMENTER_VERSION would not be taken as literal upper case string
+        Tags: {[DD_SLS_REMOTE_INSTRUMENTER_VERSION]: `v${VERSION}`},  // use [] to specify KEY is a variable
     }
     const tagResourcesCommand = new TagResourcesCommand(input);
     try {
