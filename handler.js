@@ -21,11 +21,12 @@ const DD_SLS_REMOTE_INSTRUMENTER_VERSION = "dd_sls_remote_instrumenter_version"
 const logger = new Logger();
 
 // consts
+const DENIED = "DENIED"
 const FAILED = "FAILED"
 const INSTRUMENT = "INSTRUMENT"
+const PROCESSING = "PROCESSING"
 const SUCCEEDED = "SUCCEEDED"
 const UNINSTRUMENT = "UNINSTRUMENT"
-
 
 
 exports.handler = async (event, context, callback) => {
@@ -260,19 +261,23 @@ async function instrumentByEvent(event, config) {
     }
 
     logger.log(`instrumentByEvent`, functionName, null);
+    logger.debugStatus("LambdaEvent", PROCESSING, functionName, "Lambda management event is received and starting instrumentation")
 
     // filter out functions that are on the DenyList
     if (config.DenyListFunctionNameSet.has(functionName)) {
         console.log(`function ${functionName} is on the DenyList ${JSON.stringify([...config.DenyListFunctionNameSet])}`)
+        logger.debugStatus("LambdaEvent", PROCESSING, functionName, `function ${functionName} is on the DenyList ${JSON.stringify([...config.DenyListFunctionNameSet])}. Instrumentation has stopped.`)
         return;
     }
 
-    // check if lambda management events is for function that are specified to be instrumented
+    // check if lambda management events is for function that are in the allow list
     if (config.AllowListFunctionNameSet.has(functionName)) {
         functionFromEventIsInAllowList = true
         console.log(`=== ${functionName} in the AllowListFunctionNameSet: ${JSON.stringify([...config.AllowListFunctionNameSet])} ===`)
+        logger.debugStatus("LambdaEvent", PROCESSING, functionName, `${functionName} in the AllowListFunctionNameSet: ${JSON.stringify([...config.AllowListFunctionNameSet])}`)
     } else {
         console.log(`=== ${functionName} is NOT in the AllowListFunctionNameSet: ${JSON.stringify([...config.AllowListFunctionNameSet])} ===`)
+        logger.debugStatus("LambdaEvent", PROCESSING, functionName, `${functionName} is NOT in the AllowListFunctionNameSet: ${JSON.stringify([...config.AllowListFunctionNameSet])}`)
     }
 
     // check if the function has the tags that pass TagRule
@@ -292,18 +297,21 @@ async function instrumentByEvent(event, config) {
             const layers = getFunctionCommandOutput.Configuration.Layers || [];
             const targetLambdaRuntime = getFunctionCommandOutput.Configuration.Runtime || "";
             if (functionIsInstrumentedWithSpecifiedLayerVersions(layers, config, targetLambdaRuntime)) {
-                console.log(`\n=== Function ${functionName} is already instrumented with correct extension and tracer layer versions! `);
+                console.log(`\n Function ${functionName} is already instrumented with correct extension and tracer layer versions! `);
+                logger.debugStatus("LambdaEvent", PROCESSING, functionName, `Function ${functionName} is already instrumented with correct extension and tracer layer versions! `)
                 return;
             }
 
             const specifiedTags = getRemoteInstrumentTagsFromConfig(config)  // tags: ['k1:v1', 'k2:v2']
             if (typeof (specifiedTags) === "object" && specifiedTags.length !== 0 && !shouldBeRemoteInstrumentedByTag(getFunctionCommandOutput, specifiedTags)) {
-                console.log(`\n=== Skipping remote instrumentation for function ${functionName}. It should not be remote instrumented by TagRule nor by AllowList`)
+                console.log(`\n Skipping remote instrumentation for function ${functionName}. It does not fit TagRule nor is in the AllowList`)
+                logger.debugStatus("LambdaEvent", PROCESSING, functionName, `Skipping remote instrumentation for function ${functionName}. It does not fit TagRule nor is in the AllowList`)
                 return;
             }
         } catch (error) {
             // simply skip this current instrumentation of the function.
             console.log(`\nError is caught for functionName ${functionName}. Skipping instrumenting this function. Error is: ${error}`);
+            logger.debugStatus("LambdaEvent", PROCESSING, functionName, `Error is caught for functionName ${functionName}. Skipping instrumenting this function. Error is: ${error}`)
         }
     }
 
@@ -519,7 +527,8 @@ async function instrumentWithDatadogCi(functionArn, uninstrument = false, runtim
     // filter out functions that are on the DenyList
     const functionName = functionArn.split(':')[6];
     if (uninstrument === false && config.DenyListFunctionNameSet.has(functionName)) {
-        console.log(`function ${functionName} will not be instrumented because it is on the DenyList ${JSON.stringify(config.DenyListFunctionNameSet)}.`);
+        console.log(`function ${functionName} will not be instrumented because it is in the DenyList ${JSON.stringify(config.DenyListFunctionNameSet)}.`);
+        logger.debugStatus("Instrument", DENIED, functionName, `function ${functionName} will not be instrumented because it is in the DenyList ${JSON.stringify(config.DenyListFunctionNameSet)}.`)
         return;
     }
 
@@ -699,9 +708,10 @@ async function getLatestLayersFromS3() {
 }
 
 class Logger {
-    constructor() {}
+    constructor() {
+    }
 
-    log(message, targetFunctionName=null, targetFunctionArn=null) {
+    log(message, targetFunctionName = null, targetFunctionArn = null) {
         const logEntry = {
             message: message,
             targetFunctionName: targetFunctionName,
@@ -710,9 +720,9 @@ class Logger {
         console.log(JSON.stringify(logEntry));
     }
 
-    logInstrumentStatus(operation, status, targetFunctionName=null, targetFunctionArn=null, extensionVersion=null, runtime=null) {
+    logInstrumentStatus(eventName, status, targetFunctionName = null, targetFunctionArn = null, extensionVersion = null, runtime = null) {
         console.log(JSON.stringify({
-            operation: operation,
+            eventName: eventName,
             status: status,
             targetFunctionName: targetFunctionName,
             targetFunctionArn: targetFunctionArn,
@@ -721,10 +731,12 @@ class Logger {
         }));
     }
 
-    logStackStatus(operation, status) {
+    debugStatus(eventName, status, functionName, message = null) {
         console.log(JSON.stringify({
-            operation: operation,
+            eventName: eventName,
             status: status,
+            functionName: functionName,
+            message: message,
         }));
     }
 
