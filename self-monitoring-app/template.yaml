@@ -521,7 +521,7 @@ Resources:
       - ModifierLambdaFunction
     Properties:
       Description: "Triggered every hour at minute 5"
-      ScheduleExpression: "cron(0,30 * * * ? *)"
+      ScheduleExpression: "cron(59,29 * * * ? *)"
       State: "ENABLED"
       Targets:
         - Arn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ModifierLambdaFunctionName}
