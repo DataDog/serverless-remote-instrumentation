@@ -26,34 +26,23 @@ exports.handler = async (event, context, callback) => {
     console.log(`\n process: ${JSON.stringify(process.env)}`)
 
     const config = await getConfig();
-    const functionNamesToInstrument = getFunctionNamesFromString(config.AllowList)
+    const allowListFunctionNames = getFunctionNamesFromString(config.AllowList);
 
-    const span = tracer.scope().active();
-    if (span !== null) {
-        span.setTag('event', event)
-        span.setTag('context', context)
-    }
-
-    // *** Instrument ***
-    // CloudTrail Lambda event
+    // One Lambda CloudTrail management event, only at most one Lambda will be updated
     if (event.hasOwnProperty("detail-type") && event.hasOwnProperty("source") && event.source === "aws.lambda") {
-        const eventNamesToSkip = new Set(["DeleteFunction20150331", "AddPermission20150331"])
-        if (eventNamesToSkip.has(event.detail?.eventName)) {
-            return;
-        }
-        await instrumentWithEvents_withTrace(event, functionNamesToInstrument, config);
+        await instrumentBySingleEvent(event, config);
         return;  // do not run initial bulk instrument nor uninstrument
     }
 
-    // initial instrumentation for CloudFormation lifeCycle custom resource
+    // first time instrumentation by CloudFormation lifeCycle custom resource
     if (event.hasOwnProperty("RequestType")) {
         if (event.RequestType === "Delete") {
             console.log(`\n === Getting CloudFormation Delete event.`);
             await cfnResponse.send(event, context, "SUCCESS");  // send to response to CloudFormation custom resource endpoint to continue stack deletion
             return;  // do not continue with initial instrumentation
         }
-        await initialInstrumentationWithSpecifiedFunctionNames_withTrace(functionNamesToInstrument, config);
-        await initialInstrumentationWithSpecifiedTags_withTrace(config);
+        await firstTimeInstrumentationByAllowList(allowListFunctionNames, config);
+        await firstTimeInstrumentationByTagRule(config);
         console.log(`\n === sending SUCCESS back to cloudformation`);
         await cfnResponse.send(event, context, "SUCCESS");  // send to response to CloudFormation custom resource endpoint to continue stack creation
 
@@ -64,22 +53,25 @@ exports.handler = async (event, context, callback) => {
         && event.detail["status-details"] !== undefined
         && event.detail["status-details"].status === "UPDATE_COMPLETE") {
         // CloudTrail event triggered by CloudFormation stack update completed
-        await initialInstrumentationWithSpecifiedFunctionNames_withTrace(functionNamesToInstrument, config);
-        await initialInstrumentationWithSpecifiedTags_withTrace(config);
+        await stackUpdateUninstrumentBasedOnAllowListAndTagRule(config);
+        await stackUpdateInstrumentByAllowList(allowListFunctionNames, config);
+        await stackUpdateInstrumentByTagRule(config);
         console.log(`Re-instrument when CloudFormation stack is updated.`)
     }
 
-    // *** Uninstrument ***
-    if (config.DenyList !== '') {
-        const functionNamesToUninstrument = getFunctionNamesFromString(config.DenyList)
-        await uninstrumentFunctions_withTrace(functionNamesToUninstrument, config);
-        return `✅↩ Lambda uninstrument already-remote-instrumented function(s) finished without failing.`;
-    }
     return `✅ Lambda instrument function(s) finished without failing.`;
 };
 
-const uninstrumentFunctions_withTrace = tracer.wrap("BulkUninstrumentFunctions", uninstrumentFunctions)
-const instrumentWithEvents_withTrace = tracer.wrap('Instrument.SingleEvent', instrumentWithEvent)
+//// wrappers
+// single
+const instrumentBySingleEvent = tracer.wrap('Instrument.BySingleEvent', instrumentByEvent)
+// first time instrumentation
+const firstTimeInstrumentationByAllowList = tracer.wrap('FirstTimeBulkInstrument.ByAllowList', instrumentByFunctionNames)
+const firstTimeInstrumentationByTagRule = tracer.wrap('FirstTimeBulkInstrument.ByTagRule', instrumentationByTagRule)
+// stack update
+const stackUpdateUninstrumentBasedOnAllowListAndTagRule = tracer.wrap('StackUpdate.CheckingAnythingToUninstrument', uninstrumentBasedOnAllowListAndTagRule)
+const stackUpdateInstrumentByAllowList = tracer.wrap('StackUpdate.Instrument.ByAllowList', instrumentByFunctionNames)
+const stackUpdateInstrumentByTagRule = tracer.wrap('StackUpdate.Instrument.ByTagRule', instrumentationByTagRule)
 
 async function getConfig() {
 
@@ -117,7 +109,7 @@ async function getConfig() {
                 layerVersions.rubyLayerVersion = getVersionFromLayerArn(jsonData, 'Datadog-Ruby3-2')
             }
         } catch (error) {
-            console.error('Error parsing s3 layer JSON:', error);
+            console.error('Error parsing s3 layer JSON:', error)
         }
     }
 
@@ -128,8 +120,10 @@ async function getConfig() {
 
         // instrumentation and uninstrumentation
         AllowList: process.env.AllowList,
+        AllowListFunctionNameSet: new Set(getFunctionNamesFromString(process.env.AllowList)),
         TagRule: process.env.TagRule,
         DenyList: process.env.DenyList,
+        DenyListFunctionNameSet: new Set(getFunctionNamesFromString(process.env.DenyList)),
 
         // layer version
         DD_EXTENSION_LAYER_VERSION: process.env.DD_EXTENSION_LAYER_VERSION,
@@ -141,28 +135,51 @@ async function getConfig() {
         DD_LAYER_VERSIONS: layerVersions,
     };
     console.log(`\n config: ${JSON.stringify(config)}`)
+    console.log(`\n AllowListFunctionNameSet: ${JSON.stringify([...config.AllowListFunctionNameSet])}`)
+    console.log(`\n DenyListFunctionNameSet: ${JSON.stringify([...config.DenyListFunctionNameSet])}`)
     return config;
 }
 
-async function uninstrumentFunctions(functionNamesToUninstrument, config) {
-    const span = tracer.scope().active();
-    if (span !== null) {
-        span.setTag('functionNamesToUninstrument', functionNamesToUninstrument)
-    }
-    console.log(`\n functionNamesToUninstrument: ${functionNamesToUninstrument}`)
+async function uninstrumentBasedOnAllowListAndTagRule(config) {
+    // get the function that has DD_SLS_REMOTE_INSTRUMENTER_VERSION tag
+    const additionalFilteringTags = {DD_SLS_REMOTE_INSTRUMENTER_VERSION: []}
+    const remoteInstrumentedFunctionNames = await getFunctionNamesByTagRule(config, additionalFilteringTags);
+    console.log(`=== functionNames in uninstrumentBasedOnAllowListAndTagRule: ${remoteInstrumentedFunctionNames}`);
+    // filter for the functions that is a) on the deny list b) not on the allow list and does not match tag rule
+    // return function name
 
+    const functionNamesByTagRule = await getFunctionNamesByTagRule(config);
+
+    const remoteInstrumentedFunctionsSet = new Set(remoteInstrumentedFunctionNames);
+    const functionsThatShouldBeRemoteInstrumented = new Set(functionNamesByTagRule);
+
+    // uninstrument these functions:
+    const functionsToBeUninstrumented = Array.from(remoteInstrumentedFunctionsSet)
+        .filter(functionName => (
+                (
+                    !functionsThatShouldBeRemoteInstrumented.has(functionName)
+                    && !config.AllowListFunctionNameSet.has(functionName)
+                )
+                || config.DenyListFunctionNameSet.has(functionName)
+            )
+        )
+    console.log(`functionsToBeUninstrumented: ${JSON.stringify(functionsToBeUninstrumented)}`);
+    await uninstrumentFunctions(functionsToBeUninstrumented, config);
+}
+
+async function uninstrumentFunctions(functionNamesToUninstrument, config) {
     function sleep(ms) {
         return new Promise((resolve) => {
             setTimeout(resolve, ms);
         });
     }
 
-    console.log(`\n waiting for 5 seconds for instrument to complete before running unistrument to avoid "The operation cannot be performed at this time. An update is in progress."`)
-    await sleep(5000);
+    console.log(`\n waiting for 10 seconds for instrument to complete before running unistrument to avoid "The operation cannot be performed at this time. An update is in progress."`)
+    await sleep(10000);
 
     const uninstrumentedFunctionArns = [];
     for (let functionName of functionNamesToUninstrument) {
-        console.log(`\n functionName in functionNamesToUninstrument : ${functionName}`)
+        console.log(`functionName in functionNamesToUninstrument: ${functionName}`)
         const functionArn = `arn:aws:lambda:${config.AWS_REGION}:${config.DD_AWS_ACCOUNT_NUMBER}:function:${functionName}`;
         await instrumentWithDatadogCi(functionArn, true, NODE, config, uninstrumentedFunctionArns);
     }
@@ -178,11 +195,11 @@ function getRemoteInstrumentTagsFromConfig(config) {
 
 function getFunctionNamesFromString(s) {
     const functionNamesArray = s.split(',');
-    console.log("Functions specified to be instrumented/uninstrumented are:", functionNamesArray)
+    console.log("Function names parsed by getFunctionNamesFromString:", functionNamesArray)
     return functionNamesArray;
 }
 
-function validateEventIsExpected(event) {
+function validateEvent(event) {
     // safety guard against unexpected event format that should have been filtered by EventBridge Rule
 
     const expectedEventNameSet = new Set(["UpdateFunctionConfiguration20150331v2", "CreateFunction20150331", "DeleteLayerVersion20181031"])
@@ -196,30 +213,30 @@ function validateEventIsExpected(event) {
 
     if (!expectedEventNameSet.has(event["detail"]["eventName"])) {
         throw new Error(`event.detail.eventName is not expected. Event: ${JSON.stringify(event)}`);
-        return false;
     }
 }
 
-async function instrumentWithEvent(event, specifiedFunctionNames, config) {
+async function instrumentByEvent(event, config) {
+    const eventNamesToSkip = new Set([
+        "AddPermission20150331",
+        "AddPermission20150331v2",
+        "DeleteFunction20150331",
+        "PublishLayerVersion20181031",
+        "RemovePermission20150331",
+        "RemovePermission20150331v2",
+        "UpdateFunctionCode20150331v2",
+    ])
+    if (eventNamesToSkip.has(event.detail?.eventName)) {
+        console.log(`${event.detail?.eventName} event is received. Skipping.`)
+        return;
+    }
     if (event["detail"]["eventName"] === 'UntagResource20170331v2' ||
         event["detail"]["eventName"] === 'TagResource20170331v2') {
         console.log(`TODO: (Un)TagResource20170331v2 is not yet implemented yet.`)
         return;
     }
-    // not sure why instrumenter is receiving this event. but skipping for now.
-    if (event["detail"]["eventName"] === 'AddPermission20150331v2') {
-        console.log(`An "AddPermission20150331v2" event is received. Do nothing and end the invocation now.`)
-        return;
-    }
-    // not sure why instrumenter is receiving this event. but skipping for now.
-    if (event["detail"]["eventName"] === 'UpdateFunctionCode20150331v2') {
-        console.log(`An "UpdateFunctionCode20150331v2" event is received. Do nothing and end the invocation now.`)
-        return;
-    }
 
-    validateEventIsExpected(event)
-
-    const specifiedFunctionNameSet = new Set(specifiedFunctionNames)
+    validateEvent(event);
 
     let functionFromEventIsInAllowList = false;
     let functionName = event.detail.requestParameters.functionName;
@@ -233,12 +250,18 @@ async function instrumentWithEvent(event, specifiedFunctionNames, config) {
         console.log(`actuallyFunctionArn: ${actuallyFunctionArn}  arnParts: ${JSON.stringify(arnParts)}  functionName:${functionName}`);
     }
 
+    // filter out functions that are on the DenyList
+    if (config.DenyListFunctionNameSet.has(functionName)) {
+        console.log(`function ${functionName} is on the DenyList ${JSON.stringify([...config.DenyListFunctionNameSet])}`)
+        return;
+    }
+
     // check if lambda management events is for function that are specified to be instrumented
-    if (specifiedFunctionNameSet.has(functionName)) {
+    if (config.AllowListFunctionNameSet.has(functionName)) {
         functionFromEventIsInAllowList = true
-        console.log(`=== ${functionName} in the specifiedFunctionNameSet: ${JSON.stringify(specifiedFunctionNames)} ===`)
+        console.log(`=== ${functionName} in the AllowListFunctionNameSet: ${JSON.stringify([...config.AllowListFunctionNameSet])} ===`)
     } else {
-        console.log(`=== ${functionName} is NOT in the specifiedFunctionNameSet: ${JSON.stringify(specifiedFunctionNames)} ===`)
+        console.log(`=== ${functionName} is NOT in the AllowListFunctionNameSet: ${JSON.stringify([...config.AllowListFunctionNameSet])} ===`)
     }
 
     // check if the function has the tags that pass TagRule
@@ -326,7 +349,6 @@ function shouldBeRemoteInstrumentedByTag(getFunctionCommandOutput, specifiedTags
 
 async function getFunctionNamesFromResourceGroupsTaggingAPI(tagFilters, config) {
     // aws-vault exec sso-serverless-sandbox-account-admin-8h -- aws resourcegroupstaggingapi get-resources --tag-filters Key=DD_AUTO_INSTRUMENT_ENABLED,Values=true --resource-type-filters="lambda:function" --region sa-east-1
-    // aws-vault exec sso-serverless-sandbox-account-admin-8h -- aws resourcegroupstaggingapi get-resources --tag-filters Key=createdBy,Values=kimi --resource-type-filters="lambda:function" --region sa-east-1
     const client = new ResourceGroupsTaggingAPIClient({region: config.AWS_REGION});
     const input = {
         TagFilters: tagFilters,
@@ -366,9 +388,12 @@ async function getFunctionNamesFromResourceGroupsTaggingAPI(tagFilters, config) 
     return functionNames;
 }
 
-const initialInstrumentationWithSpecifiedTags_withTrace = tracer.wrap('BulkInstrument.SpecifiedTags', initialInstrumentationWithSpecifiedTags)
+async function instrumentationByTagRule(config) {
+    const functionNames = await getFunctionNamesByTagRule(config);
+    await instrumentByFunctionNames(functionNames, config);
+}
 
-async function initialInstrumentationWithSpecifiedTags(config) {
+async function getFunctionNamesByTagRule(config, additionalFilteringTags = {}) {
     const specifiedTags = getRemoteInstrumentTagsFromConfig(config);  // tags: ['k1:v1', 'k2:v2']
     console.log(`== specifiedTags: ${specifiedTags}`);
     if (specifiedTags === undefined || specifiedTags.length === 0) {
@@ -376,41 +401,52 @@ async function initialInstrumentationWithSpecifiedTags(config) {
     }
     console.log(`== RemoteInstrumentTagsFromEnvVar: ${specifiedTags}`);
 
-    const tagKvMapping = getSpecifiedTagsKvMapping(specifiedTags);
+    const tagsKvMapping = getSpecifiedTagsKvMapping(specifiedTags);
+
+    // additionalFilteringTags = { "service": ["service1", "service2"] }
+    if (Object.keys(additionalFilteringTags).length !== 0) {
+        for (const [key, value] of Object.entries(additionalFilteringTags)) {
+            if (!tagsKvMapping.hasOwnProperty(key)) {  // in case of key collisions
+                tagsKvMapping[key] = value
+            }
+        }
+    }
+
+    console.log(`After merging tagsKvMapping and additionalFilteringTags, tagsKvMapping is ${JSON.stringify(tagsKvMapping)}`);
 
     const tagFilters = [];
-    for (const [key, value] of Object.entries(tagKvMapping)) {
-        tagFilters.push({
-            Key: key,
-            Values: value,
-        })
+    for (const [key, value] of Object.entries(tagsKvMapping)) {
+        if (value.length > 0) {
+            tagFilters.push({
+                Key: key,
+                Values: value,
+            })
+        } else {  // API returns all resources with `Key` no matter what `Values` field is
+            tagFilters.push({
+                Key: key,
+            })
+        }
     }
     console.log(`== tagFilters: ${JSON.stringify(tagFilters)}`);
 
     const functionNames = await getFunctionNamesFromResourceGroupsTaggingAPI(tagFilters, config);
-    await initialInstrumentationWithSpecifiedFunctionNames_withTrace(functionNames, config);
+    return functionNames;
 }
 
 function getSpecifiedTagsKvMapping(specifiedTags) {  // return e.g. {"env": ["staging", "prod"], "team": ["serverless"]}
-    const tagKvMapping = {};  // default dict of list to hold values of the same key
+    const tagsKvMapping = {};  // default dict of list to hold values of the same key
     for (let tag of specifiedTags) {
         let [k, v] = tag.split(':');
-        if (!tagKvMapping.hasOwnProperty(k)) {
-            tagKvMapping[k] = []
+        if (!tagsKvMapping.hasOwnProperty(k)) {
+            tagsKvMapping[k] = []
         }
-        tagKvMapping[k].push(v)
+        tagsKvMapping[k].push(v)
     }
-    console.log(`== tagKvMapping: ${JSON.stringify(tagKvMapping)}`)
-    return tagKvMapping;
+    console.log(`== tagKvMapping: ${JSON.stringify(tagsKvMapping)}`)
+    return tagsKvMapping;
 }
 
-const initialInstrumentationWithSpecifiedFunctionNames_withTrace = tracer.wrap('BulkInstrument.SpecifiedFunctionNames', initialInstrumentationWithSpecifiedFunctionNames)
-
-async function initialInstrumentationWithSpecifiedFunctionNames(functionNames, config) {
-    const span = tracer.scope().active();
-    if (span !== null) {
-        span.setTag('specifiedFunctionNames', functionNames);
-    }
+async function instrumentByFunctionNames(functionNames, config) {
     if (typeof (functionNames) !== 'object' || functionNames.length === 0) {
         console.log(`functionNames is empty in initialInstrumentationWithNames().`);
         return;
@@ -421,6 +457,13 @@ async function initialInstrumentationWithSpecifiedFunctionNames(functionNames, c
     const instrumentedFunctionArns = [];
     for (let functionName of functionNames) {
         console.log(`=== processing ${functionName}`)
+
+        // filter out functions that are on the DenyList
+        if (config.DenyListFunctionNameSet.has(functionName)) {
+            console.log(`function ${functionName} is on the DenyList ${JSON.stringify(config.DenyListFunctionNameSet)}`)
+            continue;
+        }
+
         // call get function api
         const params = {
             FunctionName: functionName
@@ -458,6 +501,13 @@ async function initialInstrumentationWithSpecifiedFunctionNames(functionNames, c
 
 async function instrumentWithDatadogCi(functionArn, uninstrument = false, runtime = NODE, config, functionArns) {
     console.log(`instrumentWithDatadogCi: functionArns: ${functionArns} , uninstrument: ${uninstrument}`)
+    // filter out functions that are on the DenyList
+    const functionName = functionArn.split(':')[6];
+    if (uninstrument === false && config.DenyListFunctionNameSet.has(functionName)) {
+        console.log(`function ${functionName} will not be instrumented because it is on the DenyList ${JSON.stringify(config.DenyListFunctionNameSet)}.`);
+        return;
+    }
+
     const cli = datadogCi.cli;
     const layerVersionObj = await getLayerAndRuntimeVersion(runtime, config);
 
@@ -498,9 +548,11 @@ async function tagResourcesWithSlsTag(functionArns, config) {
     console.log(`\n version: ${DD_SLS_REMOTE_INSTRUMENTER_VERSION}:v${VERSION}`);
 
     const client = new ResourceGroupsTaggingAPIClient({region: config.AWS_REGION});
+    const tagsObj = {}
+    tagsObj[DD_SLS_REMOTE_INSTRUMENTER_VERSION] = `v${VERSION}`
     const input = {
         ResourceARNList: functionArns,
-        Tags: {DD_SLS_REMOTE_INSTRUMENTER_VERSION: `v${VERSION}`}
+        Tags: tagsObj,  // taking the obj to above so that DD_SLS_REMOTE_INSTRUMENTER_VERSION would not be taken as literal upper case string
     }
     const tagResourcesCommand = new TagResourcesCommand(input);
     try {
@@ -525,7 +577,7 @@ async function untagResourcesOfSlsTag(functionArns, config) {
     const untagResourcesCommand = new UntagResourcesCommand(input);
     try {
         const untagResourcesCommandOutput = await client.send(untagResourcesCommand);
-        console.log(`=== api call output of getResourcesCommand: ${JSON.stringify(untagResourcesCommandOutput.ResourceTagMappingList)}`)
+        console.log(`=== api call output of untagResourcesCommandOutput: ${JSON.stringify(untagResourcesCommandOutput.ResourceTagMappingList)}`)
     } catch (error) {
         console.error(`\n error: ${error.toString()} when untagging resources`);
     }
