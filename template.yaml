@@ -9,7 +9,7 @@ Description: >
 Mappings:
   Constants:
     DatadogRemoteInstrumentDemoApp:
-      Version: 0.1.0
+      Version: 0.0.1
 
 Parameters:
   DdApiKey:
@@ -31,10 +31,10 @@ Parameters:
     Type: String
     Default: datadog-remote-instrumenter
     Description: >-
-      Define the Lambda fulnction name which is instrumenting the other Lambda functions.
+      Define the Lambda function name which is instrumenting the other Lambda functions.
   BucketName:
     Type: String
-    Default: datadog-serverless-instrumentation-5
+    Default: remote-instrument-sa-east-1
   TrailName:
     Type: String
     Default: datadog-serverless-instrumentation-trail
@@ -43,13 +43,13 @@ Parameters:
     Default: '425362996713'
   AllowList:
     Type: String
-    Default: test-auto-instrument-node,test-auto-instrument-another-node,test-auto-instrument-does-not-exist,test-auto-instrument-python,test-auto-instrument-to-be-uninstrumented
+    Default: test-remote-instrument-node,test-remote-instrument-another-node,test-remote-instrument-does-not-exist,test-remote-instrument-python
   TagRule:
     Type: String
     Default: DD_REMOTE_INSTRUMENT_ENABLED:true
   DenyList:
     Type: String
-    Default: test-auto-instrument-to-be-uninstrumented
+    Default: test-remote-instrument-another-node
   DdExtensionLayerVersion:
     Type: String
     Default: '50'
@@ -83,6 +83,7 @@ Resources:
       Architectures:
       - arm64
       Runtime: nodejs20.x
+      ReservedConcurrentExecutions: 1
       Timeout: 840
       MemorySize: 512
       Role: !GetAtt LambdaExecutionRole.Arn
@@ -101,7 +102,8 @@ Resources:
           DD_TRACE_DEBUG: false
           DD_SERVICE: Datadog-Instrument
           DD_ENV: dev
-          DD_VERSION: 0.1.0
+          # DD_VERSION can be used to select trace by
+          DD_VERSION: 0.0.3
           DD_SITE: !Ref DdSite
           DD_AWS_ACCOUNT_NUMBER: !Ref DdAwsAccountNumber
           AllowList: !Ref AllowList
