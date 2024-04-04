@@ -18,6 +18,14 @@ const RUBY = "ruby"
 const JAVA = "java"
 const DOTNET = "dotnet"
 const DD_SLS_REMOTE_INSTRUMENTER_VERSION = "dd_sls_remote_instrumenter_version"
+const logger = new Logger();
+
+// consts
+const FAILED = "FAILED"
+const INSTRUMENT = "INSTRUMENT"
+const SUCCEEDED = "SUCCEEDED"
+const UNINSTRUMENT = "UNINSTRUMENT"
+
 
 
 exports.handler = async (event, context, callback) => {
@@ -251,7 +259,6 @@ async function instrumentByEvent(event, config) {
         console.log(`actuallyFunctionArn: ${actuallyFunctionArn}  arnParts: ${JSON.stringify(arnParts)}  functionName:${functionName}`);
     }
 
-    const logger = new Logger();
     logger.log(`instrumentByEvent`, functionName, null);
 
     // filter out functions that are on the DenyList
@@ -462,7 +469,6 @@ async function instrumentByFunctionNames(functionNames, config) {
     const client = new LambdaClient({region: config.AWS_REGION});
     const instrumentedFunctionArns = [];
     for (let functionName of functionNames) {
-        const logger = new Logger();
         logger.log(`processing ${functionName}`, functionName, null);
         // console.log(`processing ${functionName}`)
 
@@ -508,8 +514,8 @@ async function instrumentByFunctionNames(functionNames, config) {
     await tagResourcesWithSlsTag(instrumentedFunctionArns, config);
 }
 
-async function instrumentWithDatadogCi(functionArn, uninstrument = false, runtime = NODE, config, functionArns) {
-    console.log(`instrumentWithDatadogCi: functionArns: ${functionArns} , uninstrument: ${uninstrument}`)
+async function instrumentWithDatadogCi(functionArn, uninstrument = false, runtime = NODE, config, operatedFunctionArns) {
+    console.log(`instrumentWithDatadogCi: functionArns: ${operatedFunctionArns} , uninstrument: ${uninstrument}`)
     // filter out functions that are on the DenyList
     const functionName = functionArn.split(':')[6];
     if (uninstrument === false && config.DenyListFunctionNameSet.has(functionName)) {
@@ -535,16 +541,20 @@ async function instrumentWithDatadogCi(functionArn, uninstrument = false, runtim
     if (commandExitCode === 0) {
         if (uninstrument === false) {
             console.log(`✅ Function ${functionArn} is instrumented with datadog-ci.`);
+            logger.logInstrumentStatus(INSTRUMENT, SUCCEEDED, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
         } else {
             console.log(`✅ Function ${functionArn} is uninstrumented with datadog-ci.`);
+            logger.logInstrumentStatus(UNINSTRUMENT, SUCCEEDED, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
         }
-        functionArns.push(functionArn);
-        console.log(`now functionArns: ${JSON.stringify(functionArns)}`)
+        operatedFunctionArns.push(functionArn);
+        console.log(`operatedFunctionArns: ${JSON.stringify(operatedFunctionArns)}`)
     } else {
         if (uninstrument === false) {
             console.log(`❌ datadog-ci instrumentation failed for function ${functionArn}`);
+            logger.logInstrumentStatus(INSTRUMENT, FAILED, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
         } else {
             console.log(`❌ datadog-ci uninstrumentation failed for function ${functionArn}`);
+            logger.logInstrumentStatus(UNINSTRUMENT, FAILED, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
         }
     }
 }
@@ -699,6 +709,25 @@ class Logger {
         };
         console.log(JSON.stringify(logEntry));
     }
+
+    logInstrumentStatus(operation, status, targetFunctionName=null, targetFunctionArn=null, extensionVersion=null, runtime=null) {
+        console.log(JSON.stringify({
+            operation: operation,
+            status: status,
+            targetFunctionName: targetFunctionName,
+            targetFunctionArn: targetFunctionArn,
+            expectedExtensionVersion: extensionVersion,
+            runtime: runtime,
+        }));
+    }
+
+    logStackStatus(operation, status) {
+        console.log(JSON.stringify({
+            operation: operation,
+            status: status,
+        }));
+    }
+
     // warn(message) {
     //     const logEntry = {
     //         message: message,
