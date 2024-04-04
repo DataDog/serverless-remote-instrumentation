@@ -24,6 +24,7 @@ const logger = new Logger();
 const DENIED = "DENIED"
 const FAILED = "FAILED"
 const INSTRUMENT = "INSTRUMENT"
+const IN_PROGRESS = "IN_PROGRESS"
 const PROCESSING = "PROCESSING"
 const SUCCEEDED = "SUCCEEDED"
 const UNINSTRUMENT = "UNINSTRUMENT"
@@ -260,12 +261,10 @@ async function instrumentByEvent(event, config) {
         console.log(`actuallyFunctionArn: ${actuallyFunctionArn}  arnParts: ${JSON.stringify(arnParts)}  functionName:${functionName}`);
     }
 
-    logger.log(`instrumentByEvent`, functionName, null);
     logger.debugStatus("LambdaEvent", PROCESSING, functionName, "Lambda management event is received and starting instrumentation")
 
     // filter out functions that are on the DenyList
     if (config.DenyListFunctionNameSet.has(functionName)) {
-        console.log(`function ${functionName} is on the DenyList ${JSON.stringify([...config.DenyListFunctionNameSet])}`)
         logger.debugStatus("LambdaEvent", PROCESSING, functionName, `function ${functionName} is on the DenyList ${JSON.stringify([...config.DenyListFunctionNameSet])}. Instrumentation has stopped.`)
         return;
     }
@@ -273,10 +272,8 @@ async function instrumentByEvent(event, config) {
     // check if lambda management events is for function that are in the allow list
     if (config.AllowListFunctionNameSet.has(functionName)) {
         functionFromEventIsInAllowList = true
-        console.log(`=== ${functionName} in the AllowListFunctionNameSet: ${JSON.stringify([...config.AllowListFunctionNameSet])} ===`)
         logger.debugStatus("LambdaEvent", PROCESSING, functionName, `${functionName} in the AllowListFunctionNameSet: ${JSON.stringify([...config.AllowListFunctionNameSet])}`)
     } else {
-        console.log(`=== ${functionName} is NOT in the AllowListFunctionNameSet: ${JSON.stringify([...config.AllowListFunctionNameSet])} ===`)
         logger.debugStatus("LambdaEvent", PROCESSING, functionName, `${functionName} is NOT in the AllowListFunctionNameSet: ${JSON.stringify([...config.AllowListFunctionNameSet])}`)
     }
 
@@ -297,20 +294,17 @@ async function instrumentByEvent(event, config) {
             const layers = getFunctionCommandOutput.Configuration.Layers || [];
             const targetLambdaRuntime = getFunctionCommandOutput.Configuration.Runtime || "";
             if (functionIsInstrumentedWithSpecifiedLayerVersions(layers, config, targetLambdaRuntime)) {
-                console.log(`\n Function ${functionName} is already instrumented with correct extension and tracer layer versions! `);
                 logger.debugStatus("LambdaEvent", PROCESSING, functionName, `Function ${functionName} is already instrumented with correct extension and tracer layer versions! `)
                 return;
             }
 
             const specifiedTags = getRemoteInstrumentTagsFromConfig(config)  // tags: ['k1:v1', 'k2:v2']
             if (typeof (specifiedTags) === "object" && specifiedTags.length !== 0 && !shouldBeRemoteInstrumentedByTag(getFunctionCommandOutput, specifiedTags)) {
-                console.log(`\n Skipping remote instrumentation for function ${functionName}. It does not fit TagRule nor is in the AllowList`)
                 logger.debugStatus("LambdaEvent", PROCESSING, functionName, `Skipping remote instrumentation for function ${functionName}. It does not fit TagRule nor is in the AllowList`)
                 return;
             }
         } catch (error) {
             // simply skip this current instrumentation of the function.
-            console.log(`\nError is caught for functionName ${functionName}. Skipping instrumenting this function. Error is: ${error}`);
             logger.debugStatus("LambdaEvent", PROCESSING, functionName, `Error is caught for functionName ${functionName}. Skipping instrumenting this function. Error is: ${error}`)
         }
     }
@@ -527,8 +521,7 @@ async function instrumentWithDatadogCi(functionArn, uninstrument = false, runtim
     // filter out functions that are on the DenyList
     const functionName = functionArn.split(':')[6];
     if (uninstrument === false && config.DenyListFunctionNameSet.has(functionName)) {
-        console.log(`function ${functionName} will not be instrumented because it is in the DenyList ${JSON.stringify(config.DenyListFunctionNameSet)}.`);
-        logger.debugStatus("Instrument", DENIED, functionName, `function ${functionName} will not be instrumented because it is in the DenyList ${JSON.stringify(config.DenyListFunctionNameSet)}.`)
+        logger.debugStatus("Instrument", DENIED, functionName, `function ${functionName} will not be instrumented because it is in the DenyList ${JSON.stringify(config.DenyListFunctionNameSet)}. Instrumentation stopped for this function.`)
         return;
     }
 
@@ -537,9 +530,10 @@ async function instrumentWithDatadogCi(functionArn, uninstrument = false, runtim
 
     let command;
     if (uninstrument === false) {
+        logger.logInstrumentStatus(INSTRUMENT, IN_PROGRESS, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
         command = ['lambda', 'instrument', '-f', functionArn, '-v', layerVersionObj.runtimeLayerVersion, '-e', layerVersionObj.extensionVersion];
     } else {
-        console.log(`\n uninstrumenting...`)
+        logger.logInstrumentStatus(UNINSTRUMENT, IN_PROGRESS, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
         command = ['lambda', 'uninstrument', '-f', functionArn, '-r', config.AWS_REGION];
     }
     console.log(`🖥️ datadog-ci command: ${JSON.stringify(command)}`);
@@ -637,18 +631,11 @@ function functionIsInstrumentedWithSpecifiedLayerVersions(layers, config, target
                 return layer.Arn.split(':').at(-1) === config.DD_LAYER_VERSIONS.pythonLayerVersion;
             } else if (layer.Arn.includes("464622532012:layer:Datadog-Node") && targetLambdaRuntime.toLowerCase().includes("node")) {
                 return layer.Arn.split(':').at(-1) === config.DD_LAYER_VERSIONS.nodeLayerVersion;
-            } else if (layer.Arn.includes("464622532012:layer:Datadog-Ruby") && targetLambdaRuntime.toLowerCase().includes("ruby")) {
-                return layer.Arn.split(':').at(-1) === config.DD_LAYER_VERSIONS.rubyLayerVersion;
-            } else if (layer.Arn.includes("464622532012:layer:dd-trace-java") && targetLambdaRuntime.toLowerCase().includes("java")) {
-                return layer.Arn.split(':').at(-1) === config.DD_LAYER_VERSIONS.javaLayerVersion;
-            } else if (layer.Arn.includes("464622532012:layer:dd-trace-dotnet") && targetLambdaRuntime.toLowerCase().includes("dotnet")) {
-                return layer.Arn.split(':').at(-1) === config.DD_LAYER_VERSIONS.dotnetLayerVersion;
             }
         }
     }
     return true;  // extension version is correct and tracer version is correct too
 }
-
 
 async function getLayerAndRuntimeVersion(runtime, config) {
     const result = {
@@ -661,12 +648,6 @@ async function getLayerAndRuntimeVersion(runtime, config) {
         result.runtimeLayerVersion = config.DD_LAYER_VERSIONS.nodeLayerVersion;
     } else if (runtime.includes(PYTHON)) {
         result.runtimeLayerVersion = config.DD_LAYER_VERSIONS.pythonLayerVersion;
-    } else if (runtime.includes(RUBY)) {
-        result.runtimeLayerVersion = config.DD_LAYER_VERSIONS.rubyLayerVersion;
-    } else if (runtime.includes(JAVA)) {
-        result.runtimeLayerVersion = config.DD_LAYER_VERSIONS.javaLayerVersion;
-    } else if (runtime.includes(DOTNET)) {
-        result.runtimeLayerVersion = config.DD_LAYER_VERSIONS.dotnetLayerVersion;
     }
 
     // set default version, if config settings is undefined (get from s3 failed and no pinned version from CloudFormation parameters)
@@ -678,12 +659,6 @@ async function getLayerAndRuntimeVersion(runtime, config) {
             result.runtimeLayerVersion = '98';
         } else if (runtime.includes(PYTHON)) {
             result.runtimeLayerVersion = '80';
-        } else if (runtime.includes(RUBY)) {
-            result.runtimeLayerVersion = '20';
-        } else if (runtime.includes(JAVA)) {
-            result.runtimeLayerVersion = '10';
-        } else if (runtime.includes(DOTNET)) {
-            result.runtimeLayerVersion = '9';
         }
     }
     return result;
@@ -720,13 +695,13 @@ class Logger {
         console.log(JSON.stringify(logEntry));
     }
 
-    logInstrumentStatus(eventName, status, targetFunctionName = null, targetFunctionArn = null, extensionVersion = null, runtime = null) {
+    logInstrumentStatus(eventName, status, targetFunctionName = null, targetFunctionArn = null, expectedExtensionVersion = null, runtime = null) {
         console.log(JSON.stringify({
             eventName: eventName,
             status: status,
             targetFunctionName: targetFunctionName,
             targetFunctionArn: targetFunctionArn,
-            expectedExtensionVersion: extensionVersion,
+            expectedExtensionVersion: expectedExtensionVersion,
             runtime: runtime,
         }));
     }
@@ -739,18 +714,4 @@ class Logger {
             message: message,
         }));
     }
-
-    // warn(message) {
-    //     const logEntry = {
-    //         message: message,
-    //     };
-    //     console.warn(JSON.stringify(logEntry));
-    // }
-    //
-    // error(message) {
-    //     const logEntry = {
-    //         message: message,
-    //     };
-    //     console.error(JSON.stringify(logEntry));
-    // }
 }
