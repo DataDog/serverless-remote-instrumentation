@@ -14,9 +14,6 @@ const {
 
 const NODE = "node"
 const PYTHON = "python"
-const RUBY = "ruby"
-const JAVA = "java"
-const DOTNET = "dotnet"
 const DD_SLS_REMOTE_INSTRUMENTER_VERSION = "dd_sls_remote_instrumenter_version"
 const logger = new Logger();
 
