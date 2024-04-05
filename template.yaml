@@ -1,11 +1,7 @@
 AWSTemplateFormatVersion: "2010-09-09"
 
-Description: >
-  Datadog Lambda Remote Instrumentation App
+Description: Datadog Lambda Remote Instrumentation App
 
-# All version values except L12 are double-quoted on purpose since publish.sh is searching for
-# version string and replace the value with new version. All other version values should be
-# double-quoted.
 Mappings:
   Constants:
     DatadogRemoteInstrumentDemoApp:
@@ -22,9 +18,7 @@ Parameters:
     Type: String
     Default: datadoghq.com
     Description: >-
-      Define your Datadog Site to send data to. Possible values are
-      `datadoghq.com`, `datadoghq.eu`, `us3.datadoghq.com`, `us5.datadoghq.com`
-      and `ddog-gov.com`.
+      Possible values are `datadoghq.com`, `datadoghq.eu`, `us3.datadoghq.com`, `us5.datadoghq.com`.
     AllowedPattern: .+
     ConstraintDescription: DdSite is required
   InstrumenterFunctionName:
@@ -59,15 +53,6 @@ Parameters:
   DdNodeLayerVersion:
     Type: String
     Default: '100'
-#  DdJavaLayerVersion:
-#    Type: String
-#    Default: ''
-#  DdDotnetLayerVersion:
-#    Type: String
-#    Default: ''
-#  DdRubyLayerVersion:
-#    Type: String
-#    Default: ''
 
 Resources:
   CloudFormationLifeCycle:
@@ -92,7 +77,6 @@ Resources:
         - !Sub 'arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Extension-ARM:50'
         - !Sub 'arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Node20-x:99'
         - !Sub 'arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Serverless-Remote-Instrumentation-ARM:1'
-#        - !Sub 'arn:aws:lambda:${AWS::Region}:425362996713:layer:Datadog-Serverless-Remote-Instrumentation-ARM:6'
       Environment:
         Variables:
           DD_LAMBDA_HANDLER: index.handler
@@ -112,9 +96,6 @@ Resources:
           DD_EXTENSION_LAYER_VERSION: !Ref DdExtensionLayerVersion
           DD_PYTHON_LAYER_VERSION: !Ref DdPythonLayerVersion
           DD_NODE_LAYER_VERSION: !Ref DdNodeLayerVersion
-#          DD_JAVA_LAYER_VERSION: !Ref DdJavaLayerVersion
-#          DD_DOTNET_LAYER_VERSION: !Ref DdDotnetLayerVersion
-#          DD_RUBY_LAYER_VERSION: !Ref DdRubyLayerVersion
       Tags:
         - Key: "dd_serverless_service"
           Value: "remote_instrumenter"
