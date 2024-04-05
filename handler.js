@@ -15,7 +15,6 @@ const {
 const NODE = "node"
 const PYTHON = "python"
 const DD_SLS_REMOTE_INSTRUMENTER_VERSION = "dd_sls_remote_instrumenter_version"
-const logger = new Logger();
 
 // consts
 const DENIED = "DENIED"
@@ -28,7 +27,6 @@ const UNINSTRUMENT = "UNINSTRUMENT"
 
 
 exports.handler = async (event, context, callback) => {
-
     console.log('\n event:', JSON.stringify(event))
     console.log(`\n process: ${JSON.stringify(process.env)}`)
 
@@ -712,3 +710,4 @@ class Logger {
         }));
     }
 }
+const logger = new Logger();
