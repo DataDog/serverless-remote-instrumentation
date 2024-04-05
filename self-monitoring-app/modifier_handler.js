@@ -185,12 +185,10 @@ async function emptyBucket(bucketName, config) {
 }
 
 async function getNestedInstrumenterStackName(config) {
-// const { CloudFormationClient, DescribeStackResourcesCommand } = require("@aws-sdk/client-cloudformation"); // CommonJS import
     const client = new CloudFormationClient({region: config.AWS_REGION});
     const input = { // DescribeStackResourcesInput
         StackName: SELF_MONITOR_STACK_NAME,
         LogicalResourceId: "RemoteInstrumentNestedStack",
-        // PhysicalResourceId: "STRING_VALUE",
     };
     const command = new DescribeStackResourcesCommand(input);
     const response = await client.send(command);
@@ -265,7 +263,7 @@ const createStackInput = {
         },
         {
             ParameterKey: "DenyList",
-            ParameterValue: "remote-instrument-self-monitor-to-be-uninstrumented",
+            ParameterValue: "",
             UsePreviousValue: true,
         },
         {
@@ -283,8 +281,6 @@ const createStackInput = {
             ParameterValue: "100",
             UsePreviousValue: true,
         },
-
-
     ],
     // DisableRollback: false,
     // RollbackConfiguration: { // RollbackConfiguration
@@ -307,7 +303,7 @@ const createStackInput = {
     //     "STRING_VALUE",
     // ],
     // RoleARN: "STRING_VALUE",
-    OnFailure: "DO_NOTHING",  // DO_NOTHING, ROLLBACK, or DELETE
+    OnFailure: "DELETE",  // DO_NOTHING, ROLLBACK, or DELETE
     // StackPolicyBody: "STRING_VALUE",
     // StackPolicyURL: "STRING_VALUE",
     Tags: [
@@ -341,7 +337,12 @@ async function updateStack(config) {
             ParameterValue: UPDATED_EXTENSION_VERSION,  // was "50"
             UsePreviousValue: false,
         },
-        // Only the extension version changed. Every other parameters below are not changed.
+        {
+            ParameterKey: "DenyList",
+            ParameterValue: `${config.LAMBDA_WITH_TAGS_UPDATE_TO_BE_IN_DENY_LIST_FUNCTION_NAME}`,
+            UsePreviousValue: false,
+        },
+        // Only changing the above parameters. Every other parameters below are not changed.
         {
             ParameterKey: "DdApiKey",
             UsePreviousValue: true,
@@ -364,10 +365,6 @@ async function updateStack(config) {
         },
         {
             ParameterKey: "TagRule",
-            UsePreviousValue: true,
-        },
-        {
-            ParameterKey: "DenyList",
             UsePreviousValue: true,
         },
         {
@@ -443,6 +440,7 @@ function getConfig() {
         PYTHON_FUNCTION_NAME: process.env.PythonLambdaFunctionName,
         LAMBDA_WITH_SPECIFIED_TAGS_FUNCTION_NAME: process.env.LambdaWithSpecifiedTagsFunctionName,
         LAMBDA_WITHOUT_SPECIFIED_TAGS_FUNCTION_NAME: process.env.LambdaWithoutSpecifiedTagsFunctionName,
+        LAMBDA_WITH_TAGS_UPDATE_TO_BE_IN_DENY_LIST_FUNCTION_NAME: process.env.LambdaWithTagsUpdatedToBeInDenyListFunctionName,
     };
     console.log(`\n config: ${JSON.stringify(config)}`)
     return config;

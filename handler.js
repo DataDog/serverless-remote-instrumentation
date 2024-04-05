@@ -64,12 +64,12 @@ exports.handler = async (event, context, callback) => {
 
 //// wrappers
 // single
-const instrumentBySingleEvent = tracer.wrap('Instrument.BySingleEvent', instrumentByEvent)
+const instrumentBySingleEvent = tracer.wrap('Instrument.BySingleLambdaEvent', instrumentByEvent)
 // first time instrumentation
 const firstTimeInstrumentationByAllowList = tracer.wrap('FirstTimeBulkInstrument.ByAllowList', instrumentByFunctionNames)
 const firstTimeInstrumentationByTagRule = tracer.wrap('FirstTimeBulkInstrument.ByTagRule', instrumentationByTagRule)
 // stack update
-const stackUpdateUninstrumentBasedOnAllowListAndTagRule = tracer.wrap('StackUpdate.CheckingAnythingToUninstrument', uninstrumentBasedOnAllowListAndTagRule)
+const stackUpdateUninstrumentBasedOnAllowListAndTagRule = tracer.wrap('StackUpdate.CheckAnythingToUninstrument', uninstrumentBasedOnAllowListAndTagRule)
 const stackUpdateInstrumentByAllowList = tracer.wrap('StackUpdate.Instrument.ByAllowList', instrumentByFunctionNames)
 const stackUpdateInstrumentByTagRule = tracer.wrap('StackUpdate.Instrument.ByTagRule', instrumentationByTagRule)
 
@@ -77,7 +77,7 @@ async function getConfig() {
 
     // Get layer configs from CloudFormation params. If they don't exist, use latest layer from S3
     const response = await getLatestLayersFromS3();
-    var layerVersions = {
+    let layerVersions = {
         extensionVersion: process.env.DD_EXTENSION_LAYER_VERSION,
         pythonLayerVersion: process.env.DD_PYTHON_LAYER_VERSION,
         nodeLayerVersion: process.env.DD_NODE_LAYER_VERSION,
@@ -142,7 +142,7 @@ async function getConfig() {
 
 async function uninstrumentBasedOnAllowListAndTagRule(config) {
     // get the function that has DD_SLS_REMOTE_INSTRUMENTER_VERSION tag
-    const additionalFilteringTags = {DD_SLS_REMOTE_INSTRUMENTER_VERSION: []}
+    const additionalFilteringTags = {[DD_SLS_REMOTE_INSTRUMENTER_VERSION]: []}
     const remoteInstrumentedFunctionNames = await getFunctionNamesByTagRule(config, additionalFilteringTags);
     console.log(`=== functionNames in uninstrumentBasedOnAllowListAndTagRule: ${remoteInstrumentedFunctionNames}`);
     // filter for the functions that is a) on the deny list b) not on the allow list and does not match tag rule
@@ -223,6 +223,7 @@ async function instrumentByEvent(event, config) {
         "DeleteFunction20150331",
         "PublishLayerVersion20181031",
         "RemovePermission20150331",
+        "PutFunctionConcurrency20171031",
         "RemovePermission20150331v2",
         "UpdateFunctionCode20150331v2",
     ])
@@ -249,6 +250,9 @@ async function instrumentByEvent(event, config) {
         functionName = arnParts[arnParts.length - 1];
         console.log(`actuallyFunctionArn: ${actuallyFunctionArn}  arnParts: ${JSON.stringify(arnParts)}  functionName:${functionName}`);
     }
+
+    const logger = new Logger();
+    logger.log(`instrumentByEvent`, functionName, null);
 
     // filter out functions that are on the DenyList
     if (config.DenyListFunctionNameSet.has(functionName)) {
@@ -312,6 +316,8 @@ async function instrumentByEvent(event, config) {
             runtime = event.detail?.requestParameters?.runtime;
         }
     }
+
+    logger.log(`instrumentByEvent`, functionName, functionArn);
 
     // get runtime
     if (typeof (runtime) !== "string") {
@@ -456,7 +462,9 @@ async function instrumentByFunctionNames(functionNames, config) {
     const client = new LambdaClient({region: config.AWS_REGION});
     const instrumentedFunctionArns = [];
     for (let functionName of functionNames) {
-        console.log(`=== processing ${functionName}`)
+        const logger = new Logger();
+        logger.log(`processing ${functionName}`, functionName, null);
+        // console.log(`processing ${functionName}`)
 
         // filter out functions that are on the DenyList
         if (config.DenyListFunctionNameSet.has(functionName)) {
@@ -485,6 +493,7 @@ async function instrumentByFunctionNames(functionNames, config) {
 
             // instrument
             let functionArn = `arn:aws:lambda:${config.AWS_REGION}:${ddAwsAccountNumber}:function:${functionName}`;
+            logger.log("instrumentByFunctionNames", functionName, functionArn);
             let runtime = getFunctionCommandOutput.Configuration?.Runtime;
             if (runtime === undefined) {
                 console.error(`Unexpected runtime: ${runtime} on getFunctionCommandOutput.Configuration?.Runtime`)
@@ -548,11 +557,9 @@ async function tagResourcesWithSlsTag(functionArns, config) {
     console.log(`\n version: ${DD_SLS_REMOTE_INSTRUMENTER_VERSION}:v${VERSION}`);
 
     const client = new ResourceGroupsTaggingAPIClient({region: config.AWS_REGION});
-    const tagsObj = {}
-    tagsObj[DD_SLS_REMOTE_INSTRUMENTER_VERSION] = `v${VERSION}`
     const input = {
         ResourceARNList: functionArns,
-        Tags: tagsObj,  // taking the obj to above so that DD_SLS_REMOTE_INSTRUMENTER_VERSION would not be taken as literal upper case string
+        Tags: {[DD_SLS_REMOTE_INSTRUMENTER_VERSION]: `v${VERSION}`},  // use [] to specify KEY is a variable
     }
     const tagResourcesCommand = new TagResourcesCommand(input);
     try {
@@ -679,4 +686,30 @@ async function getLatestLayersFromS3() {
     } catch (error) {
         console.error(error);
     }
+}
+
+class Logger {
+    constructor() {}
+
+    log(message, targetFunctionName=null, targetFunctionArn=null) {
+        const logEntry = {
+            message: message,
+            targetFunctionName: targetFunctionName,
+            targetFunctionArn: targetFunctionArn,
+        };
+        console.log(JSON.stringify(logEntry));
+    }
+    // warn(message) {
+    //     const logEntry = {
+    //         message: message,
+    //     };
+    //     console.warn(JSON.stringify(logEntry));
+    // }
+    //
+    // error(message) {
+    //     const logEntry = {
+    //         message: message,
+    //     };
+    //     console.error(JSON.stringify(logEntry));
+    // }
 }
