@@ -17,18 +17,18 @@ const PYTHON = "python"
 const DD_SLS_REMOTE_INSTRUMENTER_VERSION = "dd_sls_remote_instrumenter_version"
 
 // consts
-const DENIED = "DENIED"
-const FAILED = "FAILED"
-const INSTRUMENT = "INSTRUMENT"
-const IN_PROGRESS = "IN_PROGRESS"
-const PROCESSING = "PROCESSING"
-const SUCCEEDED = "SUCCEEDED"
-const UNINSTRUMENT = "UNINSTRUMENT"
+const DENIED = "denied"
+const FAILED = "failed"
+const INSTRUMENT = "instrument"
+const IN_PROGRESS = "in_progress"
+const PROCESSING = "processing"
+const SUCCEEDED = "succeeded"
+const UNINSTRUMENT = "uninstrument"
 
 
 exports.handler = async (event, context, callback) => {
-    console.log('\n event:', JSON.stringify(event))
-    console.log(`\n process: ${JSON.stringify(process.env)}`)
+    logger.logEvent(event)
+    // console.log(`\n process: ${JSON.stringify(process.env)}`)
 
     const config = await getConfig();
     const allowListFunctionNames = getFunctionNamesFromString(config.AllowList);
@@ -708,6 +708,10 @@ class Logger {
             functionName: functionName,
             message: message,
         }));
+    }
+
+    logEvent(event) {
+        console.log(JSON.stringify(event))
     }
 }
 const logger = new Logger();
