@@ -663,8 +663,8 @@ class Logger {
     log(message, targetFunctionName = null, targetFunctionArn = null) {
         const logEntry = {
             message: message,
-            targetFunctionName: targetFunctionName,
-            targetFunctionArn: targetFunctionArn,
+            targetFunctionName: targetFunctionName?.toLowerCase(),
+            targetFunctionArn: targetFunctionArn?.toLowerCase(),
         };
         console.log(JSON.stringify(logEntry));
     }
@@ -673,18 +673,18 @@ class Logger {
         console.log(JSON.stringify({
             eventName: eventName,
             status: status,
-            targetFunctionName: targetFunctionName,
-            targetFunctionArn: targetFunctionArn,
+            targetFunctionName: targetFunctionName?.toLowerCase(),
+            targetFunctionArn: targetFunctionArn?.toLowerCase(),
             expectedExtensionVersion: expectedExtensionVersion,
             runtime: runtime,
         }));
     }
 
-    debugStatus(eventName, status, functionName, message = null) {
+    debugStatus(eventName, status, targetFunctionName, message = null) {
         console.log(JSON.stringify({
             eventName: eventName,
             status: status,
-            functionName: functionName,
+            targetFunctionName: targetFunctionName?.toLowerCase(),
             message: message,
         }));
     }
