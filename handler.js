@@ -315,7 +315,7 @@ async function instrumentByEvent(event, config) {
 function shouldBeRemoteInstrumentedByTag(getFunctionCommandOutput, specifiedTags) {
     const awsFunctionTags = getFunctionCommandOutput.Tags;  // {"env:prod", "team":"serverless"}
     if (typeof (awsFunctionTags) === 'undefined') {
-        console.log(`=== no tags found on the function`)
+        console.log(`no tags found on the function`)
         return false;
     }
 
@@ -323,17 +323,17 @@ function shouldBeRemoteInstrumentedByTag(getFunctionCommandOutput, specifiedTags
 
     for (const [k, shouldBeInstrumentedValueList] of Object.entries(specifiedTagsKvMapping)) {
         if (!awsFunctionTags.hasOwnProperty(k)) {
-            console.log(`=== this function should NOT be remote instrumented by tags`);
+            console.log(`this function should NOT be remote instrumented by tags`);
             return false;
         }
 
         // AWS resource with tag k should have value specified in the list
         if (!shouldBeInstrumentedValueList.includes(awsFunctionTags[k])) {
-            console.log(`=== this function should NOT be remote instrumented by tags`);
+            console.log(`this function should NOT be remote instrumented by tags`);
             return false;
         }
     }
-    console.log(`=== this function should be remote instrumented by tags`);
+    console.log(`this function should be remote instrumented by tags`);
     return true;
 }
 
@@ -349,16 +349,16 @@ async function getFunctionNamesFromResourceGroupsTaggingAPI(tagFilters, config) 
     try {
         getResourcesCommandOutput = await client.send(getResourcesCommand);
     } catch (error) {
-        console.error(`\n error: ${error}. \n Returning empty array for instrumenting functions by tags`);
+        console.error(`Error: ${error}. Returning empty array for instrumenting functions by tags`);
         return [];
     }
 
-    console.log(`=== api call output of getResourcesCommandOutput: ${JSON.stringify(getResourcesCommandOutput)}`)
+    console.log(`api call output of getResourcesCommandOutput: ${JSON.stringify(getResourcesCommandOutput)}`)
     const functionArns = [];
     for (let resourceTagMapping of getResourcesCommandOutput.ResourceTagMappingList) {
         functionArns.push(resourceTagMapping.ResourceARN);
     }
-    console.log(`== functionArns: ${functionArns}`);
+    console.log(`functionArns: ${functionArns}`);
 
     if (functionArns.length === 0) {
         return [];
@@ -385,11 +385,11 @@ async function instrumentationByTagRule(config) {
 
 async function getFunctionNamesByTagRule(config, additionalFilteringTags = {}) {
     const specifiedTags = getRemoteInstrumentTagsFromConfig(config);  // tags: ['k1:v1', 'k2:v2']
-    console.log(`== specifiedTags: ${specifiedTags}`);
+    console.log(`specifiedTags: ${specifiedTags}`);
     if (specifiedTags === undefined || specifiedTags.length === 0) {
         return;
     }
-    console.log(`== RemoteInstrumentTagsFromEnvVar: ${specifiedTags}`);
+    console.log(`RemoteInstrumentTagsFromEnvVar: ${specifiedTags}`);
 
     const tagsKvMapping = getSpecifiedTagsKvMapping(specifiedTags);
 
@@ -417,7 +417,7 @@ async function getFunctionNamesByTagRule(config, additionalFilteringTags = {}) {
             })
         }
     }
-    console.log(`== tagFilters: ${JSON.stringify(tagFilters)}`);
+    console.log(`tagFilters: ${JSON.stringify(tagFilters)}`);
 
     const functionNames = await getFunctionNamesFromResourceGroupsTaggingAPI(tagFilters, config);
     return functionNames;
@@ -432,7 +432,7 @@ function getSpecifiedTagsKvMapping(specifiedTags) {  // return e.g. {"env": ["st
         }
         tagsKvMapping[k].push(v)
     }
-    console.log(`== tagKvMapping: ${JSON.stringify(tagsKvMapping)}`)
+    console.log(`tagKvMapping: ${JSON.stringify(tagsKvMapping)}`)
     return tagsKvMapping;
 }
 
@@ -466,11 +466,11 @@ async function instrumentByFunctionNames(functionNames, config) {
             // filter out already instrumented functions
             const getFunctionCommandOutput = await client.send(command);
 
-            console.log(`=== function config is: ${JSON.stringify(getFunctionCommandOutput.Configuration)} \n`)
+            console.log(`function config is: ${JSON.stringify(getFunctionCommandOutput.Configuration)} \n`)
             const layers = getFunctionCommandOutput.Configuration.Layers || [];
             const targetLambdaRuntime = getFunctionCommandOutput.Configuration.Runtime || "";
             if (functionIsInstrumentedWithSpecifiedLayerVersions(layers, config, targetLambdaRuntime)) {
-                console.log(`\n=== Function ${functionName} is already instrumented with correct extension and tracer layer versions! `);
+                console.log(`Function ${functionName} is already instrumented with correct extension and tracer layer versions! `);
                 continue;
             }
 
@@ -518,31 +518,31 @@ async function instrumentWithDatadogCi(functionArn, uninstrument = false, runtim
     // console.log(`\n commandExitCode type: ${typeof commandExitCode}, \n commandExitCode: ${commandExitCode}`);
     if (commandExitCode === 0) {
         if (uninstrument === false) {
-            console.log(`✅ Function ${functionArn} is instrumented with datadog-ci.`);
+            // console.log(`✅ Function ${functionArn} is instrumented with datadog-ci.`);
             logger.logInstrumentStatus(INSTRUMENT, SUCCEEDED, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
         } else {
-            console.log(`✅ Function ${functionArn} is uninstrumented with datadog-ci.`);
+            // console.log(`✅ Function ${functionArn} is uninstrumented with datadog-ci.`);
             logger.logInstrumentStatus(UNINSTRUMENT, SUCCEEDED, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
         }
         operatedFunctionArns.push(functionArn);
         console.log(`operatedFunctionArns: ${JSON.stringify(operatedFunctionArns)}`)
     } else {
         if (uninstrument === false) {
-            console.log(`❌ datadog-ci instrumentation failed for function ${functionArn}`);
+            // console.log(`❌ datadog-ci instrumentation failed for function ${functionArn}`);
             logger.logInstrumentStatus(INSTRUMENT, FAILED, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
         } else {
-            console.log(`❌ datadog-ci uninstrumentation failed for function ${functionArn}`);
+            // console.log(`❌ datadog-ci uninstrumentation failed for function ${functionArn}`);
             logger.logInstrumentStatus(UNINSTRUMENT, FAILED, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
         }
     }
 }
 
 async function tagResourcesWithSlsTag(functionArns, config) {
-    console.log(`\n functionArns to tag: ${functionArns}`)
+    console.log(`functionArns to tag: ${functionArns}`)
     if (functionArns.length === 0) {
         return;
     }
-    console.log(`\n version: ${DD_SLS_REMOTE_INSTRUMENTER_VERSION}:v${VERSION}`);
+    console.log(`version: ${DD_SLS_REMOTE_INSTRUMENTER_VERSION}:v${VERSION}`);
 
     const client = new ResourceGroupsTaggingAPIClient({region: config.AWS_REGION});
     const input = {
@@ -552,14 +552,14 @@ async function tagResourcesWithSlsTag(functionArns, config) {
     const tagResourcesCommand = new TagResourcesCommand(input);
     try {
         const tagResourcesCommandOutput = await client.send(tagResourcesCommand);
-        console.log(`\n tagResourcesCommandOutput: ${JSON.stringify(tagResourcesCommandOutput)}`)
+        console.log(`tagResourcesCommandOutput: ${JSON.stringify(tagResourcesCommandOutput)}`)
     } catch (error) {
-        console.error(`\n error: ${error.toString()} when tagging resources`);
+        console.error(`error: ${error.toString()} when tagging resources`);
     }
 }
 
 async function untagResourcesOfSlsTag(functionArns, config) {
-    console.log(`\n functionArns to untag: ${functionArns}`)
+    console.log(`functionArns to untag: ${functionArns}`)
     if (functionArns.length === 0) {
         return;
     }
@@ -572,9 +572,9 @@ async function untagResourcesOfSlsTag(functionArns, config) {
     const untagResourcesCommand = new UntagResourcesCommand(input);
     try {
         const untagResourcesCommandOutput = await client.send(untagResourcesCommand);
-        console.log(`=== api call output of untagResourcesCommandOutput: ${JSON.stringify(untagResourcesCommandOutput.ResourceTagMappingList)}`)
+        console.log(`api call output of untagResourcesCommandOutput: ${JSON.stringify(untagResourcesCommandOutput.ResourceTagMappingList)}`)
     } catch (error) {
-        console.error(`\n error: ${error.toString()} when untagging resources`);
+        console.error(`error: ${error.toString()} when untagging resources`);
     }
 }
 
@@ -588,7 +588,6 @@ function functionIsInstrumentedWithSpecifiedLayerVersions(layers, config, target
     let targetLambdaExtensionLayerVersion = '-1';
     for (let layer of layers) {
         if (layer?.Arn?.includes("464622532012:layer:Datadog-Extension")) {
-            console.log(`\n layer: ${JSON.stringify(layer)}`)
             targetLambdaExtensionLayerVersion = layer.Arn.split(':').at(-1);
             break;
         }
@@ -609,7 +608,7 @@ function functionIsInstrumentedWithSpecifiedLayerVersions(layers, config, target
             }
         }
     }
-    return true;  // extension version is correct and tracer version is correct too
+    return true;
 }
 
 async function getLayerAndRuntimeVersion(runtime, config) {
