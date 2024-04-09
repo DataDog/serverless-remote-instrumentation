@@ -147,6 +147,9 @@ Resources:
               - tag:TagResources
               - tag:UntagResources
             Resource: '*'
+            Condition:
+              ArnEquals:
+                lambda:SourceFunctionArn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${InstrumenterFunctionName}
 #            Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*  # doesn't work
 #            Resource: 'arn:aws:lambda:*'  # doesn't work
 
