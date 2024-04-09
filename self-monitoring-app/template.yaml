@@ -83,7 +83,7 @@ Resources:
       - LambdaFunctionWithSpecifiedTags
       - LambdaFunctionWithoutSpecifiedTags
     Properties:
-      TemplateURL: https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/remote-instrument-dev/latest.yaml
+      TemplateURL: https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/remote-instrument-dev/0.7.5.yaml
       Parameters:
         DdApiKey: !Ref DdApiKey
         DdSite: !Ref DdSite
