@@ -53,6 +53,9 @@ Parameters:
   DdNodeLayerVersion:
     Type: String
     Default: '100'
+  MinimumMemorySize:
+    Type: String
+    Default: '512'
 
 Resources:
   CloudFormationLifeCycle:
@@ -69,6 +72,7 @@ Resources:
       - arm64
       Runtime: nodejs20.x
       ReservedConcurrentExecutions: 1
+      CodeSigningConfigArn: arn:aws:signer:us-east-1:464622532012:/signing-profiles/DatadogLambdaSigningProfile/9vMI9ZAGLc
       Timeout: 840
       MemorySize: 512
       Role: !GetAtt LambdaExecutionRole.Arn
@@ -96,6 +100,7 @@ Resources:
           DD_EXTENSION_LAYER_VERSION: !Ref DdExtensionLayerVersion
           DD_PYTHON_LAYER_VERSION: !Ref DdPythonLayerVersion
           DD_NODE_LAYER_VERSION: !Ref DdNodeLayerVersion
+          MinimumMemorySize: !Ref MinimumMemorySize
       Tags:
         - Key: "dd_serverless_service"
           Value: "remote_instrumenter"

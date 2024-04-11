@@ -22,6 +22,7 @@ const FAILED = "failed"
 const INSTRUMENT = "instrument"
 const IN_PROGRESS = "in_progress"
 const PROCESSING = "processing"
+const SKIPPED = "skipped"
 const SUCCEEDED = "succeeded"
 const UNINSTRUMENT = "uninstrument"
 
@@ -117,6 +118,8 @@ async function getConfig() {
         DD_PYTHON_LAYER_VERSION: process.env.DD_PYTHON_LAYER_VERSION,
         DD_NODE_LAYER_VERSION: process.env.DD_NODE_LAYER_VERSION,
         DD_LAYER_VERSIONS: layerVersions,
+
+        MinimumMemorySize: process.env.MinimumMemorySize,
     };
     // console.log(`\n config: ${JSON.stringify(config)}`)
     logger.logObject({...config, ...{eventName: "config"}})
@@ -284,7 +287,7 @@ async function instrumentByEvent(event, config) {
         }
     }
 
-    // handle create function event
+    // handle create function event for runtime and functionArn
     let functionArn = null;
     let runtime = event.detail?.responseElements?.runtime;
     if (event.detail.responseElements != null) {
@@ -301,6 +304,10 @@ async function instrumentByEvent(event, config) {
         }
     }
 
+    if (belowRecommendedMemorySize(event, config, functionName)) {
+        return;
+    }
+
     logger.log(`instrumentByEvent`, functionName, functionArn);
 
     // get runtime
@@ -310,6 +317,21 @@ async function instrumentByEvent(event, config) {
     const instrumentedFunctionArns = [];
     await instrumentWithDatadogCi(functionArn, false, runtime, config, instrumentedFunctionArns);
     await tagResourcesWithSlsTag(instrumentedFunctionArns, config);
+}
+
+function belowRecommendedMemorySize(event, functionName, config) {
+    let memorySize = 512;
+    // only need to check these 2 events
+    if (event.detail.eventName === 'CreateFunction20150331') {
+        memorySize = parseInt(event.detail?.requestParameters?.memorySize);
+    } else if (event.detail.eventName === 'UpdateFunctionConfiguration20150331v2') {
+        memorySize = parseInt(event.detail?.responseElements?.memorySize);
+    }
+    if (memorySize < parseInt(config.MinimumMemorySize)) {
+        logger.logInstrumentStatus(INSTRUMENT, FAILED, functionName, null, null, null, `Current memory size ${memorySize} MB is below threshold ${config.MinimumMemorySize} MB.`)
+        return true;
+    }
+    return false;
 }
 
 function shouldBeRemoteInstrumentedByTag(getFunctionCommandOutput, specifiedTags) {
@@ -481,6 +503,14 @@ async function instrumentByFunctionNames(functionNames, config) {
             if (runtime === undefined) {
                 console.error(`Unexpected runtime: ${runtime} on getFunctionCommandOutput.Configuration?.Runtime`)
             }
+
+            // memory size check
+            const memorySize = getFunctionCommandOutput.Configuration.MemorySize;
+            if (memorySize < parseInt(config.MinimumMemorySize)) {
+                logger.logInstrumentStatus(INSTRUMENT, SKIPPED, functionName, functionArn, null, runtime, `Current memory size ${memorySize} MB is below ${config.MinimumMemorySize} MB`)
+                continue;
+            }
+
             await instrumentWithDatadogCi(functionArn, false, runtime, config, instrumentedFunctionArns);
         } catch (error) {
             // simply skip this current instrumentation of the function.
@@ -669,7 +699,7 @@ class Logger {
         console.log(JSON.stringify(logEntry));
     }
 
-    logInstrumentStatus(eventName, status, targetFunctionName = null, targetFunctionArn = null, expectedExtensionVersion = null, runtime = null) {
+    logInstrumentStatus(eventName, status, targetFunctionName = null, targetFunctionArn = null, expectedExtensionVersion = null, runtime = null, reason = null) {
         console.log(JSON.stringify({
             eventName: eventName,
             status: status,
@@ -677,6 +707,7 @@ class Logger {
             targetFunctionArn: targetFunctionArn?.toLowerCase(),
             expectedExtensionVersion: expectedExtensionVersion,
             runtime: runtime,
+            reason: reason,
         }));
     }
 
