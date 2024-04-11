@@ -223,7 +223,7 @@ Resources:
       - arm64
       Runtime: nodejs20.x
       Timeout: 90
-      MemorySize: 256
+      MemorySize: 512
       Role: !GetAtt NodeLambdaExecutionRole.Arn
       Handler: index.handler
       Environment:
@@ -282,7 +282,7 @@ Resources:
       - arm64
       Runtime: python3.11
       Timeout: 90
-      MemorySize: 256
+      MemorySize: 512
       Role: !GetAtt PythonLambdaRole.Arn
       Handler: index.lambda_handler
       Environment:
@@ -341,7 +341,7 @@ Resources:
       - arm64
       Runtime: nodejs20.x
       Timeout: 90
-      MemorySize: 256
+      MemorySize: 512
       Role: !GetAtt NodeLambdaExecutionRole.Arn
       Handler: /opt/nodejs/node_modules/datadog-lambda-js/handler.handler
       Environment:
@@ -402,7 +402,7 @@ Resources:
       - arm64
       Runtime: nodejs20.x
       Timeout: 90
-      MemorySize: 256
+      MemorySize: 512
       Role: !GetAtt NodeLambdaExecutionRole.Arn
       Handler: /opt/nodejs/node_modules/datadog-lambda-js/handler.handler
       Environment:
@@ -461,7 +461,7 @@ Resources:
       - arm64
       Runtime: nodejs20.x
       Timeout: 90
-      MemorySize: 256
+      MemorySize: 512
       Role: !GetAtt NodeLambdaExecutionRole.Arn
       Handler: /opt/nodejs/node_modules/datadog-lambda-js/handler.handler
       Environment:
