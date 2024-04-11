@@ -19,13 +19,13 @@ const DD_SLS_REMOTE_INSTRUMENTER_VERSION = "dd_sls_remote_instrumenter_version"
 // consts
 const DENIED = "denied"
 const FAILED = "failed"
-const INSTRUMENT = "instrument"
+const INSTRUMENT_STATUS = "instrument_status"
 const IN_PROGRESS = "in_progress"
 const LAMBDA_EVENT = "lambda_event"
 const PROCESSING = "processing"
 const SKIPPED = "skipped"
 const SUCCEEDED = "succeeded"
-const UNINSTRUMENT = "uninstrument"
+const UNINSTRUMENT_STATUS = "uninstrument_status"
 
 
 exports.handler = async (event, context, callback) => {
@@ -306,7 +306,7 @@ async function instrumentByEvent(event, config) {
         }
     }
 
-    if (belowRecommendedMemorySize(event, config, functionName)) {
+    if (belowRecommendedMemorySize(event, functionName, config)) {
         return;
     }
 
@@ -329,9 +329,9 @@ function belowRecommendedMemorySize(event, functionName, config) {
     } else if (event.detail.eventName === 'UpdateFunctionConfiguration20150331v2') {
         memorySize = parseInt(event.detail?.responseElements?.memorySize);
     }
-    logger.debugStatus(LAMBDA_EVENT, IN_PROGRESS, functionName, `Current memory size is ${memorySize} MB`)
     if (memorySize < parseInt(config.MinimumMemorySize)) {
-        logger.logInstrumentStatus(INSTRUMENT, FAILED, functionName, null, null, null, `Current memory size ${memorySize} MB is below threshold ${config.MinimumMemorySize} MB.`)
+        logger.logInstrumentStatus(INSTRUMENT_STATUS, FAILED, functionName, null, null, null, `Current memory size ${memorySize} MB is below threshold ${config.MinimumMemorySize} MB.`)
+        logger.debugStatus(LAMBDA_EVENT, SKIPPED, functionName, `Current memory size ${memorySize} MB is below threshold ${config.MinimumMemorySize} MB.`)
         return true;
     }
     return false;
@@ -510,7 +510,7 @@ async function instrumentByFunctionNames(functionNames, config) {
             // memory size check
             const memorySize = getFunctionCommandOutput.Configuration.MemorySize;
             if (memorySize < parseInt(config.MinimumMemorySize)) {
-                logger.logInstrumentStatus(INSTRUMENT, SKIPPED, functionName, functionArn, null, runtime, `Current memory size ${memorySize} MB is below ${config.MinimumMemorySize} MB`)
+                logger.logInstrumentStatus(INSTRUMENT_STATUS, SKIPPED, functionName, functionArn, null, runtime, `Current memory size ${memorySize} MB is below ${config.MinimumMemorySize} MB`)
                 continue;
             }
 
@@ -538,10 +538,10 @@ async function instrumentWithDatadogCi(functionArn, uninstrument = false, runtim
 
     let command;
     if (uninstrument === false) {
-        logger.logInstrumentStatus(INSTRUMENT, IN_PROGRESS, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
+        logger.logInstrumentStatus(INSTRUMENT_STATUS, IN_PROGRESS, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
         command = ['lambda', 'instrument', '-f', functionArn, '-v', layerVersionObj.runtimeLayerVersion, '-e', layerVersionObj.extensionVersion];
     } else {
-        logger.logInstrumentStatus(UNINSTRUMENT, IN_PROGRESS, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
+        logger.logInstrumentStatus(UNINSTRUMENT_STATUS, IN_PROGRESS, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
         command = ['lambda', 'uninstrument', '-f', functionArn, '-r', config.AWS_REGION];
     }
     console.log(`🖥️ datadog-ci command: ${JSON.stringify(command)}`);
@@ -552,20 +552,20 @@ async function instrumentWithDatadogCi(functionArn, uninstrument = false, runtim
     if (commandExitCode === 0) {
         if (uninstrument === false) {
             // console.log(`✅ Function ${functionArn} is instrumented with datadog-ci.`);
-            logger.logInstrumentStatus(INSTRUMENT, SUCCEEDED, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
+            logger.logInstrumentStatus(INSTRUMENT_STATUS, SUCCEEDED, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
         } else {
             // console.log(`✅ Function ${functionArn} is uninstrumented with datadog-ci.`);
-            logger.logInstrumentStatus(UNINSTRUMENT, SUCCEEDED, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
+            logger.logInstrumentStatus(UNINSTRUMENT_STATUS, SUCCEEDED, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
         }
         operatedFunctionArns.push(functionArn);
         console.log(`operatedFunctionArns: ${JSON.stringify(operatedFunctionArns)}`)
     } else {
         if (uninstrument === false) {
             // console.log(`❌ datadog-ci instrumentation failed for function ${functionArn}`);
-            logger.logInstrumentStatus(INSTRUMENT, FAILED, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
+            logger.logInstrumentStatus(INSTRUMENT_STATUS, FAILED, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
         } else {
             // console.log(`❌ datadog-ci uninstrumentation failed for function ${functionArn}`);
-            logger.logInstrumentStatus(UNINSTRUMENT, FAILED, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
+            logger.logInstrumentStatus(UNINSTRUMENT_STATUS, FAILED, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
         }
     }
 }
