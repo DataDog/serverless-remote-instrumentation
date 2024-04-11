@@ -228,7 +228,6 @@ Resources:
       Handler: index.handler
       Environment:
         Variables:
-#          DD_LAMBDA_HANDLER: index.handler
           DD_TRACE_ENABLED: true
           DD_API_KEY: !Ref DdApiKey
           DD_SERVICE: remote-instrument-self-monitor
@@ -287,7 +286,6 @@ Resources:
       Handler: index.lambda_handler
       Environment:
         Variables:
-#          DD_LAMBDA_HANDLER: index.handler
           DD_TRACE_ENABLED: true
           DD_API_KEY: !Ref DdApiKey
           DD_SERVICE: remote-instrument-self-monitor
