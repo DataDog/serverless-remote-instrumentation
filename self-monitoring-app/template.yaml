@@ -83,7 +83,7 @@ Resources:
       - LambdaFunctionWithSpecifiedTags
       - LambdaFunctionWithoutSpecifiedTags
     Properties:
-      TemplateURL: https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/remote-instrument-dev/0.7.5.yaml
+      TemplateURL: https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/remote-instrument-dev/0.7.8.yaml
       Parameters:
         DdApiKey: !Ref DdApiKey
         DdSite: !Ref DdSite
@@ -223,12 +223,11 @@ Resources:
       - arm64
       Runtime: nodejs20.x
       Timeout: 90
-      MemorySize: 256
+      MemorySize: 512
       Role: !GetAtt NodeLambdaExecutionRole.Arn
       Handler: index.handler
       Environment:
         Variables:
-#          DD_LAMBDA_HANDLER: index.handler
           DD_TRACE_ENABLED: true
           DD_API_KEY: !Ref DdApiKey
           DD_SERVICE: remote-instrument-self-monitor
@@ -282,12 +281,11 @@ Resources:
       - arm64
       Runtime: python3.11
       Timeout: 90
-      MemorySize: 256
+      MemorySize: 512
       Role: !GetAtt PythonLambdaRole.Arn
       Handler: index.lambda_handler
       Environment:
         Variables:
-#          DD_LAMBDA_HANDLER: index.handler
           DD_TRACE_ENABLED: true
           DD_API_KEY: !Ref DdApiKey
           DD_SERVICE: remote-instrument-self-monitor
@@ -341,7 +339,7 @@ Resources:
       - arm64
       Runtime: nodejs20.x
       Timeout: 90
-      MemorySize: 256
+      MemorySize: 512
       Role: !GetAtt NodeLambdaExecutionRole.Arn
       Handler: /opt/nodejs/node_modules/datadog-lambda-js/handler.handler
       Environment:
@@ -402,7 +400,7 @@ Resources:
       - arm64
       Runtime: nodejs20.x
       Timeout: 90
-      MemorySize: 256
+      MemorySize: 512
       Role: !GetAtt NodeLambdaExecutionRole.Arn
       Handler: /opt/nodejs/node_modules/datadog-lambda-js/handler.handler
       Environment:
@@ -461,7 +459,7 @@ Resources:
       - arm64
       Runtime: nodejs20.x
       Timeout: 90
-      MemorySize: 256
+      MemorySize: 512
       Role: !GetAtt NodeLambdaExecutionRole.Arn
       Handler: /opt/nodejs/node_modules/datadog-lambda-js/handler.handler
       Environment:

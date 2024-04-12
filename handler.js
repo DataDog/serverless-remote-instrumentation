@@ -19,11 +19,13 @@ const DD_SLS_REMOTE_INSTRUMENTER_VERSION = "dd_sls_remote_instrumenter_version"
 // consts
 const DENIED = "denied"
 const FAILED = "failed"
-const INSTRUMENT = "instrument"
+const INSTRUMENT_STATUS = "instrument_status"
 const IN_PROGRESS = "in_progress"
+const LAMBDA_EVENT = "lambda_event"
 const PROCESSING = "processing"
+const SKIPPED = "skipped"
 const SUCCEEDED = "succeeded"
-const UNINSTRUMENT = "uninstrument"
+const UNINSTRUMENT_STATUS = "uninstrument_status"
 
 
 exports.handler = async (event, context, callback) => {
@@ -117,6 +119,8 @@ async function getConfig() {
         DD_PYTHON_LAYER_VERSION: process.env.DD_PYTHON_LAYER_VERSION,
         DD_NODE_LAYER_VERSION: process.env.DD_NODE_LAYER_VERSION,
         DD_LAYER_VERSIONS: layerVersions,
+
+        MinimumMemorySize: process.env.MinimumMemorySize,
     };
     // console.log(`\n config: ${JSON.stringify(config)}`)
     logger.logObject({...config, ...{eventName: "config"}})
@@ -236,20 +240,20 @@ async function instrumentByEvent(event, config) {
         console.log(`actuallyFunctionArn: ${actuallyFunctionArn}  arnParts: ${JSON.stringify(arnParts)}  functionName:${functionName}`);
     }
 
-    logger.debugStatus("LambdaEvent", PROCESSING, functionName, "Lambda management event is received and starting instrumentation")
+    logger.debugStatus(LAMBDA_EVENT, PROCESSING, functionName, "Lambda management event is received and starting instrumentation")
 
     // filter out functions that are on the DenyList
     if (config.DenyListFunctionNameSet.has(functionName)) {
-        logger.debugStatus("LambdaEvent", PROCESSING, functionName, `function ${functionName} is on the DenyList ${JSON.stringify([...config.DenyListFunctionNameSet])}. Instrumentation has stopped.`)
+        logger.debugStatus(LAMBDA_EVENT, PROCESSING, functionName, `function ${functionName} is on the DenyList ${JSON.stringify([...config.DenyListFunctionNameSet])}. Instrumentation has stopped.`)
         return;
     }
 
     // check if lambda management events is for function that are in the allow list
     if (config.AllowListFunctionNameSet.has(functionName)) {
         functionFromEventIsInAllowList = true
-        logger.debugStatus("LambdaEvent", PROCESSING, functionName, `${functionName} in the AllowListFunctionNameSet: ${JSON.stringify([...config.AllowListFunctionNameSet])}`)
+        logger.debugStatus(LAMBDA_EVENT, PROCESSING, functionName, `${functionName} in the AllowListFunctionNameSet: ${JSON.stringify([...config.AllowListFunctionNameSet])}`)
     } else {
-        logger.debugStatus("LambdaEvent", PROCESSING, functionName, `${functionName} is NOT in the AllowListFunctionNameSet: ${JSON.stringify([...config.AllowListFunctionNameSet])}`)
+        logger.debugStatus(LAMBDA_EVENT, PROCESSING, functionName, `${functionName} is NOT in the AllowListFunctionNameSet: ${JSON.stringify([...config.AllowListFunctionNameSet])}`)
     }
 
     // check if the function has the tags that pass TagRule
@@ -269,22 +273,23 @@ async function instrumentByEvent(event, config) {
             const layers = getFunctionCommandOutput.Configuration.Layers || [];
             const targetLambdaRuntime = getFunctionCommandOutput.Configuration.Runtime || "";
             if (functionIsInstrumentedWithSpecifiedLayerVersions(layers, config, targetLambdaRuntime)) {
-                logger.debugStatus("LambdaEvent", PROCESSING, functionName, `Function ${functionName} is already instrumented with correct extension and tracer layer versions! `)
+                logger.debugStatus(LAMBDA_EVENT, PROCESSING, functionName, `Function ${functionName} is already instrumented with correct extension and tracer layer versions! `)
                 return;
             }
 
             const specifiedTags = getRemoteInstrumentTagsFromConfig(config)  // tags: ['k1:v1', 'k2:v2']
             if (typeof (specifiedTags) === "object" && specifiedTags.length !== 0 && !shouldBeRemoteInstrumentedByTag(getFunctionCommandOutput, specifiedTags)) {
-                logger.debugStatus("LambdaEvent", PROCESSING, functionName, `Skipping remote instrumentation for function ${functionName}. It does not fit TagRule nor is in the AllowList`)
+                logger.debugStatus(LAMBDA_EVENT, PROCESSING, functionName, `Skipping remote instrumentation for function ${functionName}. It does not fit TagRule nor is in the AllowList`)
                 return;
             }
+            logger.debugStatus(LAMBDA_EVENT, PROCESSING, functionName, `${functionName} is not in the AllowList but matches TagRule`)
         } catch (error) {
             // simply skip this current instrumentation of the function.
-            logger.debugStatus("LambdaEvent", PROCESSING, functionName, `Error is caught for functionName ${functionName}. Skipping instrumenting this function. Error is: ${error}`)
+            logger.debugStatus(LAMBDA_EVENT, PROCESSING, functionName, `Error is caught for functionName ${functionName}. Skipping instrumenting this function. Error is: ${error}`)
         }
     }
 
-    // handle create function event
+    // handle create function event for runtime and functionArn
     let functionArn = null;
     let runtime = event.detail?.responseElements?.runtime;
     if (event.detail.responseElements != null) {
@@ -301,6 +306,10 @@ async function instrumentByEvent(event, config) {
         }
     }
 
+    if (belowRecommendedMemorySize(event, functionName, config)) {
+        return;
+    }
+
     logger.log(`instrumentByEvent`, functionName, functionArn);
 
     // get runtime
@@ -310,6 +319,22 @@ async function instrumentByEvent(event, config) {
     const instrumentedFunctionArns = [];
     await instrumentWithDatadogCi(functionArn, false, runtime, config, instrumentedFunctionArns);
     await tagResourcesWithSlsTag(instrumentedFunctionArns, config);
+}
+
+function belowRecommendedMemorySize(event, functionName, config) {
+    let memorySize = 512;
+    // only need to check these 2 events
+    if (event.detail.eventName === 'CreateFunction20150331') {
+        memorySize = parseInt(event.detail?.requestParameters?.memorySize);
+    } else if (event.detail.eventName === 'UpdateFunctionConfiguration20150331v2') {
+        memorySize = parseInt(event.detail?.responseElements?.memorySize);
+    }
+    if (memorySize < parseInt(config.MinimumMemorySize)) {
+        logger.logInstrumentStatus(INSTRUMENT_STATUS, FAILED, functionName, null, null, null, `Current memory size ${memorySize} MB is below threshold ${config.MinimumMemorySize} MB.`)
+        logger.debugStatus(LAMBDA_EVENT, SKIPPED, functionName, `Current memory size ${memorySize} MB is below threshold ${config.MinimumMemorySize} MB.`)
+        return true;
+    }
+    return false;
 }
 
 function shouldBeRemoteInstrumentedByTag(getFunctionCommandOutput, specifiedTags) {
@@ -481,6 +506,14 @@ async function instrumentByFunctionNames(functionNames, config) {
             if (runtime === undefined) {
                 console.error(`Unexpected runtime: ${runtime} on getFunctionCommandOutput.Configuration?.Runtime`)
             }
+
+            // memory size check
+            const memorySize = getFunctionCommandOutput.Configuration.MemorySize;
+            if (memorySize < parseInt(config.MinimumMemorySize)) {
+                logger.logInstrumentStatus(INSTRUMENT_STATUS, SKIPPED, functionName, functionArn, null, runtime, `Current memory size ${memorySize} MB is below ${config.MinimumMemorySize} MB`)
+                continue;
+            }
+
             await instrumentWithDatadogCi(functionArn, false, runtime, config, instrumentedFunctionArns);
         } catch (error) {
             // simply skip this current instrumentation of the function.
@@ -505,10 +538,10 @@ async function instrumentWithDatadogCi(functionArn, uninstrument = false, runtim
 
     let command;
     if (uninstrument === false) {
-        logger.logInstrumentStatus(INSTRUMENT, IN_PROGRESS, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
+        logger.logInstrumentStatus(INSTRUMENT_STATUS, IN_PROGRESS, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
         command = ['lambda', 'instrument', '-f', functionArn, '-v', layerVersionObj.runtimeLayerVersion, '-e', layerVersionObj.extensionVersion];
     } else {
-        logger.logInstrumentStatus(UNINSTRUMENT, IN_PROGRESS, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
+        logger.logInstrumentStatus(UNINSTRUMENT_STATUS, IN_PROGRESS, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
         command = ['lambda', 'uninstrument', '-f', functionArn, '-r', config.AWS_REGION];
     }
     console.log(`🖥️ datadog-ci command: ${JSON.stringify(command)}`);
@@ -519,20 +552,20 @@ async function instrumentWithDatadogCi(functionArn, uninstrument = false, runtim
     if (commandExitCode === 0) {
         if (uninstrument === false) {
             // console.log(`✅ Function ${functionArn} is instrumented with datadog-ci.`);
-            logger.logInstrumentStatus(INSTRUMENT, SUCCEEDED, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
+            logger.logInstrumentStatus(INSTRUMENT_STATUS, SUCCEEDED, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
         } else {
             // console.log(`✅ Function ${functionArn} is uninstrumented with datadog-ci.`);
-            logger.logInstrumentStatus(UNINSTRUMENT, SUCCEEDED, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
+            logger.logInstrumentStatus(UNINSTRUMENT_STATUS, SUCCEEDED, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
         }
         operatedFunctionArns.push(functionArn);
         console.log(`operatedFunctionArns: ${JSON.stringify(operatedFunctionArns)}`)
     } else {
         if (uninstrument === false) {
             // console.log(`❌ datadog-ci instrumentation failed for function ${functionArn}`);
-            logger.logInstrumentStatus(INSTRUMENT, FAILED, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
+            logger.logInstrumentStatus(INSTRUMENT_STATUS, FAILED, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
         } else {
             // console.log(`❌ datadog-ci uninstrumentation failed for function ${functionArn}`);
-            logger.logInstrumentStatus(UNINSTRUMENT, FAILED, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
+            logger.logInstrumentStatus(UNINSTRUMENT_STATUS, FAILED, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
         }
     }
 }
@@ -669,7 +702,7 @@ class Logger {
         console.log(JSON.stringify(logEntry));
     }
 
-    logInstrumentStatus(eventName, status, targetFunctionName = null, targetFunctionArn = null, expectedExtensionVersion = null, runtime = null) {
+    logInstrumentStatus(eventName, status, targetFunctionName = null, targetFunctionArn = null, expectedExtensionVersion = null, runtime = null, reason = null) {
         console.log(JSON.stringify({
             eventName: eventName,
             status: status,
@@ -677,6 +710,7 @@ class Logger {
             targetFunctionArn: targetFunctionArn?.toLowerCase(),
             expectedExtensionVersion: expectedExtensionVersion,
             runtime: runtime,
+            reason: reason,
         }));
     }
 
