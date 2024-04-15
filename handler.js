@@ -131,27 +131,31 @@ async function getConfig() {
 
 async function uninstrumentBasedOnAllowListAndTagRule(config) {
     // get the function that has DD_SLS_REMOTE_INSTRUMENTER_VERSION tag
-    const additionalFilteringTags = {[DD_SLS_REMOTE_INSTRUMENTER_VERSION]: []}
-    const remoteInstrumentedFunctionNames = await getFunctionNamesByTagRule(config, additionalFilteringTags);
-    console.log(`functionNames in uninstrumentBasedOnAllowListAndTagRule: ${remoteInstrumentedFunctionNames}`);
-    // filter for the functions that is a) on the deny list b) not on the allow list and does not match tag rule
-    // return function name
+    const otherFilteringTags = {[DD_SLS_REMOTE_INSTRUMENTER_VERSION]: []}
+    const remoteInstrumentedFunctionNames = await getFunctionNamesByTagRuleOrOtherFilteringTags(config, otherFilteringTags);
+    console.log(`functions that is already instrumented: ${remoteInstrumentedFunctionNames}`);
 
-    const functionNamesByTagRule = await getFunctionNamesByTagRule(config);
+    const functionNamesByTagRule = await getFunctionNamesByTagRuleOrOtherFilteringTags(config);
 
     const remoteInstrumentedFunctionsSet = new Set(remoteInstrumentedFunctionNames);
     const functionsThatShouldBeRemoteInstrumented = new Set(functionNamesByTagRule);
 
     // uninstrument these functions:
-    const functionsToBeUninstrumented = Array.from(remoteInstrumentedFunctionsSet)
-        .filter(functionName => (
-                (
-                    !functionsThatShouldBeRemoteInstrumented.has(functionName)
-                    && !config.AllowListFunctionNameSet.has(functionName)
+    let functionsToBeUninstrumented;
+    if (config.DenyList === '*') {
+        functionsToBeUninstrumented = remoteInstrumentedFunctionNames;
+        logger.logInstrumentStatus(UNINSTRUMENT_STATUS, IN_PROGRESS, "ALL")
+    } else {
+        functionsToBeUninstrumented = Array.from(remoteInstrumentedFunctionsSet)
+            .filter(functionName => (
+                    (
+                        !functionsThatShouldBeRemoteInstrumented.has(functionName)
+                        && !config.AllowListFunctionNameSet.has(functionName)
+                    )
+                    || config.DenyListFunctionNameSet.has(functionName)
                 )
-                || config.DenyListFunctionNameSet.has(functionName)
             )
-        )
+    }
     console.log(`functionsToBeUninstrumented: ${JSON.stringify(functionsToBeUninstrumented)}`);
     await uninstrumentFunctions(functionsToBeUninstrumented, config);
 }
@@ -404,23 +408,25 @@ async function getFunctionNamesFromResourceGroupsTaggingAPI(tagFilters, config) 
 }
 
 async function instrumentationByTagRule(config) {
-    const functionNames = await getFunctionNamesByTagRule(config);
+    const functionNames = await getFunctionNamesByTagRuleOrOtherFilteringTags(config);
     await instrumentByFunctionNames(functionNames, config);
 }
 
-async function getFunctionNamesByTagRule(config, additionalFilteringTags = {}) {
-    const specifiedTags = getRemoteInstrumentTagsFromConfig(config);  // tags: ['k1:v1', 'k2:v2']
-    console.log(`specifiedTags: ${specifiedTags}`);
-    if (specifiedTags === undefined || specifiedTags.length === 0) {
-        return;
-    }
-    console.log(`RemoteInstrumentTagsFromEnvVar: ${specifiedTags}`);
+async function getFunctionNamesByTagRuleOrOtherFilteringTags(config, otherFilteringTags = {}) {
+    // this function either use config to get filters from tagRule or use otherFilteringTags
+    let tagsKvMapping = {};
+    if (Object.keys(otherFilteringTags).length === 0) {
+        const specifiedTags = getRemoteInstrumentTagsFromConfig(config);  // tags: ['k1:v1', 'k2:v2']
+        console.log(`specifiedTags: ${specifiedTags}`);
+        if (specifiedTags === undefined || specifiedTags.length === 0) {
+            return;
+        }
+        console.log(`RemoteInstrumentTagsFromEnvVar: ${specifiedTags}`);
+        tagsKvMapping = getSpecifiedTagsKvMapping(specifiedTags);
 
-    const tagsKvMapping = getSpecifiedTagsKvMapping(specifiedTags);
-
-    // additionalFilteringTags = { "service": ["service1", "service2"] }
-    if (Object.keys(additionalFilteringTags).length !== 0) {
-        for (const [key, value] of Object.entries(additionalFilteringTags)) {
+        // additionalFilteringTags = { "service": ["service1", "service2"] }
+    } else {
+        for (const [key, value] of Object.entries(otherFilteringTags)) {
             if (!tagsKvMapping.hasOwnProperty(key)) {  // in case of key collisions
                 tagsKvMapping[key] = value
             }
@@ -462,6 +468,9 @@ function getSpecifiedTagsKvMapping(specifiedTags) {  // return e.g. {"env": ["st
 }
 
 async function instrumentByFunctionNames(functionNames, config) {
+    if (config.DenyList === '*') {
+        return;
+    }
     if (typeof (functionNames) !== 'object' || functionNames.length === 0) {
         console.log(`functionNames is empty in initialInstrumentationWithNames().`);
         return;
