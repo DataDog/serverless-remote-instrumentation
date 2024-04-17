@@ -413,7 +413,7 @@ async function instrumentationByTagRule(config) {
 }
 
 async function getFunctionNamesByTagRuleOrOtherFilteringTags(config, otherFilteringTags = {}) {
-    // this function either use config to get filters from tagRule or use otherFilteringTags
+    // this function either use config to get filters from tagRule or use otherFilteringTags = { "service": ["service1", "service2"] }
     let tagsKvMapping = {};
     if (Object.keys(otherFilteringTags).length === 0) {
         const specifiedTags = getRemoteInstrumentTagsFromConfig(config);  // tags: ['k1:v1', 'k2:v2']
@@ -424,13 +424,8 @@ async function getFunctionNamesByTagRuleOrOtherFilteringTags(config, otherFilter
         console.log(`RemoteInstrumentTagsFromEnvVar: ${specifiedTags}`);
         tagsKvMapping = getSpecifiedTagsKvMapping(specifiedTags);
 
-        // additionalFilteringTags = { "service": ["service1", "service2"] }
     } else {
-        for (const [key, value] of Object.entries(otherFilteringTags)) {
-            if (!tagsKvMapping.hasOwnProperty(key)) {  // in case of key collisions
-                tagsKvMapping[key] = value
-            }
-        }
+        tagsKvMapping = otherFilteringTags
     }
 
     console.log(`After merging tagsKvMapping and additionalFilteringTags, tagsKvMapping is ${JSON.stringify(tagsKvMapping)}`);
