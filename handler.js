@@ -109,20 +109,19 @@ async function getConfig() {
         AWS_REGION: process.env.AWS_REGION,
         DD_AWS_ACCOUNT_NUMBER: process.env.DD_AWS_ACCOUNT_NUMBER,
 
-        AllowList: process.env.AllowList,
-        AllowListFunctionNameSet: new Set(getFunctionNamesFromString(process.env.AllowList)),
-        TagRule: process.env.TagRule,
-        DenyList: process.env.DenyList,
-        DenyListFunctionNameSet: new Set(getFunctionNamesFromString(process.env.DenyList)),
+        AllowList: process.env.DD_AllowList,
+        AllowListFunctionNameSet: new Set(getFunctionNamesFromString(process.env.DD_AllowList)),
+        TagRule: process.env.DD_TagRule,
+        DenyList: process.env.DD_DenyList,
+        DenyListFunctionNameSet: new Set(getFunctionNamesFromString(process.env.DD_DenyList)),
 
         DD_EXTENSION_LAYER_VERSION: process.env.DD_EXTENSION_LAYER_VERSION,
         DD_PYTHON_LAYER_VERSION: process.env.DD_PYTHON_LAYER_VERSION,
         DD_NODE_LAYER_VERSION: process.env.DD_NODE_LAYER_VERSION,
         DD_LAYER_VERSIONS: layerVersions,
 
-        MinimumMemorySize: process.env.MinimumMemorySize,
+        MinimumMemorySize: process.env.DD_MinimumMemorySize,
     };
-    // console.log(`\n config: ${JSON.stringify(config)}`)
     logger.logObject({...config, ...{eventName: "config"}})
     console.log(`AllowListFunctionNameSet: ${JSON.stringify([...config.AllowListFunctionNameSet])}`)
     console.log(`DenyListFunctionNameSet: ${JSON.stringify([...config.DenyListFunctionNameSet])}`)
@@ -131,27 +130,31 @@ async function getConfig() {
 
 async function uninstrumentBasedOnAllowListAndTagRule(config) {
     // get the function that has DD_SLS_REMOTE_INSTRUMENTER_VERSION tag
-    const additionalFilteringTags = {[DD_SLS_REMOTE_INSTRUMENTER_VERSION]: []}
-    const remoteInstrumentedFunctionNames = await getFunctionNamesByTagRule(config, additionalFilteringTags);
-    console.log(`functionNames in uninstrumentBasedOnAllowListAndTagRule: ${remoteInstrumentedFunctionNames}`);
-    // filter for the functions that is a) on the deny list b) not on the allow list and does not match tag rule
-    // return function name
+    const otherFilteringTags = {[DD_SLS_REMOTE_INSTRUMENTER_VERSION]: []}
+    const remoteInstrumentedFunctionNames = await getFunctionNamesByTagRuleOrOtherFilteringTags(config, otherFilteringTags);
+    console.log(`functions that is already instrumented: ${remoteInstrumentedFunctionNames}`);
 
-    const functionNamesByTagRule = await getFunctionNamesByTagRule(config);
+    const functionNamesByTagRule = await getFunctionNamesByTagRuleOrOtherFilteringTags(config);
 
     const remoteInstrumentedFunctionsSet = new Set(remoteInstrumentedFunctionNames);
     const functionsThatShouldBeRemoteInstrumented = new Set(functionNamesByTagRule);
 
     // uninstrument these functions:
-    const functionsToBeUninstrumented = Array.from(remoteInstrumentedFunctionsSet)
-        .filter(functionName => (
-                (
-                    !functionsThatShouldBeRemoteInstrumented.has(functionName)
-                    && !config.AllowListFunctionNameSet.has(functionName)
+    let functionsToBeUninstrumented;
+    if (config.DenyList === '*') {
+        functionsToBeUninstrumented = remoteInstrumentedFunctionNames;
+        logger.logInstrumentStatus(UNINSTRUMENT_STATUS, IN_PROGRESS, "ALL")
+    } else {
+        functionsToBeUninstrumented = Array.from(remoteInstrumentedFunctionsSet)
+            .filter(functionName => (
+                    (
+                        !functionsThatShouldBeRemoteInstrumented.has(functionName)
+                        && !config.AllowListFunctionNameSet.has(functionName)
+                    )
+                    || config.DenyListFunctionNameSet.has(functionName)
                 )
-                || config.DenyListFunctionNameSet.has(functionName)
             )
-        )
+    }
     console.log(`functionsToBeUninstrumented: ${JSON.stringify(functionsToBeUninstrumented)}`);
     await uninstrumentFunctions(functionsToBeUninstrumented, config);
 }
@@ -234,12 +237,16 @@ async function instrumentByEvent(event, config) {
     // special handling for specific event
     // event.detail.requestParameters.functionName for update function event can be ARN or function name
     if (event.hasOwnProperty("detail") && event.detail.hasOwnProperty("eventName") && event.detail.eventName === "UpdateFunctionConfiguration20150331v2") {
-        let actuallyFunctionArn = event.detail.requestParameters.functionName;
+        let actuallyFunctionArn = event.detail.requestParameters.functionName;  // functionName here is actually function ARN
         let arnParts = actuallyFunctionArn.split(':');
         functionName = arnParts[arnParts.length - 1];
         console.log(`actuallyFunctionArn: ${actuallyFunctionArn}  arnParts: ${JSON.stringify(arnParts)}  functionName:${functionName}`);
     }
 
+    if (config.DenyList === '*') {
+        logger.logInstrumentStatus(INSTRUMENT_STATUS, SKIPPED, functionName)
+        return;
+    }
     logger.debugStatus(LAMBDA_EVENT, PROCESSING, functionName, "Lambda management event is received and starting instrumentation")
 
     // filter out functions that are on the DenyList
@@ -404,27 +411,24 @@ async function getFunctionNamesFromResourceGroupsTaggingAPI(tagFilters, config) 
 }
 
 async function instrumentationByTagRule(config) {
-    const functionNames = await getFunctionNamesByTagRule(config);
+    const functionNames = await getFunctionNamesByTagRuleOrOtherFilteringTags(config);
     await instrumentByFunctionNames(functionNames, config);
 }
 
-async function getFunctionNamesByTagRule(config, additionalFilteringTags = {}) {
-    const specifiedTags = getRemoteInstrumentTagsFromConfig(config);  // tags: ['k1:v1', 'k2:v2']
-    console.log(`specifiedTags: ${specifiedTags}`);
-    if (specifiedTags === undefined || specifiedTags.length === 0) {
-        return;
-    }
-    console.log(`RemoteInstrumentTagsFromEnvVar: ${specifiedTags}`);
-
-    const tagsKvMapping = getSpecifiedTagsKvMapping(specifiedTags);
-
-    // additionalFilteringTags = { "service": ["service1", "service2"] }
-    if (Object.keys(additionalFilteringTags).length !== 0) {
-        for (const [key, value] of Object.entries(additionalFilteringTags)) {
-            if (!tagsKvMapping.hasOwnProperty(key)) {  // in case of key collisions
-                tagsKvMapping[key] = value
-            }
+async function getFunctionNamesByTagRuleOrOtherFilteringTags(config, otherFilteringTags = {}) {
+    // this function either use config to get filters from tagRule or use otherFilteringTags = { "service": ["service1", "service2"] }
+    let tagsKvMapping = {};
+    if (Object.keys(otherFilteringTags).length === 0) {
+        const specifiedTags = getRemoteInstrumentTagsFromConfig(config);  // tags: ['k1:v1', 'k2:v2']
+        console.log(`specifiedTags: ${specifiedTags}`);
+        if (specifiedTags === undefined || specifiedTags.length === 0) {
+            return;
         }
+        console.log(`RemoteInstrumentTagsFromEnvVar: ${specifiedTags}`);
+        tagsKvMapping = getSpecifiedTagsKvMapping(specifiedTags);
+
+    } else {
+        tagsKvMapping = otherFilteringTags
     }
 
     console.log(`After merging tagsKvMapping and additionalFilteringTags, tagsKvMapping is ${JSON.stringify(tagsKvMapping)}`);
@@ -462,6 +466,9 @@ function getSpecifiedTagsKvMapping(specifiedTags) {  // return e.g. {"env": ["st
 }
 
 async function instrumentByFunctionNames(functionNames, config) {
+    if (config.DenyList === '*') {
+        return;
+    }
     if (typeof (functionNames) !== 'object' || functionNames.length === 0) {
         console.log(`functionNames is empty in initialInstrumentationWithNames().`);
         return;
