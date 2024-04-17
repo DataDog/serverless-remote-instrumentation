@@ -237,12 +237,16 @@ async function instrumentByEvent(event, config) {
     // special handling for specific event
     // event.detail.requestParameters.functionName for update function event can be ARN or function name
     if (event.hasOwnProperty("detail") && event.detail.hasOwnProperty("eventName") && event.detail.eventName === "UpdateFunctionConfiguration20150331v2") {
-        let actuallyFunctionArn = event.detail.requestParameters.functionName;
+        let actuallyFunctionArn = event.detail.requestParameters.functionName;  // functionName here is actually function ARN
         let arnParts = actuallyFunctionArn.split(':');
         functionName = arnParts[arnParts.length - 1];
         console.log(`actuallyFunctionArn: ${actuallyFunctionArn}  arnParts: ${JSON.stringify(arnParts)}  functionName:${functionName}`);
     }
 
+    if (config.DenyList === '*') {
+        logger.logInstrumentStatus(INSTRUMENT_STATUS, SKIPPED, functionName)
+        return;
+    }
     logger.debugStatus(LAMBDA_EVENT, PROCESSING, functionName, "Lambda management event is received and starting instrumentation")
 
     // filter out functions that are on the DenyList

@@ -72,6 +72,7 @@ Resources:
       - arm64
       Runtime: nodejs20.x
       ReservedConcurrentExecutions: 1
+      #      CodeSigningConfigArn: arn:aws:signer:us-east-1:464622532012:/signing-profiles/DatadogLambdaSigningProfile/9vMI9ZAGLc
       Timeout: 840
       MemorySize: 512
       Role: !GetAtt LambdaExecutionRole.Arn
