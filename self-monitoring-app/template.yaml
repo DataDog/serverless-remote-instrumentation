@@ -59,6 +59,9 @@ Parameters:
   LambdaWithTagsUpdatedToBeInDenyListFunctionName:
     Type: String
     Default: remote-instrument-self-monitor-with-tags-updated-in-deny-list
+  LambdaWith128MbRamFunctionName:
+    Type: String
+    Default: remote-instrument-self-monitor-128mb
   DdExtensionLayerVersion:
     Type: String
     Default: '50'
@@ -83,7 +86,7 @@ Resources:
       - LambdaFunctionWithSpecifiedTags
       - LambdaFunctionWithoutSpecifiedTags
     Properties:
-      TemplateURL: https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/remote-instrument-dev/0.7.8.yaml
+      TemplateURL: https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/remote-instrument-dev/0.7.14.yaml
       Parameters:
         DdApiKey: !Ref DdApiKey
         DdSite: !Ref DdSite
@@ -511,6 +514,64 @@ Resources:
             Action:
               - lambda:GetLayerVersion
             Resource: !Sub arn:aws:lambda:${AWS::Region}:464622532012:layer:*
+
+  LambdaWith128MbRam:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: !Ref LambdaWith128MbRamFunctionName
+      Architectures:
+        - arm64
+      Runtime: nodejs20.x
+      Timeout: 90
+      MemorySize: 128
+      Role: !GetAtt NodeLambdaExecutionRole.Arn
+      Handler: index.handler
+      Environment:
+        Variables:
+          DD_TRACE_ENABLED: true
+          DD_API_KEY: !Ref DdApiKey
+          DD_SERVICE: remote-instrument-self-monitor
+          DD_ENV: dev
+          DD_VERSION: 0.1.0
+          DD_SITE: !Ref DdSite
+      Tags:
+        - Key: "service"
+          Value: "remote-instrument-self-monitor"
+        - Key: "DD_REMOTE_INSTRUMENT_ENABLED"
+          Value: "true"
+      Code:
+        ZipFile: |
+          exports.handler = async (event, context, callback) => {
+            console.log('\n event:', JSON.stringify(event))
+            return `Succeeded.`;
+          };
+
+  LambdaWith128MbRamRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      Path: "/"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:CreateLogGroup
+                  - logs:PutLogEvents
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
+              - Effect: Allow
+                Action:
+                  - lambda:GetLayerVersion
+                Resource: !Sub arn:aws:lambda:${AWS::Region}:464622532012:layer:*
 
 
   UninstrumentScheduledRule:
