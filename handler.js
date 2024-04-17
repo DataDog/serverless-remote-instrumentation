@@ -109,20 +109,19 @@ async function getConfig() {
         AWS_REGION: process.env.AWS_REGION,
         DD_AWS_ACCOUNT_NUMBER: process.env.DD_AWS_ACCOUNT_NUMBER,
 
-        AllowList: process.env.AllowList,
-        AllowListFunctionNameSet: new Set(getFunctionNamesFromString(process.env.AllowList)),
-        TagRule: process.env.TagRule,
-        DenyList: process.env.DenyList,
-        DenyListFunctionNameSet: new Set(getFunctionNamesFromString(process.env.DenyList)),
+        AllowList: process.env.DD_AllowList,
+        AllowListFunctionNameSet: new Set(getFunctionNamesFromString(process.env.DD_AllowList)),
+        TagRule: process.env.DD_TagRule,
+        DenyList: process.env.DD_DenyList,
+        DenyListFunctionNameSet: new Set(getFunctionNamesFromString(process.env.DD_DenyList)),
 
         DD_EXTENSION_LAYER_VERSION: process.env.DD_EXTENSION_LAYER_VERSION,
         DD_PYTHON_LAYER_VERSION: process.env.DD_PYTHON_LAYER_VERSION,
         DD_NODE_LAYER_VERSION: process.env.DD_NODE_LAYER_VERSION,
         DD_LAYER_VERSIONS: layerVersions,
 
-        MinimumMemorySize: process.env.MinimumMemorySize,
+        MinimumMemorySize: process.env.DD_MinimumMemorySize,
     };
-    // console.log(`\n config: ${JSON.stringify(config)}`)
     logger.logObject({...config, ...{eventName: "config"}})
     console.log(`AllowListFunctionNameSet: ${JSON.stringify([...config.AllowListFunctionNameSet])}`)
     console.log(`DenyListFunctionNameSet: ${JSON.stringify([...config.DenyListFunctionNameSet])}`)

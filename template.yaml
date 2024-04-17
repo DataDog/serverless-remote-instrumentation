@@ -72,7 +72,6 @@ Resources:
       - arm64
       Runtime: nodejs20.x
       ReservedConcurrentExecutions: 1
-#      CodeSigningConfigArn: arn:aws:signer:us-east-1:464622532012:/signing-profiles/DatadogLambdaSigningProfile/9vMI9ZAGLc
       Timeout: 840
       MemorySize: 512
       Role: !GetAtt LambdaExecutionRole.Arn
@@ -94,13 +93,13 @@ Resources:
           DD_VERSION: 0.0.3
           DD_SITE: !Ref DdSite
           DD_AWS_ACCOUNT_NUMBER: !Ref DdAwsAccountNumber
-          AllowList: !Ref AllowList
-          TagRule: !Ref TagRule
-          DenyList: !Ref DenyList
+          DD_AllowList: !Ref AllowList
+          DD_TagRule: !Ref TagRule
+          DD_DenyList: !Ref DenyList
           DD_EXTENSION_LAYER_VERSION: !Ref DdExtensionLayerVersion
           DD_PYTHON_LAYER_VERSION: !Ref DdPythonLayerVersion
           DD_NODE_LAYER_VERSION: !Ref DdNodeLayerVersion
-          MinimumMemorySize: !Ref MinimumMemorySize
+          DD_MinimumMemorySize: !Ref MinimumMemorySize
       Tags:
         - Key: "dd_serverless_service"
           Value: "remote_instrumenter"
