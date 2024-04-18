@@ -22,6 +22,8 @@ const FAILED = "failed"
 const INSTRUMENT = "instrument"
 const IN_PROGRESS = "in_progress"
 const LAMBDA_EVENT = "lambda_event"
+const REMOTE_INSTRUMENTATION_STARTED = "RemoteInstrumentationStarted"
+const REMOTE_INSTRUMENTATION_ENDED = "RemoteInstrumentationEnded"
 const PROCESSING = "processing"
 const SKIPPED = "skipped"
 const SUCCEEDED = "succeeded"
@@ -29,15 +31,39 @@ const UNINSTRUMENT = "uninstrument"
 
 
 exports.handler = async (event, context, callback) => {
-    logger.logObject(event)
+    logger.logObject(event);
+    const instrumentOutcome = {
+        instrument: {succeeded: {}, failed: {}},
+        uninstrument: {succeeded: {}, failed: {}}
+    };
 
     const config = await getConfig();
     const allowListFunctionNames = getFunctionNamesFromString(config.AllowList);
+    logger.emitFrontEndEvent(REMOTE_INSTRUMENTATION_STARTED);
 
     // One Lambda CloudTrail management event, only at most one Lambda will be updated
     if (event.hasOwnProperty("detail-type") && event.hasOwnProperty("source") && event.source === "aws.lambda") {
-        await instrumentBySingleEvent(event, config);
-        return;
+        const eventNamesToSkip = new Set([
+            "AddPermission20150331",
+            "AddPermission20150331v2",
+            "DeleteFunction20150331",
+            "PublishLayerVersion20181031",
+            "RemovePermission20150331",
+            "PutFunctionConcurrency20171031",
+            "RemovePermission20150331v2",
+            "UpdateFunctionCode20150331v2",
+        ])
+        if (eventNamesToSkip.has(event.detail?.eventName)) {
+            console.log(`${event.detail?.eventName} event is skipped.`)
+            return;
+        }
+        if (event["detail"]["eventName"] === 'UntagResource20170331v2' ||
+            event["detail"]["eventName"] === 'TagResource20170331v2') {
+            console.log(`TODO: Processing of (Un)TagResource20170331v2 is not yet implemented yet.`)
+            return;
+        }
+
+        await instrumentBySingleEvent(event, config, instrumentOutcome);
 
         // first time instrumentation by CloudFormation lifeCycle custom resource
     } else if (event.hasOwnProperty("RequestType")) {
@@ -46,24 +72,25 @@ exports.handler = async (event, context, callback) => {
             await cfnResponse.send(event, context, "SUCCESS");  // send to response to CloudFormation custom resource endpoint to continue stack deletion
             return;
         }
-        await firstTimeInstrumentationByAllowList(allowListFunctionNames, config);
-        await firstTimeInstrumentationByTagRule(config);
+        await firstTimeInstrumentationByAllowList(allowListFunctionNames, config, instrumentOutcome);
+        await firstTimeInstrumentationByTagRule(config, instrumentOutcome);
         // send response to CloudFormation custom resource endpoint to continue stack creation
         await cfnResponse.send(event, context, "SUCCESS");
-        return;
 
         // Stack Updated
     } else if (event.hasOwnProperty("detail-type")
         && event["detail-type"] === "CloudFormation Stack Status Change"
         && event.detail["status-details"].status === "UPDATE_COMPLETE") {
         // CloudTrail event triggered by CloudFormation stack update completed
-        await stackUpdateUninstrumentBasedOnAllowListAndTagRule(config);
-        await stackUpdateInstrumentByAllowList(allowListFunctionNames, config);
-        await stackUpdateInstrumentByTagRule(config);
-        console.log(`Re-instrument when CloudFormation stack is updated.`)
+        await stackUpdateUninstrumentBasedOnAllowListAndTagRule(config, instrumentOutcome);
+        await stackUpdateInstrumentByAllowList(allowListFunctionNames, config, instrumentOutcome);
+        await stackUpdateInstrumentByTagRule(config, instrumentOutcome);
+        console.log(`Re-instrument when CloudFormation stack is updated.`);
+    } else {
+        console.log("Unexpected event encountered. Please check event.");
         return;
     }
-    return "unexpected event encountered. check logEvent."
+    logger.emitFrontEndEvent(REMOTE_INSTRUMENTATION_ENDED, instrumentOutcome);
 };
 
 //// wrappers
@@ -128,7 +155,7 @@ async function getConfig() {
     return config;
 }
 
-async function uninstrumentBasedOnAllowListAndTagRule(config) {
+async function uninstrumentBasedOnAllowListAndTagRule(config, instrumentOutcome) {
     // get the function that has DD_SLS_REMOTE_INSTRUMENTER_VERSION tag
     const otherFilteringTags = {[DD_SLS_REMOTE_INSTRUMENTER_VERSION]: []}
     const remoteInstrumentedFunctionNames = await getFunctionNamesByTagRuleOrOtherFilteringTags(config, otherFilteringTags);
@@ -156,10 +183,10 @@ async function uninstrumentBasedOnAllowListAndTagRule(config) {
             )
     }
     console.log(`functionsToBeUninstrumented: ${JSON.stringify(functionsToBeUninstrumented)}`);
-    await uninstrumentFunctions(functionsToBeUninstrumented, config);
+    await uninstrumentFunctions(functionsToBeUninstrumented, config, instrumentOutcome);
 }
 
-async function uninstrumentFunctions(functionNamesToUninstrument, config) {
+async function uninstrumentFunctions(functionNamesToUninstrument, config, instrumentOutcome) {
     function sleep(ms) {
         return new Promise((resolve) => {
             setTimeout(resolve, ms);
@@ -173,7 +200,7 @@ async function uninstrumentFunctions(functionNamesToUninstrument, config) {
     for (let functionName of functionNamesToUninstrument) {
         console.log(`functionName in functionNamesToUninstrument: ${functionName}`)
         const functionArn = `arn:aws:lambda:${config.AWS_REGION}:${config.DD_AWS_ACCOUNT_NUMBER}:function:${functionName}`;
-        await instrumentWithDatadogCi(functionArn, true, NODE, config, uninstrumentedFunctionArns);
+        await instrumentWithDatadogCi(instrumentOutcome, functionArn, true, NODE, config, uninstrumentedFunctionArns);
     }
     await untagResourcesOfSlsTag(uninstrumentedFunctionArns, config);
 }
@@ -208,27 +235,7 @@ function validateEvent(event) {
     }
 }
 
-async function instrumentByEvent(event, config) {
-    const eventNamesToSkip = new Set([
-        "AddPermission20150331",
-        "AddPermission20150331v2",
-        "DeleteFunction20150331",
-        "PublishLayerVersion20181031",
-        "RemovePermission20150331",
-        "PutFunctionConcurrency20171031",
-        "RemovePermission20150331v2",
-        "UpdateFunctionCode20150331v2",
-    ])
-    if (eventNamesToSkip.has(event.detail?.eventName)) {
-        console.log(`${event.detail?.eventName} event is received. Skipping.`)
-        return;
-    }
-    if (event["detail"]["eventName"] === 'UntagResource20170331v2' ||
-        event["detail"]["eventName"] === 'TagResource20170331v2') {
-        console.log(`TODO: (Un)TagResource20170331v2 is not yet implemented yet.`)
-        return;
-    }
-
+async function instrumentByEvent(event, config, instrumentOutcome) {
     validateEvent(event);
 
     let functionFromEventIsInAllowList = false;
@@ -314,6 +321,7 @@ async function instrumentByEvent(event, config) {
     }
 
     if (belowRecommendedMemorySize(event, functionName, config)) {
+        instrumentOutcome.instrument.failed[functionName] = {functionArn: functionArn}
         return;
     }
 
@@ -324,7 +332,7 @@ async function instrumentByEvent(event, config) {
         console.error(`unexpected event.responseElements.runtime: ${runtime}`);
     }
     const instrumentedFunctionArns = [];
-    await instrumentWithDatadogCi(functionArn, false, runtime, config, instrumentedFunctionArns);
+    await instrumentWithDatadogCi(instrumentOutcome, functionArn, false, runtime, config, instrumentedFunctionArns);
     await tagResourcesWithSlsTag(instrumentedFunctionArns, config);
 }
 
@@ -410,9 +418,9 @@ async function getFunctionNamesFromResourceGroupsTaggingAPI(tagFilters, config) 
     return functionNames;
 }
 
-async function instrumentationByTagRule(config) {
+async function instrumentationByTagRule(config, instrumentOutcome) {
     const functionNames = await getFunctionNamesByTagRuleOrOtherFilteringTags(config);
-    await instrumentByFunctionNames(functionNames, config);
+    await instrumentByFunctionNames(functionNames, config, instrumentOutcome);
 }
 
 async function getFunctionNamesByTagRuleOrOtherFilteringTags(config, otherFilteringTags = {}) {
@@ -465,7 +473,7 @@ function getSpecifiedTagsKvMapping(specifiedTags) {  // return e.g. {"env": ["st
     return tagsKvMapping;
 }
 
-async function instrumentByFunctionNames(functionNames, config) {
+async function instrumentByFunctionNames(functionNames, config, instrumentOutcome) {
     if (config.DenyList === '*') {
         return;
     }
@@ -521,9 +529,8 @@ async function instrumentByFunctionNames(functionNames, config) {
                 continue;
             }
 
-            await instrumentWithDatadogCi(functionArn, false, runtime, config, instrumentedFunctionArns);
+            await instrumentWithDatadogCi(instrumentOutcome, functionArn, false, runtime, config, instrumentedFunctionArns);
         } catch (error) {
-            // simply skip this current instrumentation of the function.
             console.log(`Error is caught for functionName ${functionName}. Skipping instrumenting this function. Error is: ${error}`);
         }
     }
@@ -531,8 +538,8 @@ async function instrumentByFunctionNames(functionNames, config) {
     await tagResourcesWithSlsTag(instrumentedFunctionArns, config);
 }
 
-async function instrumentWithDatadogCi(functionArn, uninstrument = false, runtime = NODE, config, operatedFunctionArns) {
-    console.log(`instrumentWithDatadogCi: functionArns: ${operatedFunctionArns} , uninstrument: ${uninstrument}`)
+async function instrumentWithDatadogCi(instrumentOutcome, functionArn, uninstrument = false, runtime = NODE, config, operatedFunctionArns) {
+    console.log(`instrumentWithDatadogCi, functionArns: ${operatedFunctionArns} , uninstrument: ${uninstrument}`)
     // filter out functions that are on the DenyList
     const functionName = functionArn.split(':')[6];
     if (uninstrument === false && config.DenyListFunctionNameSet.has(functionName)) {
@@ -555,24 +562,23 @@ async function instrumentWithDatadogCi(functionArn, uninstrument = false, runtim
 
     const commandExitCode = await cli.run(command);
 
-    // console.log(`\n commandExitCode type: ${typeof commandExitCode}, \n commandExitCode: ${commandExitCode}`);
     if (commandExitCode === 0) {
-        if (uninstrument === false) {
-            // console.log(`✅ Function ${functionArn} is instrumented with datadog-ci.`);
-            logger.logInstrumentOutcome(INSTRUMENT, SUCCEEDED, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
-        } else {
-            // console.log(`✅ Function ${functionArn} is uninstrumented with datadog-ci.`);
+        if (uninstrument === true) {
             logger.logInstrumentOutcome(UNINSTRUMENT, SUCCEEDED, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
+            instrumentOutcome["uninstrument"][SUCCEEDED][functionName] = {functionArn: functionArn};
+        } else {
+            logger.logInstrumentOutcome(INSTRUMENT, SUCCEEDED, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
+            instrumentOutcome["instrument"][SUCCEEDED][functionName] = {functionArn: functionArn};
         }
         operatedFunctionArns.push(functionArn);
         console.log(`operatedFunctionArns: ${JSON.stringify(operatedFunctionArns)}`)
     } else {
-        if (uninstrument === false) {
-            // console.log(`❌ datadog-ci instrumentation failed for function ${functionArn}`);
-            logger.logInstrumentOutcome(INSTRUMENT, FAILED, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
-        } else {
-            // console.log(`❌ datadog-ci uninstrumentation failed for function ${functionArn}`);
+        if (uninstrument === true) {
             logger.logInstrumentOutcome(UNINSTRUMENT, FAILED, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
+            instrumentOutcome["uninstrument"][FAILED][functionName] = {functionArn: functionArn};
+        } else {
+            logger.logInstrumentOutcome(INSTRUMENT, FAILED, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
+            instrumentOutcome["instrument"][FAILED][functionName] = {functionArn: functionArn};
         }
     }
 }
@@ -698,6 +704,13 @@ async function getLatestLayersFromS3() {
 
 class Logger {
     constructor() {
+    }
+
+    emitFrontEndEvent(eventName, instrumentOutcome) {
+        console.log(JSON.stringify({
+            eventName: eventName,
+            outcome: instrumentOutcome,
+        }));
     }
 
     log(message, targetFunctionName = null, targetFunctionArn = null) {
