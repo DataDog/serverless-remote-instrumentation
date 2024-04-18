@@ -21,7 +21,7 @@ const DENIED = "denied"
 const FAILED = "failed"
 const INSTRUMENT = "instrument"
 const IN_PROGRESS = "in_progress"
-const LAMBDA_EVENT = "lambda_event"
+const LAMBDA_EVENT = "LambdaEvent"
 const REMOTE_INSTRUMENTATION_STARTED = "RemoteInstrumentationStarted"
 const REMOTE_INSTRUMENTATION_ENDED = "RemoteInstrumentationEnded"
 const PROCESSING = "processing"
@@ -39,7 +39,6 @@ exports.handler = async (event, context, callback) => {
 
     const config = await getConfig();
     const allowListFunctionNames = getFunctionNamesFromString(config.AllowList);
-    logger.emitFrontEndEvent(REMOTE_INSTRUMENTATION_STARTED);
 
     // One Lambda CloudTrail management event, only at most one Lambda will be updated
     if (event.hasOwnProperty("detail-type") && event.hasOwnProperty("source") && event.source === "aws.lambda") {
@@ -62,7 +61,7 @@ exports.handler = async (event, context, callback) => {
             console.log(`TODO: Processing of (Un)TagResource20170331v2 is not yet implemented yet.`)
             return;
         }
-
+        logger.emitFrontEndEvent(REMOTE_INSTRUMENTATION_STARTED, LAMBDA_EVENT);
         await instrumentBySingleEvent(event, config, instrumentOutcome);
 
         // first time instrumentation by CloudFormation lifeCycle custom resource
@@ -72,6 +71,7 @@ exports.handler = async (event, context, callback) => {
             await cfnResponse.send(event, context, "SUCCESS");  // send to response to CloudFormation custom resource endpoint to continue stack deletion
             return;
         }
+        logger.emitFrontEndEvent(REMOTE_INSTRUMENTATION_STARTED, "StackCreation");
         await firstTimeInstrumentationByAllowList(allowListFunctionNames, config, instrumentOutcome);
         await firstTimeInstrumentationByTagRule(config, instrumentOutcome);
         // send response to CloudFormation custom resource endpoint to continue stack creation
@@ -82,15 +82,15 @@ exports.handler = async (event, context, callback) => {
         && event["detail-type"] === "CloudFormation Stack Status Change"
         && event.detail["status-details"].status === "UPDATE_COMPLETE") {
         // CloudTrail event triggered by CloudFormation stack update completed
+        logger.emitFrontEndEvent(REMOTE_INSTRUMENTATION_STARTED, "StackUpdate");
         await stackUpdateUninstrumentBasedOnAllowListAndTagRule(config, instrumentOutcome);
         await stackUpdateInstrumentByAllowList(allowListFunctionNames, config, instrumentOutcome);
         await stackUpdateInstrumentByTagRule(config, instrumentOutcome);
-        console.log(`Re-instrument when CloudFormation stack is updated.`);
     } else {
         console.log("Unexpected event encountered. Please check event.");
         return;
     }
-    logger.emitFrontEndEvent(REMOTE_INSTRUMENTATION_ENDED, instrumentOutcome);
+    logger.emitFrontEndEvent(REMOTE_INSTRUMENTATION_ENDED, "InstrumenterInvocationEnds", instrumentOutcome);
 };
 
 //// wrappers
@@ -279,7 +279,6 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
         const client = new LambdaClient({region: config.AWS_REGION});
         const command = new GetFunctionCommand(params);
 
-        // aws-vault exec sso-serverless-sandbox-account-admin-8h -- aws lambda get-function --function-name test-ci-instrument-kimi --region sa-east-1
         try {
             // filter out already correctly instrumented functions
             const getFunctionCommandOutput = await client.send(command);
@@ -320,8 +319,7 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
         }
     }
 
-    if (belowRecommendedMemorySize(event, functionName, config)) {
-        instrumentOutcome.instrument.failed[functionName] = {functionArn: functionArn}
+    if (belowRecommendedMemorySize(event, functionName, config, instrumentOutcome)) {
         return;
     }
 
@@ -336,7 +334,7 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
     await tagResourcesWithSlsTag(instrumentedFunctionArns, config);
 }
 
-function belowRecommendedMemorySize(event, functionName, config) {
+function belowRecommendedMemorySize(event, functionName, config, instrumentOutcome) {
     let memorySize = 512;
     // only need to check these 2 events
     if (event.detail.eventName === 'CreateFunction20150331') {
@@ -346,7 +344,9 @@ function belowRecommendedMemorySize(event, functionName, config) {
     }
     if (memorySize < parseInt(config.MinimumMemorySize)) {
         logger.logInstrumentOutcome(INSTRUMENT, FAILED, functionName, null, null, null, `Current memory size ${memorySize} MB is below threshold ${config.MinimumMemorySize} MB.`)
-        logger.debugLogs(LAMBDA_EVENT, SKIPPED, functionName, `Current memory size ${memorySize} MB is below threshold ${config.MinimumMemorySize} MB.`)
+        let message = `Current memory size ${memorySize} MB is below threshold ${config.MinimumMemorySize} MB.`;
+        logger.debugLogs(LAMBDA_EVENT, SKIPPED, functionName, message)
+        instrumentOutcome.instrument.failed[functionName] = {functionArn: functionArn, reason: message}
         return true;
     }
     return false;
@@ -378,7 +378,6 @@ function shouldBeRemoteInstrumentedByTag(getFunctionCommandOutput, specifiedTags
 }
 
 async function getFunctionNamesFromResourceGroupsTaggingAPI(tagFilters, config) {
-    // aws-vault exec sso-serverless-sandbox-account-admin-8h -- aws resourcegroupstaggingapi get-resources --tag-filters Key=DD_AUTO_INSTRUMENT_ENABLED,Values=true --resource-type-filters="lambda:function" --region sa-east-1
     const client = new ResourceGroupsTaggingAPIClient({region: config.AWS_REGION});
     const input = {
         TagFilters: tagFilters,
@@ -478,7 +477,7 @@ async function instrumentByFunctionNames(functionNames, config, instrumentOutcom
         return;
     }
     if (typeof (functionNames) !== 'object' || functionNames.length === 0) {
-        console.log(`functionNames is empty in initialInstrumentationWithNames().`);
+        console.log(`functionNames is empty in instrumentByFunctionNames().`);
         return;
     }
     const ddAwsAccountNumber = config.DD_AWS_ACCOUNT_NUMBER
@@ -501,7 +500,6 @@ async function instrumentByFunctionNames(functionNames, config, instrumentOutcom
         };
         const command = new GetFunctionCommand(params);
 
-        // aws-vault exec sso-serverless-sandbox-account-admin-8h -- aws lambda get-function --function-name test-ci-instrument-kimi --region sa-east-1
         try {
             // filter out already instrumented functions
             const getFunctionCommandOutput = await client.send(command);
@@ -706,9 +704,10 @@ class Logger {
     constructor() {
     }
 
-    emitFrontEndEvent(eventName, instrumentOutcome) {
+    emitFrontEndEvent(eventName, triggeredBy, instrumentOutcome) {
         console.log(JSON.stringify({
             eventName: eventName,
+            triggeredBy: triggeredBy,
             outcome: instrumentOutcome,
         }));
     }
