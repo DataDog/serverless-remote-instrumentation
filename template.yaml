@@ -108,8 +108,7 @@ Resources:
         ZipFile: |
           const cfnResponse = require("cfn-response");  // file will be auto-injected by CloudFormation
           exports.handler = async (event, context, callback) => {
-            console.log('\n event:', JSON.stringify(event))
-            return `Succeeded.`;
+            return;
           };
 
   LambdaExecutionRole:
