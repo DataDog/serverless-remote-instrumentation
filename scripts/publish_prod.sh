@@ -55,7 +55,7 @@ echo "Signing the layer"
 aws-vault exec sso-prod-engineering -- ./scripts/sign_layers.sh prod
 
 echo "Publishing layers to commercial AWS regions"
-aws-vault exec sso-prod-engineering --no-session -- ./scripts/publish_layers.sh
+aws-vault exec sso-prod-engineering --no-session -- REGIONS=eu-west-2 ./scripts/publish_layers.sh
 
 echo "Creating tag in the Serverless-Remote-Instrumentation repository for release on GitHub"
 git tag "v$VERSION"
