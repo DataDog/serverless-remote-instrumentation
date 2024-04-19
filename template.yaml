@@ -72,7 +72,6 @@ Resources:
       - arm64
       Runtime: nodejs20.x
       ReservedConcurrentExecutions: 1
-      #      CodeSigningConfigArn: arn:aws:signer:us-east-1:464622532012:/signing-profiles/DatadogLambdaSigningProfile/9vMI9ZAGLc
       Timeout: 840
       MemorySize: 512
       Role: !GetAtt LambdaExecutionRole.Arn
@@ -80,10 +79,11 @@ Resources:
       Layers:
         - !Sub 'arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Extension-ARM:50'
         - !Sub 'arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Node20-x:99'
-        - !Sub 'arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Serverless-Remote-Instrumentation-ARM:1'
+        - !Sub 'arn:aws:lambda:${AWS::Region}:425362996713:layer:Datadog-Serverless-Remote-Instrumentation-ARM:1'
+#        - !Sub 'arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Serverless-Remote-Instrumentation-ARM:1'
       Environment:
         Variables:
-          DD_LAMBDA_HANDLER: index.handler
+          DD_LAMBDA_HANDLER: /opt/nodejs/handler.handler
           DD_TRACE_ENABLED: true
           DD_API_KEY: !Ref DdApiKey
           DD_LOG_LEVEL: DEBUG
@@ -106,7 +106,11 @@ Resources:
           Value: "remote_instrumenter"
       Code:
         ZipFile: |
-          INJECT_ENTRY_FUNCTION_CODE_PLACEHOLDER
+          const cfnResponse = require("cfn-response");  // file will be auto-injected by CloudFormation
+          exports.handler = async (event, context, callback) => {
+            console.log('\n event:', JSON.stringify(event))
+            return `Succeeded.`;
+          };
 
   LambdaExecutionRole:
     Type: 'AWS::IAM::Role'

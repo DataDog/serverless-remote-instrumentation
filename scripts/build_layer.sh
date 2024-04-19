@@ -12,5 +12,8 @@ rm -rf node_modules
 rm -rf scripts/.layers
 yarn install
 mkdir -p scripts/.layers
-mkdir -p $TMP_DIR && cp -r node_modules $TMP_DIR/ && zip -r scripts/.layers/datadog_serverless_remote_instrumentation_arm64.zip $TMP_DIR
+mkdir -p $TMP_DIR
+cp -r node_modules $TMP_DIR/
+cp handler.js $TMP_DIR/hander.js
+zip -r scripts/.layers/datadog_serverless_remote_instrumentation_arm64.zip $TMP_DIR
 rm -rf $TMP_DIR
