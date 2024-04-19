@@ -7,6 +7,32 @@ Mappings:
     DatadogRemoteInstrumentDemoApp:
       Version: 0.0.1
 
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Remote Instrumenter Configuration
+        Parameters:
+          - DdTagRule
+          - DdAllowList
+          - DdDenyList
+          - DdApiKey
+      - Label:
+          default: Layer Versions
+        Parameters:
+          - DdExtensionLayerVersion
+          - DdPythonLayerVersion
+          - DdNodeLayerVersion
+      - Label:
+          default: Additional Configs
+        Parameters:
+          - DdSite
+          - MinimumMemorySize
+          - InstrumenterFunctionName
+          - BucketName
+          - TrailName
+          - DdAwsAccountNumber
+
 Parameters:
   DdApiKey:
     Type: String
