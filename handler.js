@@ -63,6 +63,7 @@ exports.handler = async (event, context, callback) => {
         }
         logger.emitFrontEndEvent(REMOTE_INSTRUMENTATION_STARTED, LAMBDA_EVENT);
         await instrumentBySingleEvent(event, config, instrumentOutcome);
+        logger.emitFrontEndEvent(REMOTE_INSTRUMENTATION_ENDED, LAMBDA_EVENT, instrumentOutcome);
 
         // first time instrumentation by CloudFormation lifeCycle custom resource
     } else if (event.hasOwnProperty("RequestType")) {
@@ -76,6 +77,7 @@ exports.handler = async (event, context, callback) => {
         await firstTimeInstrumentationByTagRule(config, instrumentOutcome);
         // send response to CloudFormation custom resource endpoint to continue stack creation
         await cfnResponse.send(event, context, "SUCCESS");
+        logger.emitFrontEndEvent(REMOTE_INSTRUMENTATION_ENDED, "StackCreation", instrumentOutcome);
 
         // Stack Updated
     } else if (event.hasOwnProperty("detail-type")
@@ -86,11 +88,11 @@ exports.handler = async (event, context, callback) => {
         await stackUpdateUninstrumentBasedOnAllowListAndTagRule(config, instrumentOutcome);
         await stackUpdateInstrumentByAllowList(allowListFunctionNames, config, instrumentOutcome);
         await stackUpdateInstrumentByTagRule(config, instrumentOutcome);
+        logger.emitFrontEndEvent(REMOTE_INSTRUMENTATION_ENDED, "StackUpdate", instrumentOutcome);
     } else {
         console.log("Unexpected event encountered. Please check event.");
         return;
     }
-    logger.emitFrontEndEvent(REMOTE_INSTRUMENTATION_ENDED, "InstrumenterInvocationEnds", instrumentOutcome);
 };
 
 //// wrappers
@@ -114,7 +116,7 @@ async function getConfig() {
         nodeLayerVersion: process.env.DD_NODE_LAYER_VERSION,
     }
 
-    if (response.status === 200) {  // only modify result obj if getting data back from the api call
+    if (response.status === 200) {
         try {
             const jsonData = response.data
 
@@ -150,13 +152,13 @@ async function getConfig() {
         MinimumMemorySize: process.env.DD_MinimumMemorySize,
     };
     logger.logObject({...config, ...{eventName: "config"}})
-    console.log(`AllowListFunctionNameSet: ${JSON.stringify([...config.AllowListFunctionNameSet])}`)
-    console.log(`DenyListFunctionNameSet: ${JSON.stringify([...config.DenyListFunctionNameSet])}`)
+    console.log(`AllowList: ${JSON.stringify([...config.AllowListFunctionNameSet])}`)
+    console.log(`DenyList: ${JSON.stringify([...config.DenyListFunctionNameSet])}`)
     return config;
 }
 
 async function uninstrumentBasedOnAllowListAndTagRule(config, instrumentOutcome) {
-    // get the function that has DD_SLS_REMOTE_INSTRUMENTER_VERSION tag
+    // get the functions with DD_SLS_REMOTE_INSTRUMENTER_VERSION tag
     const otherFilteringTags = {[DD_SLS_REMOTE_INSTRUMENTER_VERSION]: []}
     const remoteInstrumentedFunctionNames = await getFunctionNamesByTagRuleOrOtherFilteringTags(config, otherFilteringTags);
     console.log(`functions that is already instrumented: ${remoteInstrumentedFunctionNames}`);
@@ -297,7 +299,6 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
             }
             logger.debugLogs(LAMBDA_EVENT, PROCESSING, functionName, `${functionName} is not in the AllowList but matches TagRule`)
         } catch (error) {
-            // simply skip this current instrumentation of the function.
             logger.debugLogs(LAMBDA_EVENT, PROCESSING, functionName, `Error is caught for functionName ${functionName}. Skipping instrumenting this function. Error is: ${error}`)
         }
     }
@@ -319,11 +320,9 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
         }
     }
 
-    if (belowRecommendedMemorySize(event, functionName, config, instrumentOutcome)) {
+    if (belowRecommendedMemorySize(event, functionName, config, instrumentOutcome, functionArn)) {
         return;
     }
-
-    logger.log(`instrumentByEvent`, functionName, functionArn);
 
     // get runtime
     if (typeof (runtime) !== "string") {
@@ -334,7 +333,7 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
     await tagResourcesWithSlsTag(instrumentedFunctionArns, config);
 }
 
-function belowRecommendedMemorySize(event, functionName, config, instrumentOutcome) {
+function belowRecommendedMemorySize(event, functionName, config, instrumentOutcome, functionArn) {
     let memorySize = 512;
     // only need to check these 2 events
     if (event.detail.eventName === 'CreateFunction20150331') {
@@ -494,7 +493,6 @@ async function instrumentByFunctionNames(functionNames, config, instrumentOutcom
             continue;
         }
 
-        // call get function api
         const params = {
             FunctionName: functionName
         };
@@ -523,6 +521,8 @@ async function instrumentByFunctionNames(functionNames, config, instrumentOutcom
             // memory size check
             const memorySize = getFunctionCommandOutput.Configuration.MemorySize;
             if (memorySize < parseInt(config.MinimumMemorySize)) {
+                let message = `Current memory size ${memorySize} MB is below threshold ${config.MinimumMemorySize} MB.`;
+                instrumentOutcome.instrument.failed[functionName] = {functionArn: functionArn, reason: message}
                 logger.logInstrumentOutcome(INSTRUMENT, SKIPPED, functionName, functionArn, null, runtime, `Current memory size ${memorySize} MB is below ${config.MinimumMemorySize} MB`)
                 continue;
             }
@@ -556,7 +556,7 @@ async function instrumentWithDatadogCi(instrumentOutcome, functionArn, uninstrum
         logger.logInstrumentOutcome(UNINSTRUMENT, IN_PROGRESS, functionName, functionArn, layerVersionObj.extensionVersion, runtime);
         command = ['lambda', 'uninstrument', '-f', functionArn, '-r', config.AWS_REGION];
     }
-    console.log(`🖥️ datadog-ci command: ${JSON.stringify(command)}`);
+    console.log(`datadog-ci command: ${JSON.stringify(command)}`);
 
     const commandExitCode = await cli.run(command);
 
@@ -638,7 +638,6 @@ function functionIsInstrumentedWithSpecifiedLayerVersions(layers, config, target
     }
 
     if (targetLambdaExtensionLayerVersion !== config.DD_LAYER_VERSIONS.extensionVersion) {
-        // return early so that we run datadog-ci with specified versions in the config
         return false;
     }
 
@@ -668,7 +667,7 @@ async function getLayerAndRuntimeVersion(runtime, config) {
         result.runtimeLayerVersion = config.DD_LAYER_VERSIONS.pythonLayerVersion;
     }
 
-    // set default version, if config settings is undefined (get from s3 failed and no pinned version from CloudFormation parameters)
+    // if config failed to get from s3, use default
     if (result.extensionVersion === undefined) {
         result.extensionVersion = '53'
     }
