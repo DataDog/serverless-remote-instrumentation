@@ -35,15 +35,15 @@ Parameters:
   DdAwsAccountNumber:
     Type: String
     Default: '425362996713'
-  AllowList:
+  DdAllowList:
     Type: String
-    Default: test-remote-instrument-node,test-remote-instrument-another-node,test-remote-instrument-does-not-exist,test-remote-instrument-python
-  TagRule:
+    Default: ''
+  DdTagRule:
     Type: String
     Default: DD_REMOTE_INSTRUMENT_ENABLED:true
-  DenyList:
+  DdDenyList:
     Type: String
-    Default: test-remote-instrument-another-node
+    Default: ''
   DdExtensionLayerVersion:
     Type: String
     Default: '50'
@@ -94,9 +94,9 @@ Resources:
           DD_VERSION: 0.0.3
           DD_SITE: !Ref DdSite
           DD_AWS_ACCOUNT_NUMBER: !Ref DdAwsAccountNumber
-          DD_AllowList: !Ref AllowList
-          DD_TagRule: !Ref TagRule
-          DD_DenyList: !Ref DenyList
+          DD_AllowList: !Ref DdAllowList
+          DD_TagRule: !Ref DdTagRule
+          DD_DenyList: !Ref DdDenyList
           DD_EXTENSION_LAYER_VERSION: !Ref DdExtensionLayerVersion
           DD_PYTHON_LAYER_VERSION: !Ref DdPythonLayerVersion
           DD_NODE_LAYER_VERSION: !Ref DdNodeLayerVersion
