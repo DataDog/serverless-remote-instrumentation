@@ -120,9 +120,9 @@ Resources:
           DD_VERSION: 0.0.3
           DD_SITE: !Ref DdSite
           DD_AWS_ACCOUNT_NUMBER: !Ref DdAwsAccountNumber
-          DD_AllowList: !Ref DdAllowList
-          DD_TagRule: !Ref DdTagRule
-          DD_DenyList: !Ref DdDenyList
+          DD_ALLOW_LIST: !Ref DdAllowList
+          DD_TAG_RULE: !Ref DdTagRule
+          DD_DENY_LIST: !Ref DdDenyList
           DD_EXTENSION_LAYER_VERSION: !Ref DdExtensionLayerVersion
           DD_PYTHON_LAYER_VERSION: !Ref DdPythonLayerVersion
           DD_NODE_LAYER_VERSION: !Ref DdNodeLayerVersion

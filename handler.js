@@ -138,11 +138,11 @@ async function getConfig() {
         AWS_REGION: process.env.AWS_REGION,
         DD_AWS_ACCOUNT_NUMBER: process.env.DD_AWS_ACCOUNT_NUMBER,
 
-        AllowList: process.env.DD_AllowList,
-        AllowListFunctionNameSet: new Set(getFunctionNamesFromString(process.env.DD_AllowList)),
-        TagRule: process.env.DD_TagRule,
-        DenyList: process.env.DD_DenyList,
-        DenyListFunctionNameSet: new Set(getFunctionNamesFromString(process.env.DD_DenyList)),
+        AllowList: process.env.DD_ALLOW_LIST,
+        AllowListFunctionNameSet: new Set(getFunctionNamesFromString(process.env.DD_ALLOW_LIST)),
+        TagRule: process.env.DD_TAG_RULE,
+        DenyList: process.env.DD_DENY_LIST,
+        DenyListFunctionNameSet: new Set(getFunctionNamesFromString(process.env.DD_DENY_LIST)),
 
         DD_EXTENSION_LAYER_VERSION: process.env.DD_EXTENSION_LAYER_VERSION,
         DD_PYTHON_LAYER_VERSION: process.env.DD_PYTHON_LAYER_VERSION,
