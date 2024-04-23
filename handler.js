@@ -115,6 +115,7 @@ async function getConfig() {
         pythonLayerVersion: process.env.DD_PYTHON_LAYER_VERSION,
         nodeLayerVersion: process.env.DD_NODE_LAYER_VERSION,
     }
+    console.log(`process.env: ${JSON.stringify(process.env)}`)
 
     if (response.status === 200) {
         try {
