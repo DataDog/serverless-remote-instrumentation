@@ -27,10 +27,10 @@ Metadata:
       - Label:
           default: Additional Configs
         Parameters:
+          - BucketName
           - DdSite
           - MinimumMemorySize
           - InstrumenterFunctionName
-          - BucketName
           - TrailName
           - DdAwsAccountNumber
 
@@ -48,7 +48,7 @@ Parameters:
     Type: String
     Default: datadoghq.com
     Description: >-
-      Possible values are `datadoghq.com`, `datadoghq.eu`, `us3.datadoghq.com`, `us5.datadoghq.com`.
+      Possible values are `datadoghq.com`, `datadoghq.eu`, `us3.datadoghq.com`, `us5.datadoghq.com`, `ap1.datadoghq.com`.
     AllowedPattern: .+
     ConstraintDescription: DdSite is required
   InstrumenterFunctionName:
