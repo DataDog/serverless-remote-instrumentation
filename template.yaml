@@ -35,6 +35,9 @@ Metadata:
           - DdAwsAccountNumber
 
 Parameters:
+  DdRemoteInstrumentLayer:
+    Type: String
+    Default: 'arn:aws:lambda:eu-west-2:425362996713:layer:Datadog-Serverless-Remote-Instrumentation-ARM:14'
   DdApiKey:
     Type: String
     Description: >-
@@ -55,7 +58,9 @@ Parameters:
       Define the Lambda function name which is instrumenting the other Lambda functions.
   BucketName:
     Type: String
-    Default: remote-instrument-sa-east-1
+    Default: datadog-remote-instrument-YOUR-COMPANY-NAME
+    Description: >-
+      Since S3 buckets are globally unique across AWS regions, please update the name of the bucket that is used to store CloudTrail management event.
   TrailName:
     Type: String
     Default: datadog-serverless-instrumentation-trail
@@ -83,9 +88,6 @@ Parameters:
   MinimumMemorySize:
     Type: String
     Default: '512'
-  DdRemoteInstrumentLayer:
-    Type: String
-    Default: 'arn:aws:lambda:eu-west-2:425362996713:layer:Datadog-Serverless-Remote-Instrumentation-ARM:8'
 
 Resources:
   CloudFormationLifeCycle:
