@@ -252,17 +252,17 @@ const createStackInput = {
             UsePreviousValue: true,
         },
         {
-            ParameterKey: "AllowList",
+            ParameterKey: "DdAllowList",
             ParameterValue: "remote-instrument-self-monitor-node,remote-instrument-self-monitor-python,some-function-does-not-exist-for-testing-purpose",
             UsePreviousValue: true,
         },
         {
-            ParameterKey: "TagRule",
+            ParameterKey: "DdTagRule",
             ParameterValue: "DD_REMOTE_INSTRUMENT_ENABLED:true,another-tag:true",
             UsePreviousValue: true,
         },
         {
-            ParameterKey: "DenyList",
+            ParameterKey: "DdDenyList",
             ParameterValue: "",
             UsePreviousValue: true,
         },
