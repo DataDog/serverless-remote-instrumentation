@@ -112,8 +112,6 @@ Resources:
         - !Sub 'arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Extension-ARM:50'
         - !Sub 'arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Node20-x:99'
         - !Ref DdRemoteInstrumentLayer
-#        - !Sub 'arn:aws:lambda:${AWS::Region}:425362996713:layer:Datadog-Serverless-Remote-Instrumentation-ARM:1'
-#        - !Sub 'arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Serverless-Remote-Instrumentation-ARM:1'
       Environment:
         Variables:
           DD_LAMBDA_HANDLER: /opt/nodejs/node_modules/datadog-remote-instrument/handler.handler
@@ -138,30 +136,9 @@ Resources:
       Code:
         ZipFile: |
           const cfnResponse = require("cfn-response");  // file will be auto-injected by CloudFormation
-          const { exec } = require('child_process');
-            exports.handler = async (event, context, callback) => {
-            
-            // Specify the directory path
-            const directoryPath = "/opt/nodejs";
-            
-            exec(`ls ${directoryPath}`, (error, stdout, stderr) => {
-              if (error) {
-                console.error(`exec error: ${error}`);
-                return;
-              }
-              if (stderr) {
-                console.error(`stderr: ${stderr}`);
-                return;
-              }
-              console.log(`ls ${directoryPath}: \n${stdout}`);
-            });
-          
-            console.log('\n event:', JSON.stringify(event))
-            console.log(`env: 123 ${JSON.stringify(process.env)}`)
-            
-            
+          exports.handler = async (event, context, callback) => {
             return `Succeeded.`;
-            };
+          };
 
   LambdaExecutionRole:
     Type: 'AWS::IAM::Role'
