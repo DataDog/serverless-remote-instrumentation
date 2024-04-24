@@ -155,6 +155,7 @@ Resources:
           LambdaWithTagsUpdatedToBeInDenyListFunctionName: !Ref LambdaWithTagsUpdatedToBeInDenyListFunctionName
           DdExtensionLayerVersion: !Ref DdExtensionLayerVersion
           UpdatedDdExtensionLayerVersion: !Ref UpdatedDdExtensionLayerVersion
+          DdRemoteInstrumentLayer: !Ref DdRemoteInstrumentLayer
 
       Code:
         ZipFile: |
