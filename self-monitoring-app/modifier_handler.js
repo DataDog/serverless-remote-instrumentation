@@ -138,6 +138,8 @@ async function deleteS3Bucket(bucketName, config) {
         const data = await s3Client.send(new DeleteBucketCommand({Bucket: bucketName}));
         console.log("Delete S3 bucket succeeded", JSON.stringify(data));
     } catch (err) {
+        // try to delete the bucket before stack is delete just in case stack deletion failed
+        // to delete the bucket which will block the stack creation later on.
         console.log("Delete S3 bucket error", err);
     }
 }
@@ -226,7 +228,7 @@ async function deleteStack(config) {
 
     await emptyBucket(S3_BUCKET_NAME, config);
     console.log(`bucket ${S3_BUCKET_NAME} is emptied now`);
-    // await deleteS3Bucket(S3_BUCKET_NAME, config);
+    await deleteS3Bucket(S3_BUCKET_NAME, config);
 
     const client = new CloudFormationClient({region: config.AWS_REGION});
 
