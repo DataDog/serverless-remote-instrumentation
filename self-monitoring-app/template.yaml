@@ -144,7 +144,7 @@ Resources:
           DD_API_KEY: !Ref DdApiKey
           DD_LOG_LEVEL: DEBUG
           DD_TRACE_DEBUG: false
-          DD_SERVICE: Datadog-Remote-Instrument
+          DD_SERVICE: remote-instrument-modifier
           DD_ENV: dev
           DD_VERSION: 0.1.0
           DD_SITE: !Ref DdSite
