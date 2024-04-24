@@ -353,6 +353,11 @@ async function updateStack(config) {
     const updateStackInput = Object.assign({}, createStackInput);
     updateStackInput.Parameters = [
         {
+            ParameterKey: "DdRemoteInstrumentLayer",
+            ParameterValue: process.env.DdRemoteInstrumentLayer,
+            UsePreviousValue: true,
+        },
+        {
             ParameterKey: "DdExtensionLayerVersion",
             ParameterValue: UPDATED_EXTENSION_VERSION,  // was "50"
             UsePreviousValue: false,
