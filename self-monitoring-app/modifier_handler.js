@@ -132,10 +132,10 @@ async function getFunction(config, functionName) {
 
 // delete s3 bucket
 async function deleteS3Bucket(bucketName, config) {
-    const s3Client = new S3Client({ region: config.AWS_REGION });  // Replace 'your-region' with your bucket's region
+    const s3Client = new S3Client({region: config.AWS_REGION});
 
     try {
-        const data = await s3Client.send(new DeleteBucketCommand({ Bucket: bucketName }));
+        const data = await s3Client.send(new DeleteBucketCommand({Bucket: bucketName}));
         console.log("Delete S3 bucket succeeded", JSON.stringify(data));
     } catch (err) {
         console.error("Delete S3 bucket error", JSON.stringify(err));
@@ -227,7 +227,7 @@ async function deleteStack(config) {
     await emptyBucket(S3_BUCKET_NAME, config);
     console.log(`bucket ${S3_BUCKET_NAME} is emptied now`);
 
-    await deleteS3Bucket(S3_BUCKET_NAME, config)
+    await deleteS3Bucket(S3_BUCKET_NAME, config);
 
     const client = new CloudFormationClient({region: config.AWS_REGION});
 
@@ -475,8 +475,8 @@ function sendDistributionMetricWrapper(metricName, extraTags) {
     );
 }
 
-function sendGauge(gaugeName, gaugeValue, extraTagsObject){
+function sendGauge(gaugeName, gaugeValue, extraTagsObject) {
     const tracer = require('dd-trace');
     tracer.init();
-    tracer.dogstatsd.gauge(gaugeName, gaugeValue, { env: ENV, ...extraTagsObject });
+    tracer.dogstatsd.gauge(gaugeName, gaugeValue, {env: ENV, ...extraTagsObject});
 }
