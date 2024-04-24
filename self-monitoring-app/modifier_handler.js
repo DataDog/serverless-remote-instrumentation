@@ -138,7 +138,7 @@ async function deleteS3Bucket(bucketName, config) {
         const data = await s3Client.send(new DeleteBucketCommand({Bucket: bucketName}));
         console.log("Delete S3 bucket succeeded", JSON.stringify(data));
     } catch (err) {
-        console.error("Delete S3 bucket error", JSON.stringify(err));
+        console.log("Delete S3 bucket error", err);
     }
 }
 
@@ -226,8 +226,7 @@ async function deleteStack(config) {
 
     await emptyBucket(S3_BUCKET_NAME, config);
     console.log(`bucket ${S3_BUCKET_NAME} is emptied now`);
-
-    await deleteS3Bucket(S3_BUCKET_NAME, config);
+    // await deleteS3Bucket(S3_BUCKET_NAME, config);
 
     const client = new CloudFormationClient({region: config.AWS_REGION});
 
@@ -357,7 +356,7 @@ async function updateStack(config) {
             UsePreviousValue: false,
         },
         {
-            ParameterKey: "DenyList",
+            ParameterKey: "DdDenyList",
             ParameterValue: `${config.LAMBDA_WITH_TAGS_UPDATE_TO_BE_IN_DENY_LIST_FUNCTION_NAME}`,
             UsePreviousValue: false,
         },
@@ -379,11 +378,11 @@ async function updateStack(config) {
             UsePreviousValue: true,
         },
         {
-            ParameterKey: "AllowList",
+            ParameterKey: "DdAllowList",
             UsePreviousValue: true,
         },
         {
-            ParameterKey: "TagRule",
+            ParameterKey: "DdTagRule",
             UsePreviousValue: true,
         },
         {
