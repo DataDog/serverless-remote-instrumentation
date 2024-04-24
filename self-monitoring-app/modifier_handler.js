@@ -28,8 +28,8 @@ const ORIGINAL_EXTENSION_VERSION = process.env.DdExtensionLayerVersion
 
 exports.handler = async (event, context, callback) => {
 
-    console.log('\n event:', JSON.stringify(event))
-    console.log(`\n process.env: ${JSON.stringify(process.env)}`)
+    console.log(JSON.stringify(event))
+    // console.log(`\n process.env: ${JSON.stringify(process.env)}`)
     const config = getConfig();
 
     if (!event.hasOwnProperty("eventName")) {
@@ -130,6 +130,17 @@ async function getFunction(config, functionName) {
     return null;
 }
 
+// delete s3 bucket
+async function deleteS3Bucket(bucketName, config) {
+    const s3Client = new S3Client({ region: config.AWS_REGION });  // Replace 'your-region' with your bucket's region
+
+    try {
+        const data = await s3Client.send(new DeleteBucketCommand({ Bucket: bucketName }));
+        console.log("Delete S3 bucket succeeded", JSON.stringify(data));
+    } catch (err) {
+        console.error("Delete S3 bucket error", JSON.stringify(err));
+    }
+}
 
 // delete all objects in a bucket
 async function emptyBucket(bucketName, config) {
@@ -215,6 +226,9 @@ async function deleteStack(config) {
 
     await emptyBucket(S3_BUCKET_NAME, config);
     console.log(`bucket ${S3_BUCKET_NAME} is emptied now`);
+
+    await deleteS3Bucket(S3_BUCKET_NAME, config)
+
     const client = new CloudFormationClient({region: config.AWS_REGION});
 
     for (let stackName of stackNamesToDelete) {
@@ -231,6 +245,11 @@ const createStackInput = {
     StackName: INSTRUMENTER_STACK_NAME,
     TemplateURL: "https://datadog-cloudformation-template-serverless-sandbox.s3.sa-east-1.amazonaws.com/aws/remote-instrument-dev/latest.yaml",
     Parameters: [
+        {
+            ParameterKey: "DdRemoteInstrumentLayer",
+            ParameterValue: process.env.DdRemoteInstrumentLayer,
+            UsePreviousValue: true,
+        },
         {
             ParameterKey: "DdApiKey",
             ParameterValue: process.env.DD_API_KEY,
