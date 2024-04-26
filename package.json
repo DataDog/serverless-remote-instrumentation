@@ -17,7 +17,6 @@
     "globals": "^15.0.0"
   },
   "scripts": {
-    "lint": "eslint .",
-    "lint-fix": "eslint --fix ."
+    "lint": "eslint --fix ."
   }
 }
