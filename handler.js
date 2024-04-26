@@ -245,10 +245,9 @@ async function instrumentByEvent (event, config, instrumentOutcome) {
 
   // special handling for specific event
   // event.detail.requestParameters.functionName for update function event can be ARN or function name
-  // if (event.hasOwnProperty('detail') && event.detail.hasOwnProperty('eventName') && event.detail.eventName === 'UpdateFunctionConfiguration20150331v2') {
-  if (Object.prototype.hasOwnProperty.call(event, 'detail') &&
-      Object.prototype.hasOwnProperty.call(event.detail, 'eventName') &&
-      event.detail.eventName === 'UpdateFunctionConfiguration20150331v2') {
+  if (Object.prototype.hasOwnProperty.call(event, 'detail')
+      && Object.prototype.hasOwnProperty.call(event.detail, 'eventName')
+      && event.detail.eventName === 'UpdateFunctionConfiguration20150331v2') {
     const actuallyFunctionArn = event.detail.requestParameters.functionName // functionName here is actually function ARN
     const arnParts = actuallyFunctionArn.split(':')
     functionName = arnParts[arnParts.length - 1]
