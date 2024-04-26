@@ -80,6 +80,12 @@ Parameters:
   DdAwsAccountNumber:
     Type: String
     Default: '425362996713'
+  EnableCodeSigningConfigurations:
+    Type: String
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: "false"
 
 
 Metadata:
@@ -115,6 +121,7 @@ Resources:
         DdPythonLayerVersion: !Ref DdPythonLayerVersion
         DdNodeLayerVersion: !Ref DdNodeLayerVersion
         DdAwsAccountNumber: '425362996713'
+        EnableCodeSigningConfigurations: !Ref EnableCodeSigningConfigurations
   ModifierLambdaFunction:
     Type: 'AWS::Lambda::Function'
     DependsOn:
