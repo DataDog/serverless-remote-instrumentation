@@ -29,7 +29,7 @@ exports.handler = async (event, context, callback) => {
   // console.log(`\n process.env: ${JSON.stringify(process.env)}`)
   const config = getConfig()
 
-  if (!event.hasOwnProperty('eventName')) {
+  if (!Object.prototype.hasOwnProperty.call(event, 'eventName')) {
     console.log('The event doesn\'t have "eventName" field.')
     return
   }
