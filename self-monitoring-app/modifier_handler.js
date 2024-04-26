@@ -28,8 +28,8 @@ const ORIGINAL_EXTENSION_VERSION = process.env.DdExtensionLayerVersion
 
 exports.handler = async (event, context, callback) => {
 
-    console.log('\n event:', JSON.stringify(event))
-    console.log(`\n process.env: ${JSON.stringify(process.env)}`)
+    console.log(JSON.stringify(event))
+    // console.log(`\n process.env: ${JSON.stringify(process.env)}`)
     const config = getConfig();
 
     if (!event.hasOwnProperty("eventName")) {
@@ -130,6 +130,19 @@ async function getFunction(config, functionName) {
     return null;
 }
 
+// delete s3 bucket
+async function deleteS3Bucket(bucketName, config) {
+    const s3Client = new S3Client({region: config.AWS_REGION});
+
+    try {
+        const data = await s3Client.send(new DeleteBucketCommand({Bucket: bucketName}));
+        console.log("Delete S3 bucket succeeded", JSON.stringify(data));
+    } catch (err) {
+        // try to delete the bucket before stack is delete just in case stack deletion failed
+        // to delete the bucket which will block the stack creation later on.
+        console.log("Delete S3 bucket error", err);
+    }
+}
 
 // delete all objects in a bucket
 async function emptyBucket(bucketName, config) {
@@ -215,6 +228,8 @@ async function deleteStack(config) {
 
     await emptyBucket(S3_BUCKET_NAME, config);
     console.log(`bucket ${S3_BUCKET_NAME} is emptied now`);
+    await deleteS3Bucket(S3_BUCKET_NAME, config);
+
     const client = new CloudFormationClient({region: config.AWS_REGION});
 
     for (let stackName of stackNamesToDelete) {
@@ -231,6 +246,11 @@ const createStackInput = {
     StackName: INSTRUMENTER_STACK_NAME,
     TemplateURL: "https://datadog-cloudformation-template-serverless-sandbox.s3.sa-east-1.amazonaws.com/aws/remote-instrument-dev/latest.yaml",
     Parameters: [
+        {
+            ParameterKey: "DdRemoteInstrumentLayer",
+            ParameterValue: process.env.DdRemoteInstrumentLayer,
+            UsePreviousValue: true,
+        },
         {
             ParameterKey: "DdApiKey",
             ParameterValue: process.env.DD_API_KEY,
@@ -252,17 +272,17 @@ const createStackInput = {
             UsePreviousValue: true,
         },
         {
-            ParameterKey: "AllowList",
+            ParameterKey: "DdAllowList",
             ParameterValue: "remote-instrument-self-monitor-node,remote-instrument-self-monitor-python,some-function-does-not-exist-for-testing-purpose",
             UsePreviousValue: true,
         },
         {
-            ParameterKey: "TagRule",
+            ParameterKey: "DdTagRule",
             ParameterValue: "DD_REMOTE_INSTRUMENT_ENABLED:true,another-tag:true",
             UsePreviousValue: true,
         },
         {
-            ParameterKey: "DenyList",
+            ParameterKey: "DdDenyList",
             ParameterValue: "",
             UsePreviousValue: true,
         },
@@ -338,11 +358,15 @@ async function updateStack(config) {
             UsePreviousValue: false,
         },
         {
-            ParameterKey: "DenyList",
+            ParameterKey: "DdDenyList",
             ParameterValue: `${config.LAMBDA_WITH_TAGS_UPDATE_TO_BE_IN_DENY_LIST_FUNCTION_NAME}`,
             UsePreviousValue: false,
         },
         // Only changing the above parameters. Every other parameters below are not changed.
+        {
+            ParameterKey: "DdRemoteInstrumentLayer",
+            UsePreviousValue: true,
+        },
         {
             ParameterKey: "DdApiKey",
             UsePreviousValue: true,
@@ -360,11 +384,11 @@ async function updateStack(config) {
             UsePreviousValue: true,
         },
         {
-            ParameterKey: "AllowList",
+            ParameterKey: "DdAllowList",
             UsePreviousValue: true,
         },
         {
-            ParameterKey: "TagRule",
+            ParameterKey: "DdTagRule",
             UsePreviousValue: true,
         },
         {
@@ -456,8 +480,8 @@ function sendDistributionMetricWrapper(metricName, extraTags) {
     );
 }
 
-function sendGauge(gaugeName, gaugeValue, extraTagsObject){
+function sendGauge(gaugeName, gaugeValue, extraTagsObject) {
     const tracer = require('dd-trace');
     tracer.init();
-    tracer.dogstatsd.gauge(gaugeName, gaugeValue, { env: ENV, ...extraTagsObject });
+    tracer.dogstatsd.gauge(gaugeName, gaugeValue, {env: ENV, ...extraTagsObject});
 }
