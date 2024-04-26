@@ -43,7 +43,7 @@ Parameters:
     AllowedValues:
       - "true"
       - "false"
-    Default: "false"
+    Default: "true"
     Description: Whether to enable code signing configurations.
   DdRemoteInstrumentLayer:
     Type: String

@@ -301,6 +301,11 @@ const createStackInput = {
             ParameterValue: "100",
             UsePreviousValue: true,
         },
+        {
+            ParameterKey: "EnableCodeSigningConfigurations",
+            ParameterValue: "false",
+            UsePreviousValue: true,
+        },
     ],
     // DisableRollback: false,
     // RollbackConfiguration: { // RollbackConfiguration
@@ -402,6 +407,11 @@ async function updateStack(config) {
         },
         {
             ParameterKey: "DdNodeLayerVersion",
+            UsePreviousValue: true,
+        },
+        {
+            ParameterKey: "EnableCodeSigningConfigurations",
+            ParameterValue: "false",
             UsePreviousValue: true,
         },
     ]

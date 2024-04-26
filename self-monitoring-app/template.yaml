@@ -102,7 +102,7 @@ Resources:
       - LambdaFunctionWithSpecifiedTags
       - LambdaFunctionWithoutSpecifiedTags
     Properties:
-      TemplateURL: https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/remote-instrument-dev/0.7.22.yaml
+      TemplateURL: https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/remote-instrument-dev/0.8.0.yaml
       Parameters:
         DdRemoteInstrumentLayer: !Ref DdRemoteInstrumentLayer
         DdApiKey: !Ref DdApiKey
@@ -194,6 +194,10 @@ Resources:
               # TODO: new hire task to remove this iam:* and limit the permissions
               - lambda:*
             Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*
+          - Effect: Allow
+            Action:
+              lambda:CreateCodeSigningConfig
+            Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:code-signing-config:*
           - Effect: Allow
             Action:
               - lambda:GetLayerVersion
