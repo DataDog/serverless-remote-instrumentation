@@ -40,7 +40,9 @@ exports.handler = async (event, context, callback) => {
   const allowListFunctionNames = getFunctionNamesFromString(config.AllowList)
 
   // One Lambda CloudTrail management event, only at most one Lambda will be updated
-  if (event.hasOwnProperty('detail-type') && event.hasOwnProperty('source') && event.source === 'aws.lambda') {
+  if (Object.prototype.hasOwnProperty.call(event, 'detail-type') &&
+      Object.prototype.hasOwnProperty.call(event, 'source') &&
+      Object.prototype.hasOwnProperty.call(event.source, 'aws.lambda')) {
     const eventNamesToSkip = new Set([
       'AddPermission20150331',
       'AddPermission20150331v2',
@@ -65,7 +67,7 @@ exports.handler = async (event, context, callback) => {
     logger.emitFrontEndEvent(REMOTE_INSTRUMENTATION_ENDED, LAMBDA_EVENT, instrumentOutcome)
 
     // first time instrumentation by CloudFormation lifeCycle custom resource
-  } else if (event.hasOwnProperty('RequestType')) {
+  } else if (Object.prototype.hasOwnProperty.call(event, 'RequestType')) {
     if (event.RequestType === 'Delete') {
       console.log('Getting CloudFormation Delete event.')
       await cfnResponse.send(event, context, 'SUCCESS') // send to response to CloudFormation custom resource endpoint to continue stack deletion
@@ -79,7 +81,7 @@ exports.handler = async (event, context, callback) => {
     logger.emitFrontEndEvent(REMOTE_INSTRUMENTATION_ENDED, 'StackCreation', instrumentOutcome)
 
     // Stack Updated
-  } else if (event.hasOwnProperty('detail-type') &&
+  } else if (Object.prototype.hasOwnProperty.call(event, 'detail-type') &&
         event['detail-type'] === 'CloudFormation Stack Status Change' &&
         event.detail['status-details'].status === 'UPDATE_COMPLETE') {
     // CloudTrail event triggered by CloudFormation stack update completed
@@ -243,7 +245,10 @@ async function instrumentByEvent (event, config, instrumentOutcome) {
 
   // special handling for specific event
   // event.detail.requestParameters.functionName for update function event can be ARN or function name
-  if (event.hasOwnProperty('detail') && event.detail.hasOwnProperty('eventName') && event.detail.eventName === 'UpdateFunctionConfiguration20150331v2') {
+  // if (event.hasOwnProperty('detail') && event.detail.hasOwnProperty('eventName') && event.detail.eventName === 'UpdateFunctionConfiguration20150331v2') {
+  if (Object.prototype.hasOwnProperty.call(event, 'detail') &&
+      Object.prototype.hasOwnProperty.call(event.detail, 'eventName') &&
+      event.detail.eventName === 'UpdateFunctionConfiguration20150331v2') {
     const actuallyFunctionArn = event.detail.requestParameters.functionName // functionName here is actually function ARN
     const arnParts = actuallyFunctionArn.split(':')
     functionName = arnParts[arnParts.length - 1]
@@ -359,13 +364,13 @@ function shouldBeRemoteInstrumentedByTag (getFunctionCommandOutput, specifiedTag
   const specifiedTagsKvMapping = getSpecifiedTagsKvMapping(specifiedTags) // {"env": ["staging", "prod"], "team": ["serverless"]}
 
   for (const [k, shouldBeInstrumentedValueList] of Object.entries(specifiedTagsKvMapping)) {
-    if (!awsFunctionTags.hasOwnProperty(k)) {
+    if (!Object.prototype.hasOwnProperty.call(awsFunctionTags, k)) {
       console.log('this function should NOT be remote instrumented by tags')
       return false
     }
 
     // AWS resource with tag k should have value specified in the list
-    if (!shouldBeInstrumentedValueList.includes(awsFunctionTags[k])) {
+    if (!Object.prototype.hasOwnProperty.call(shouldBeInstrumentedValueList, awsFunctionTags[k])) {
       console.log('this function should NOT be remote instrumented by tags')
       return false
     }
@@ -459,7 +464,7 @@ function getSpecifiedTagsKvMapping (specifiedTags) { // return e.g. {"env": ["st
   const tagsKvMapping = {} // default dict of list to hold values of the same key
   for (const tag of specifiedTags) {
     const [k, v] = tag.split(':')
-    if (!tagsKvMapping.hasOwnProperty(k)) {
+    if (!Object.prototype.hasOwnProperty.call(tagsKvMapping, k)) {
       tagsKvMapping[k] = []
     }
     tagsKvMapping[k].push(v)
@@ -678,7 +683,7 @@ async function getLayerAndRuntimeVersion (runtime, config) {
 }
 
 function getVersionFromLayerArn (jsonData, fieldToParse) {
-  if (jsonData.hasOwnProperty(fieldToParse)) {
+  if (Object.prototype.hasOwnProperty.call(jsonData, fieldToParse)) {
     const parsedField = jsonData[fieldToParse]
     const arnSplitList = parsedField.split(':')
     return arnSplitList[arnSplitList.length - 1]
