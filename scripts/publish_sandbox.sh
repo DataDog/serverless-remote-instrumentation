@@ -7,7 +7,7 @@
 
 # Running from the repo root directory, this script installs all packages, zip them locally, and
 # then publish the zip file via AWS CLI
-# Usage: VERSION=2 ./scripts/publish_sandbox.sh
+# Usage: VERSION=1 REGION=eu-west-2 ./scripts/publish_sandbox.sh
 
 # Optional environment variables:
 # VERSION - Use a specific version number. By default, increment the version by 1.
@@ -26,7 +26,7 @@ if [ ! -z "$SUFFIX" ]; then
    LAYER_NAME+="-$SUFFIX"
 fi
 
-REGION="sa-east-1"
+REGION=$REGION
 
 if [ -z $VERSION ]; then
     echo "No version specified, automatically incrementing version number"

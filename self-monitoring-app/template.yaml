@@ -12,6 +12,9 @@ Mappings:
       Version: 0.1.0
 
 Parameters:
+  DdRemoteInstrumentLayer:
+    Type: String
+    Default: 'arn:aws:lambda:us-west-1:425362996713:layer:Datadog-Serverless-Remote-Instrumentation-ARM:14'
   DdApiKey:
     Type: String
     Description: >-
@@ -35,13 +38,13 @@ Parameters:
   BucketName:
     Type: String
     Default: remote-instrument-self-monitor
-  AllowList:
+  DdAllowList:
     Type: String
     Default: remote-instrument-self-monitor-node,remote-instrument-self-monitor-python,some-function-does-not-exist-for-testing-purpose
-  TagRule:
+  DdTagRule:
     Type: String
     Default: DD_REMOTE_INSTRUMENT_ENABLED:true,another-tag:true
-  DenyList:
+  DdDenyList:
     Type: String
     Default: ""
   NodeLambdaFunctionName:
@@ -77,6 +80,19 @@ Parameters:
   DdAwsAccountNumber:
     Type: String
     Default: '425362996713'
+
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Frequently Used
+        Parameters:
+          - DdRemoteInstrumentLayer
+          - DdApiKey
+      - Label:
+          default: Others
+
 Resources:
   RemoteInstrumentNestedStack:
     Type: AWS::CloudFormation::Stack
@@ -86,18 +102,19 @@ Resources:
       - LambdaFunctionWithSpecifiedTags
       - LambdaFunctionWithoutSpecifiedTags
     Properties:
-      TemplateURL: https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/remote-instrument-dev/0.7.14.yaml
+      TemplateURL: https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/remote-instrument-dev/0.7.22.yaml
       Parameters:
+        DdRemoteInstrumentLayer: !Ref DdRemoteInstrumentLayer
         DdApiKey: !Ref DdApiKey
         DdSite: !Ref DdSite
         BucketName: !Ref BucketName
-        DdAwsAccountNumber: '425362996713'
-        AllowList: !Ref AllowList
-        TagRule: !Ref TagRule
-        DenyList: !Ref DenyList
+        DdAllowList: !Ref DdAllowList
+        DdDenyList: !Ref DdDenyList
+        DdTagRule: !Ref DdTagRule
         DdExtensionLayerVersion: !Ref DdExtensionLayerVersion
         DdPythonLayerVersion: !Ref DdPythonLayerVersion
         DdNodeLayerVersion: !Ref DdNodeLayerVersion
+        DdAwsAccountNumber: '425362996713'
   ModifierLambdaFunction:
     Type: 'AWS::Lambda::Function'
     DependsOn:
@@ -127,7 +144,7 @@ Resources:
           DD_API_KEY: !Ref DdApiKey
           DD_LOG_LEVEL: DEBUG
           DD_TRACE_DEBUG: false
-          DD_SERVICE: Datadog-Remote-Instrument
+          DD_SERVICE: remote-instrument-modifier
           DD_ENV: dev
           DD_VERSION: 0.1.0
           DD_SITE: !Ref DdSite
@@ -138,6 +155,7 @@ Resources:
           LambdaWithTagsUpdatedToBeInDenyListFunctionName: !Ref LambdaWithTagsUpdatedToBeInDenyListFunctionName
           DdExtensionLayerVersion: !Ref DdExtensionLayerVersion
           UpdatedDdExtensionLayerVersion: !Ref UpdatedDdExtensionLayerVersion
+          DdRemoteInstrumentLayer: !Ref DdRemoteInstrumentLayer
 
       Code:
         ZipFile: |
@@ -179,7 +197,7 @@ Resources:
           - Effect: Allow
             Action:
               - lambda:GetLayerVersion
-            Resource: !Sub arn:aws:lambda:${AWS::Region}:464622532012:layer:*
+            Resource: !Sub arn:aws:lambda:${AWS::Region}:*:layer:*
           - Effect: Allow
             Action:
               - cloudformation:CreateStack

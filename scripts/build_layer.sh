@@ -6,11 +6,18 @@
 # Copyright 2024 Datadog, Inc.
 
 # This script is only tested on MacBook Pro M1
-TMP_DIR=nodejs
 
 rm -rf node_modules
 rm -rf scripts/.layers
 yarn install
 mkdir -p scripts/.layers
-mkdir -p $TMP_DIR && cp -r node_modules $TMP_DIR/ && zip -r scripts/.layers/datadog_serverless_remote_instrumentation_arm64.zip $TMP_DIR
-rm -rf $TMP_DIR
+
+# nodejs is the designated directory specified in Lambda documentation
+mkdir -p nodejs
+cp -r node_modules nodejs/
+mkdir -p nodejs/node_modules/datadog-remote-instrument
+
+# put handler.js into node_modules/package-name/ as a package
+cp handler.js nodejs/node_modules/datadog-remote-instrument/handler.js
+zip -r scripts/.layers/datadog_serverless_remote_instrumentation_arm64.zip nodejs
+rm -rf nodejs
