@@ -249,7 +249,6 @@ const createStackInput = {
         {
             ParameterKey: "DdRemoteInstrumentLayer",
             ParameterValue: process.env.DdRemoteInstrumentLayer,
-            UsePreviousValue: true,
         },
         {
             ParameterKey: "DdApiKey",
@@ -360,7 +359,6 @@ async function updateStack(config) {
         {
             ParameterKey: "DdRemoteInstrumentLayer",
             ParameterValue: process.env.DdRemoteInstrumentLayer,
-            UsePreviousValue: true,
         },
         {
             ParameterKey: "DdExtensionLayerVersion",
