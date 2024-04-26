@@ -369,6 +369,10 @@ async function updateStack(config) {
         },
         // Only changing the above parameters. Every other parameters below are not changed.
         {
+            ParameterKey: "DdRemoteInstrumentLayer",
+            UsePreviousValue: true,
+        },
+        {
             ParameterKey: "DdApiKey",
             UsePreviousValue: true,
         },
