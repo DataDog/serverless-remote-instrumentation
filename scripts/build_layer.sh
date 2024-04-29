@@ -17,7 +17,7 @@ mkdir -p nodejs
 cp -r node_modules nodejs/
 mkdir -p nodejs/node_modules/datadog-remote-instrument
 
-# put handler.js into node_modules/package-name/ as a package
-cp handler.js nodejs/node_modules/datadog-remote-instrument/handler.js
+# put src/* into node_modules/package-name/ as a package without copy src directory itself
+cp -a src/. nodejs/node_modules/datadog-remote-instrument/
 zip -r scripts/.layers/datadog_serverless_remote_instrumentation_arm64.zip nodejs
 rm -rf nodejs
