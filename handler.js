@@ -29,7 +29,7 @@ const SKIPPED = 'skipped'
 const SUCCEEDED = 'succeeded'
 const UNINSTRUMENT = 'Uninstrument'
 
-exports.handler = async (event, context, callback) => {
+exports.handler = async (event, context) => {
   logger.logObject(event)
   const instrumentOutcome = {
     instrument: { succeeded: {}, failed: {} },
