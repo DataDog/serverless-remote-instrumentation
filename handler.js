@@ -95,7 +95,7 @@ exports.handler = async (event, context) => {
   }
 }
 
-/// / wrappers
+//// wrappers
 // single
 const instrumentBySingleEvent = tracer.wrap('Instrument.BySingleLambdaEvent', instrumentByEvent)
 // first time instrumentation
