@@ -13,6 +13,6 @@
     "prettier": "^3.2.5"
   },
   "scripts": {
-    "lint": "eslint --fix ."
+    "lint": "eslint --fix . self-monitoring-app/modifier_handler.js"
   }
 }

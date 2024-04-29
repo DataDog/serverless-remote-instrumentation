@@ -24,7 +24,7 @@ const SERVICE_NAME = 'remote-instrument-self-monitor'
 const UPDATED_EXTENSION_VERSION = process.env.UpdatedDdExtensionLayerVersion
 const ORIGINAL_EXTENSION_VERSION = process.env.DdExtensionLayerVersion
 
-exports.handler = async (event, context, callback) => {
+exports.handler = async (event) => {
   console.log(JSON.stringify(event))
   // console.log(`\n process.env: ${JSON.stringify(process.env)}`)
   const config = getConfig()
@@ -442,7 +442,7 @@ async function uninstrumentWithDatadogCi (functionArn, runtime = NODE, config, f
   console.log('\n uninstrumenting...')
   const command = ['lambda', 'uninstrument', '-f', functionArn, '-r', config.AWS_REGION]
   console.log(`🖥️ datadog-ci command: ${JSON.stringify(command)}`)
-
+    console.log(`runtime: ${runtime}`)
   const commandExitCode = await cli.run(command)
 
   console.log(`\n commandExitCode type: ${typeof commandExitCode}, \n commandExitCode: ${commandExitCode}`)
