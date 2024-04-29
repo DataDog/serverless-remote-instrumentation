@@ -18,6 +18,8 @@ Metadata:
           - DdAllowList
           - DdDenyList
           - DdApiKey
+          - EnableCodeSigningConfigurations
+          - BucketName
       - Label:
           default: Layer Versions
         Parameters:
@@ -27,7 +29,6 @@ Metadata:
       - Label:
           default: Additional Configs
         Parameters:
-          - BucketName
           - DdSite
           - MinimumMemorySize
           - InstrumenterFunctionName
@@ -47,7 +48,7 @@ Parameters:
     Description: Whether to enable code signing configurations.
   DdRemoteInstrumentLayer:
     Type: String
-    Default: 'arn:aws:lambda:eu-west-2:425362996713:layer:Datadog-Serverless-Remote-Instrumentation-ARM:14'
+    Default: arn:aws:lambda:eu-west-2:425362996713:layer:Datadog-Serverless-Remote-Instrumentation-ARM:17
   DdApiKey:
     Type: String
     Description: >-
@@ -79,13 +80,13 @@ Parameters:
     Default: '425362996713'
   DdAllowList:
     Type: String
-    Default: ''
+    Default: test-remote-instrument-node,test-remote-instrument-another-node,test-remote-instrument-does-not-exist,test-remote-instrument-python
   DdTagRule:
     Type: String
     Default: DD_REMOTE_INSTRUMENT_ENABLED:true
   DdDenyList:
     Type: String
-    Default: ''
+    Default: test-remote-instrument-another-node
   DdExtensionLayerVersion:
     Type: String
     Default: '50'
