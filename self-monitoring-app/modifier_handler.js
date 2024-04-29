@@ -249,7 +249,6 @@ const createStackInput = {
         {
             ParameterKey: "DdRemoteInstrumentLayer",
             ParameterValue: process.env.DdRemoteInstrumentLayer,
-            UsePreviousValue: true,
         },
         {
             ParameterKey: "DdApiKey",
@@ -299,6 +298,11 @@ const createStackInput = {
         {
             ParameterKey: "DdNodeLayerVersion",
             ParameterValue: "100",
+            UsePreviousValue: true,
+        },
+        {
+            ParameterKey: "EnableCodeSigningConfigurations",
+            ParameterValue: "false",
             UsePreviousValue: true,
         },
     ],
@@ -353,6 +357,10 @@ async function updateStack(config) {
     const updateStackInput = Object.assign({}, createStackInput);
     updateStackInput.Parameters = [
         {
+            ParameterKey: "DdRemoteInstrumentLayer",
+            ParameterValue: process.env.DdRemoteInstrumentLayer,
+        },
+        {
             ParameterKey: "DdExtensionLayerVersion",
             ParameterValue: UPDATED_EXTENSION_VERSION,  // was "50"
             UsePreviousValue: false,
@@ -397,6 +405,11 @@ async function updateStack(config) {
         },
         {
             ParameterKey: "DdNodeLayerVersion",
+            UsePreviousValue: true,
+        },
+        {
+            ParameterKey: "EnableCodeSigningConfigurations",
+            ParameterValue: "false",
             UsePreviousValue: true,
         },
     ]
