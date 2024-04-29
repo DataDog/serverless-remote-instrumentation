@@ -293,7 +293,7 @@ const createStackInput = {
     },
     {
       ParameterKey: 'EnableCodeSigningConfigurations',
-      ParameterValue: 'false',
+      ParameterValue: 'false'
     }
   ],
   // DisableRollback: false,
@@ -398,7 +398,7 @@ async function updateStack (config) {
     },
     {
       ParameterKey: 'EnableCodeSigningConfigurations',
-      ParameterValue: 'false',
+      ParameterValue: 'false'
     }
   ]
   console.log(`updateStackInput: ${JSON.stringify(updateStackInput.Parameters)}`)
