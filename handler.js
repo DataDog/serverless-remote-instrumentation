@@ -19,7 +19,7 @@ const DD_SLS_REMOTE_INSTRUMENTER_VERSION = 'dd_sls_remote_instrumenter_version'
 // consts
 const DENIED = 'denied'
 const FAILED = 'failed'
-const INSTRUMENT = 'instrument'
+const INSTRUMENT = 'Instrument'
 const IN_PROGRESS = 'in_progress'
 const LAMBDA_EVENT = 'LambdaEvent'
 const REMOTE_INSTRUMENTATION_STARTED = 'RemoteInstrumentationStarted'
@@ -27,7 +27,7 @@ const REMOTE_INSTRUMENTATION_ENDED = 'RemoteInstrumentationEnded'
 const PROCESSING = 'processing'
 const SKIPPED = 'skipped'
 const SUCCEEDED = 'succeeded'
-const UNINSTRUMENT = 'uninstrument'
+const UNINSTRUMENT = 'Uninstrument'
 
 exports.handler = async (event, context, callback) => {
   logger.logObject(event)
@@ -62,9 +62,9 @@ exports.handler = async (event, context, callback) => {
       console.log('TODO: Processing of (Un)TagResource20170331v2 is not yet implemented yet.')
       return
     }
-    logger.emitFrontEndEvent(REMOTE_INSTRUMENTATION_STARTED, LAMBDA_EVENT)
+    logger.emitFrontEndEvent(REMOTE_INSTRUMENTATION_STARTED, LAMBDA_EVENT, config)
     await instrumentBySingleEvent(event, config, instrumentOutcome)
-    logger.emitFrontEndEvent(REMOTE_INSTRUMENTATION_ENDED, LAMBDA_EVENT, instrumentOutcome)
+    logger.emitFrontEndEvent(REMOTE_INSTRUMENTATION_ENDED, LAMBDA_EVENT, instrumentOutcome, config)
 
     // first time instrumentation by CloudFormation lifeCycle custom resource
   } else if (Object.prototype.hasOwnProperty.call(event, 'RequestType')) {
@@ -73,23 +73,23 @@ exports.handler = async (event, context, callback) => {
       await cfnResponse.send(event, context, 'SUCCESS') // send to response to CloudFormation custom resource endpoint to continue stack deletion
       return
     }
-    logger.emitFrontEndEvent(REMOTE_INSTRUMENTATION_STARTED, 'StackCreation')
+    logger.emitFrontEndEvent(REMOTE_INSTRUMENTATION_STARTED, 'StackCreation', config)
     await firstTimeInstrumentationByAllowList(allowListFunctionNames, config, instrumentOutcome)
     await firstTimeInstrumentationByTagRule(config, instrumentOutcome)
     // send response to CloudFormation custom resource endpoint to continue stack creation
     await cfnResponse.send(event, context, 'SUCCESS')
-    logger.emitFrontEndEvent(REMOTE_INSTRUMENTATION_ENDED, 'StackCreation', instrumentOutcome)
+    logger.emitFrontEndEvent(REMOTE_INSTRUMENTATION_ENDED, 'StackCreation', instrumentOutcome, config)
 
     // Stack Updated
   } else if (Object.prototype.hasOwnProperty.call(event, 'detail-type') &&
         event['detail-type'] === 'CloudFormation Stack Status Change' &&
         event.detail['status-details'].status === 'UPDATE_COMPLETE') {
     // CloudTrail event triggered by CloudFormation stack update completed
-    logger.emitFrontEndEvent(REMOTE_INSTRUMENTATION_STARTED, 'StackUpdate')
+    logger.emitFrontEndEvent(REMOTE_INSTRUMENTATION_STARTED, 'StackUpdate', config)
     await stackUpdateUninstrumentBasedOnAllowListAndTagRule(config, instrumentOutcome)
     await stackUpdateInstrumentByAllowList(allowListFunctionNames, config, instrumentOutcome)
     await stackUpdateInstrumentByTagRule(config, instrumentOutcome)
-    logger.emitFrontEndEvent(REMOTE_INSTRUMENTATION_ENDED, 'StackUpdate', instrumentOutcome)
+    logger.emitFrontEndEvent(REMOTE_INSTRUMENTATION_ENDED, 'StackUpdate', instrumentOutcome, config)
   } else {
     console.log('Unexpected event encountered. Please check event.')
   }
@@ -245,9 +245,9 @@ async function instrumentByEvent (event, config, instrumentOutcome) {
 
   // special handling for specific event
   // event.detail.requestParameters.functionName for update function event can be ARN or function name
-  if (Object.prototype.hasOwnProperty.call(event, 'detail')
-      && Object.prototype.hasOwnProperty.call(event.detail, 'eventName')
-      && event.detail.eventName === 'UpdateFunctionConfiguration20150331v2') {
+  if (Object.prototype.hasOwnProperty.call(event, 'detail') &&
+      Object.prototype.hasOwnProperty.call(event.detail, 'eventName') &&
+      event.detail.eventName === 'UpdateFunctionConfiguration20150331v2') {
     const actuallyFunctionArn = event.detail.requestParameters.functionName // functionName here is actually function ARN
     const arnParts = actuallyFunctionArn.split(':')
     functionName = arnParts[arnParts.length - 1]
@@ -700,11 +700,14 @@ async function getLatestLayersFromS3 () {
 }
 
 class Logger {
-  emitFrontEndEvent (eventName, triggeredBy, instrumentOutcome) {
+  emitFrontEndEvent (ddSlsEventName, triggeredBy, instrumentOutcome, config) {
     console.log(JSON.stringify({
-      eventName,
+      ddSlsEventName,
       triggeredBy,
-      outcome: instrumentOutcome
+      outcome: instrumentOutcome,
+      allowList: config.AllowList,
+      denyList: config.DenyList,
+      tagRule: config.TagRule
     }))
   }
 
@@ -717,9 +720,9 @@ class Logger {
     console.log(JSON.stringify(logEntry))
   }
 
-  logInstrumentOutcome (eventName, outcome, targetFunctionName = null, targetFunctionArn = null, expectedExtensionVersion = null, runtime = null, reason = null) {
+  logInstrumentOutcome (ddSlsEventName, outcome, targetFunctionName = null, targetFunctionArn = null, expectedExtensionVersion = null, runtime = null, reason = null) {
     console.log(JSON.stringify({
-      eventName,
+      ddSlsEventName,
       outcome,
       targetFunctionName: targetFunctionName?.toLowerCase(),
       targetFunctionArn: targetFunctionArn?.toLowerCase(),
@@ -729,9 +732,9 @@ class Logger {
     }))
   }
 
-  debugLogs (eventName, outcome, targetFunctionName, message = null) {
+  debugLogs (ddSlsEventName, outcome, targetFunctionName, message = null) {
     console.log(JSON.stringify({
-      eventName,
+      ddSlsEventName,
       outcome,
       targetFunctionName: targetFunctionName?.toLowerCase(),
       message
