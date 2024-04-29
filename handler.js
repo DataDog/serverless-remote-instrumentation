@@ -62,7 +62,7 @@ exports.handler = async (event, context, callback) => {
       console.log('TODO: Processing of (Un)TagResource20170331v2 is not yet implemented yet.')
       return
     }
-    logger.emitFrontEndEvent(REMOTE_INSTRUMENTATION_STARTED, LAMBDA_EVENT, config)
+    logger.emitFrontEndEvent(REMOTE_INSTRUMENTATION_STARTED, LAMBDA_EVENT, null, config)
     await instrumentBySingleEvent(event, config, instrumentOutcome)
     logger.emitFrontEndEvent(REMOTE_INSTRUMENTATION_ENDED, LAMBDA_EVENT, instrumentOutcome, config)
 
@@ -73,7 +73,7 @@ exports.handler = async (event, context, callback) => {
       await cfnResponse.send(event, context, 'SUCCESS') // send to response to CloudFormation custom resource endpoint to continue stack deletion
       return
     }
-    logger.emitFrontEndEvent(REMOTE_INSTRUMENTATION_STARTED, 'StackCreation', config)
+    logger.emitFrontEndEvent(REMOTE_INSTRUMENTATION_STARTED, 'StackCreation', null, config)
     await firstTimeInstrumentationByAllowList(allowListFunctionNames, config, instrumentOutcome)
     await firstTimeInstrumentationByTagRule(config, instrumentOutcome)
     // send response to CloudFormation custom resource endpoint to continue stack creation
@@ -85,7 +85,7 @@ exports.handler = async (event, context, callback) => {
         event['detail-type'] === 'CloudFormation Stack Status Change' &&
         event.detail['status-details'].status === 'UPDATE_COMPLETE') {
     // CloudTrail event triggered by CloudFormation stack update completed
-    logger.emitFrontEndEvent(REMOTE_INSTRUMENTATION_STARTED, 'StackUpdate', config)
+    logger.emitFrontEndEvent(REMOTE_INSTRUMENTATION_STARTED, 'StackUpdate', null, config)
     await stackUpdateUninstrumentBasedOnAllowListAndTagRule(config, instrumentOutcome)
     await stackUpdateInstrumentByAllowList(allowListFunctionNames, config, instrumentOutcome)
     await stackUpdateInstrumentByTagRule(config, instrumentOutcome)
