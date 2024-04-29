@@ -43,7 +43,7 @@ exports.handler = async (event, context) => {
   if (
     Object.prototype.hasOwnProperty.call(event, "detail-type") &&
     Object.prototype.hasOwnProperty.call(event, "source") &&
-    Object.prototype.hasOwnProperty.call(event.source, "aws.lambda")
+    event.source === "aws.lambda"
   ) {
     const eventNamesToSkip = new Set([
       "AddPermission20150331",
