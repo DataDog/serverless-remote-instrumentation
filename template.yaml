@@ -34,7 +34,17 @@ Metadata:
           - TrailName
           - DdAwsAccountNumber
 
+Conditions:
+  CreateCodeSigningConfig: !Equals [ !Ref EnableCodeSigningConfigurations, "true" ]
+
 Parameters:
+  EnableCodeSigningConfigurations:
+    Type: String
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: "true"
+    Description: Whether to enable code signing configurations.
   DdRemoteInstrumentLayer:
     Type: String
     Default: 'arn:aws:lambda:eu-west-2:425362996713:layer:Datadog-Serverless-Remote-Instrumentation-ARM:14'
@@ -103,6 +113,7 @@ Resources:
       Architectures:
       - arm64
       Runtime: nodejs20.x
+      CodeSigningConfigArn: !If [CreateCodeSigningConfig, !Ref InstrumenterCodeSigningConfig, !Ref "AWS::NoValue"]
       ReservedConcurrentExecutions: 1
       Timeout: 840
       MemorySize: 512
@@ -189,6 +200,17 @@ Resources:
                 lambda:SourceFunctionArn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${InstrumenterFunctionName}
 #            Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*  # doesn't work
 #            Resource: 'arn:aws:lambda:*'  # doesn't work
+
+  InstrumenterCodeSigningConfig:
+    Type: "AWS::Lambda::CodeSigningConfig"
+    Condition: CreateCodeSigningConfig
+    Properties:
+      Description: "Lambda Code Signing Configuration"
+      AllowedPublishers:
+        SigningProfileVersionArns:
+          - 'arn:aws:signer:us-east-1:464622532012:/signing-profiles/DatadogLambdaSigningProfile/9vMI9ZAGLc'
+      CodeSigningPolicies:
+        UntrustedArtifactOnDeployment: Enforce
 
   CloudTrail:
     Type: AWS::CloudTrail::Trail
