@@ -107,8 +107,9 @@ Resources:
       - PythonLambdaFunction
       - LambdaFunctionWithSpecifiedTags
       - LambdaFunctionWithoutSpecifiedTags
+      - LambdaWith128MbRam
     Properties:
-      TemplateURL: https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/remote-instrument-dev/latest.yaml
+      TemplateURL: https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/remote-instrument-dev/0.8.2.yaml
       Parameters:
         DdRemoteInstrumentLayer: !Ref DdRemoteInstrumentLayer
         DdApiKey: !Ref DdApiKey
