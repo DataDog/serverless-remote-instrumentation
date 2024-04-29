@@ -10,7 +10,6 @@ self-monitoring-app/dist/*
 scripts/.cache
 scripts/.layers
 scripts/.src
-yarn.lock
 
 
 *.zip
