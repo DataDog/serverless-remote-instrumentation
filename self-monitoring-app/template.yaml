@@ -14,7 +14,7 @@ Mappings:
 Parameters:
   DdRemoteInstrumentLayer:
     Type: String
-    Default: arn:aws:lambda:us-west-1:425362996713:layer:Datadog-Serverless-Remote-Instrumentation-ARM:17
+    Default: arn:aws:lambda:us-west-1:425362996713:layer:Datadog-Serverless-Remote-Instrumentation-ARM:20
   DdApiKey:
     Type: String
     Description: >-
@@ -109,7 +109,7 @@ Resources:
       - LambdaFunctionWithoutSpecifiedTags
       - LambdaWith128MbRam
     Properties:
-      TemplateURL: https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/remote-instrument-dev/0.8.2.yaml
+      TemplateURL: https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/remote-instrument-dev/0.8.3.yaml
       Parameters:
         DdRemoteInstrumentLayer: !Ref DdRemoteInstrumentLayer
         DdApiKey: !Ref DdApiKey
