@@ -578,28 +578,24 @@ function shouldBeRemoteInstrumentedByTag(
   getFunctionCommandOutput,
   specifiedTags,
 ) {
-  const awsFunctionTags = getFunctionCommandOutput.Tags; // {"env:prod", "team":"serverless"}
-  if (typeof awsFunctionTags === "undefined") {
+  const targetFunctionTagsObj = getFunctionCommandOutput.Tags; // {"env":"prod", "team":"serverless"}
+  if (typeof targetFunctionTagsObj === "undefined") {
     console.log("no tags found on the function");
     return false;
   }
 
   const specifiedTagsKvMapping = getSpecifiedTagsKvMapping(specifiedTags); // {"env": ["staging", "prod"], "team": ["serverless"]}
 
-  for (const [k, shouldBeInstrumentedValueList] of Object.entries(
+  for (const [tags, targetedTagsValues] of Object.entries(
     specifiedTagsKvMapping,
   )) {
-    if (!Object.prototype.hasOwnProperty.call(awsFunctionTags, k)) {
+    if (!Object.prototype.hasOwnProperty.call(targetFunctionTagsObj, tags)) {
       console.log("this function should NOT be remote instrumented by tags");
       return false;
     }
 
-    // AWS resource with tag k should have value specified in the list
-    if (
-      !Object.prototype.hasOwnProperty.call(
-        shouldBeInstrumentedValueList,
-        awsFunctionTags[k],
-      )
+    // targeted functions should have tag value (e.g. staging) in the targeted tags values (e.g. [staging, prod])
+    if (!targetedTagsValues.includes(targetFunctionTagsObj[tags])
     ) {
       console.log("this function should NOT be remote instrumented by tags");
       return false;
