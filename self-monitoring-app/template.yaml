@@ -86,6 +86,9 @@ Parameters:
       - "true"
       - "false"
     Default: "false"
+  DdRemoteInstrumentLayerAwsAccount:
+    Type: String
+    Default: '425362996713'
 
 
 Metadata:
@@ -109,7 +112,7 @@ Resources:
       - LambdaFunctionWithoutSpecifiedTags
       - LambdaWith128MbRam
     Properties:
-      TemplateURL: https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/remote-instrument-dev/0.8.3.yaml
+      TemplateURL: https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/remote-instrument-dev/0.8.4.yaml
       Parameters:
         DdRemoteInstrumentLayer: !Ref DdRemoteInstrumentLayer
         DdApiKey: !Ref DdApiKey
@@ -123,6 +126,7 @@ Resources:
         DdNodeLayerVersion: !Ref DdNodeLayerVersion
         DdAwsAccountNumber: '425362996713'
         EnableCodeSigningConfigurations: !Ref EnableCodeSigningConfigurations
+        DdRemoteInstrumentLayerAwsAccount: !Ref DdRemoteInstrumentLayerAwsAccount
   ModifierLambdaFunction:
     Type: 'AWS::Lambda::Function'
     DependsOn:

@@ -99,6 +99,11 @@ Parameters:
   MinimumMemorySize:
     Type: String
     Default: '512'
+  DdRemoteInstrumentLayerAwsAccount:
+    Type: String
+    Default: '464622532012'
+    Description: >- 
+      have to do this so that we can use dev layer in the sandbox account   
 
 Resources:
   CloudFormationLifeCycle:
@@ -185,7 +190,9 @@ Resources:
           - Effect: Allow
             Action:
               - lambda:GetLayerVersion
-            Resource: !Sub arn:aws:lambda:${AWS::Region}:464622532012:layer:*
+            Resource:
+            - !Sub arn:aws:lambda:${AWS::Region}:464622532012:layer:*
+            - !Sub arn:aws:lambda:${AWS::Region}:${DdRemoteInstrumentLayerAwsAccount}:layer:*
           - Effect: Allow
             Action:
               - lambda:ListTags
