@@ -140,7 +140,7 @@ exports.handler = async (event, context) => {
       config,
     );
   } else {
-    console.log("Unexpected event encountered. Please check event.");
+    console.error("Unexpected event encountered. Please check event.");
   }
 };
 
@@ -379,13 +379,12 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
     Object.prototype.hasOwnProperty.call(event.detail, "eventName") &&
     event.detail.eventName === "UpdateFunctionConfiguration20150331v2"
   ) {
-    const actuallyFunctionArn = event.detail.requestParameters.functionName; // functionName here is actually function ARN
-    const arnParts = actuallyFunctionArn.split(":");
-    functionName = arnParts[arnParts.length - 1];
+    functionName = event.detail.responseElements.functionName
     console.log(
-      `actuallyFunctionArn: ${actuallyFunctionArn}  arnParts: ${JSON.stringify(arnParts)}  functionName:${functionName}`,
+      `The function name in the UpdateFunctionConfiguration20150331v2 event is: ${functionName}`,
     );
   }
+  console.log(`The current function name is ${functionName}`);
 
   if (config.DenyList === "*") {
     logger.logInstrumentOutcome(INSTRUMENT, SKIPPED, functionName);
@@ -466,9 +465,12 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
         !shouldBeRemoteInstrumentedByTag(
           getFunctionCommandOutput,
           specifiedTags,
+          instrumentOutcome,
+          functionName,
+          functionArn,
         )
       ) {
-        logger.debugLogs(
+        logger.debugLo9gs(
           LAMBDA_EVENT,
           PROCESSING,
           functionName,
@@ -544,16 +546,16 @@ function belowRecommendedMemorySize(
   instrumentOutcome,
   functionArn,
 ) {
-  let memorySize = 512;
+  let currentMemorySize = 1;  // in case there are unexpected eventNames
   // only need to check these 2 events
   if (event.detail.eventName === "CreateFunction20150331") {
-    memorySize = parseInt(event.detail?.requestParameters?.memorySize);
+    currentMemorySize = parseInt(event.detail?.requestParameters?.memorySize);
   } else if (
     event.detail.eventName === "UpdateFunctionConfiguration20150331v2"
   ) {
-    memorySize = parseInt(event.detail?.responseElements?.memorySize);
+    currentMemorySize = parseInt(event.detail?.responseElements?.memorySize);
   }
-  if (memorySize < parseInt(config.MinimumMemorySize)) {
+  if (currentMemorySize < parseInt(config.MinimumMemorySize)) {
     logger.logInstrumentOutcome(
       INSTRUMENT,
       FAILED,
@@ -561,9 +563,9 @@ function belowRecommendedMemorySize(
       null,
       null,
       null,
-      `Current memory size ${memorySize} MB is below threshold ${config.MinimumMemorySize} MB.`,
+      `Current memory size ${currentMemorySize} MB is below threshold ${config.MinimumMemorySize} MB.`,
     );
-    const message = `Current memory size ${memorySize} MB is below threshold ${config.MinimumMemorySize} MB.`;
+    const message = `Current memory size ${currentMemorySize} MB is below threshold ${config.MinimumMemorySize} MB.`;
     logger.debugLogs(LAMBDA_EVENT, SKIPPED, functionName, message);
     instrumentOutcome.instrument.failed[functionName] = {
       functionArn,
@@ -577,6 +579,9 @@ function belowRecommendedMemorySize(
 function shouldBeRemoteInstrumentedByTag(
   getFunctionCommandOutput,
   specifiedTags,
+  instrumentOutcome,
+  functionName,
+  functionArn,
 ) {
   const targetFunctionTagsObj = getFunctionCommandOutput.Tags; // {"env":"prod", "team":"serverless"}
   if (typeof targetFunctionTagsObj === "undefined") {
@@ -586,18 +591,43 @@ function shouldBeRemoteInstrumentedByTag(
 
   const specifiedTagsKvMapping = getSpecifiedTagsKvMapping(specifiedTags); // {"env": ["staging", "prod"], "team": ["serverless"]}
 
-  for (const [tags, targetedTagsValues] of Object.entries(
+  for (const [tag, targetedTagsValues] of Object.entries(
     specifiedTagsKvMapping,
   )) {
-    if (!Object.prototype.hasOwnProperty.call(targetFunctionTagsObj, tags)) {
-      console.log("this function should NOT be remote instrumented by tags");
+    if (!Object.prototype.hasOwnProperty.call(targetFunctionTagsObj, tag)) {
+      const message = `this function should NOT be remote instrumented by tagRule because it does not have ${tag} tag`;
+      instrumentOutcome.instrument.failed[functionName] = {
+        functionArn,
+        reason: message,
+      };
+      logger.logInstrumentOutcome(
+        INSTRUMENT,
+        SKIPPED,
+        functionName,
+        functionArn,
+        null,
+        null,
+        message,
+      );
       return false;
     }
 
     // targeted functions should have tag value (e.g. staging) in the targeted tags values (e.g. [staging, prod])
-    if (!targetedTagsValues.includes(targetFunctionTagsObj[tags])
-    ) {
-      console.log("this function should NOT be remote instrumented by tags");
+    if (!targetedTagsValues.includes(targetFunctionTagsObj[tag])) {
+      const message = `this function should NOT be remote instrumented by tagRule because value of tag ${tag} : ${targetFunctionTagsObj[tag]} is not in ${targetedTagsValues}`;
+      instrumentOutcome.instrument.failed[functionName] = {
+        functionArn,
+        reason: message,
+      };
+      logger.logInstrumentOutcome(
+        INSTRUMENT,
+        SKIPPED,
+        functionName,
+        functionArn,
+        null,
+        null,
+        message,
+      );
       return false;
     }
   }
@@ -788,9 +818,9 @@ async function instrumentByFunctionNames(
       }
 
       // memory size check
-      const memorySize = getFunctionCommandOutput.Configuration.MemorySize;
-      if (memorySize < parseInt(config.MinimumMemorySize)) {
-        const message = `Current memory size ${memorySize} MB is below threshold ${config.MinimumMemorySize} MB.`;
+      const currentMemorySize = getFunctionCommandOutput.Configuration.MemorySize;
+      if (currentMemorySize < parseInt(config.MinimumMemorySize)) {
+        const message = `Current memory size ${currentMemorySize} MB is below threshold ${config.MinimumMemorySize} MB.`;
         instrumentOutcome.instrument.failed[functionName] = {
           functionArn,
           reason: message,
@@ -802,7 +832,7 @@ async function instrumentByFunctionNames(
           functionArn,
           null,
           runtime,
-          `Current memory size ${memorySize} MB is below ${config.MinimumMemorySize} MB`,
+          `Current memory size ${currentMemorySize} MB is below ${config.MinimumMemorySize} MB`,
         );
         continue;
       }
