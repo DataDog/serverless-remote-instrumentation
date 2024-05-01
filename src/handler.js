@@ -32,8 +32,8 @@ const UNINSTRUMENT = "Uninstrument";
 exports.handler = async (event, context) => {
   logger.logObject(event);
   const instrumentOutcome = {
-    instrument: {succeeded: {}, failed: {}},
-    uninstrument: {succeeded: {}, failed: {}},
+    instrument: {succeeded: {}, failed: {}, skipped: {}},
+    uninstrument: {succeeded: {}, failed: {}, skipped: {}},
   };
 
   const config = await getConfig();
@@ -791,11 +791,9 @@ async function instrumentByFunctionNames(
       console.log(
         `function config is: ${JSON.stringify(getFunctionCommandOutput.Configuration)} \n`,
       );
-      const layers = getFunctionCommandOutput.Configuration.Layers || [];
-      const targetLambdaRuntime =
-        getFunctionCommandOutput.Configuration.Runtime || "";
 
       // instrument checks
+      const layers = getFunctionCommandOutput.Configuration.Layers || [];
       const functionArn = `arn:aws:lambda:${config.AWS_REGION}:${ddAwsAccountNumber}:function:${functionName}`;
       logger.log("instrumentByFunctionNames", functionName, functionArn);
       const runtime = getFunctionCommandOutput.Configuration?.Runtime;
@@ -810,7 +808,7 @@ async function instrumentByFunctionNames(
         functionIsInstrumentedWithSpecifiedLayerVersions(
           layers,
           config,
-          targetLambdaRuntime,
+          runtime,
         )
       ) {
         const reason = `Function ${functionName} is already instrumented with correct extension and tracer layer versions! `;
@@ -823,7 +821,7 @@ async function instrumentByFunctionNames(
           runtime,
           reason
         );
-        instrumentOutcome.instrument[SKIPPED][functionName] = {functionArn, reason};
+        instrumentOutcome.instrument.skipped[functionName] = {functionArn, reason};
         continue;
       }
 
