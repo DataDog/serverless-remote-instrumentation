@@ -201,7 +201,7 @@ Resources:
 #              - lambda:AddPermission
               # TODO: new hire task to remove this iam:* and limit the permissions
               - lambda:*
-            Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*
+            Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:*
           - Effect: Allow
             Action:
               lambda:CreateCodeSigningConfig
