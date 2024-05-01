@@ -14,7 +14,7 @@ Mappings:
 Parameters:
   DdRemoteInstrumentLayer:
     Type: String
-    Default: 'arn:aws:lambda:us-west-1:425362996713:layer:Datadog-Serverless-Remote-Instrumentation-ARM:14'
+    Default: arn:aws:lambda:us-west-1:425362996713:layer:Datadog-Serverless-Remote-Instrumentation-ARM:25
   DdApiKey:
     Type: String
     Description: >-
@@ -107,8 +107,9 @@ Resources:
       - PythonLambdaFunction
       - LambdaFunctionWithSpecifiedTags
       - LambdaFunctionWithoutSpecifiedTags
+      - LambdaWith128MbRam
     Properties:
-      TemplateURL: https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/remote-instrument-dev/0.8.0.yaml
+      TemplateURL: https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/remote-instrument-dev/0.8.3.yaml
       Parameters:
         DdRemoteInstrumentLayer: !Ref DdRemoteInstrumentLayer
         DdApiKey: !Ref DdApiKey
@@ -200,7 +201,7 @@ Resources:
 #              - lambda:AddPermission
               # TODO: new hire task to remove this iam:* and limit the permissions
               - lambda:*
-            Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*
+            Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:*
           - Effect: Allow
             Action:
               lambda:CreateCodeSigningConfig
@@ -567,6 +568,8 @@ Resources:
         - Key: "service"
           Value: "remote-instrument-self-monitor"
         - Key: "DD_REMOTE_INSTRUMENT_ENABLED"
+          Value: "true"
+        - Key: "another-tag"
           Value: "true"
       Code:
         ZipFile: |
