@@ -302,6 +302,10 @@ const createStackInput = {
     "https://datadog-cloudformation-template-serverless-sandbox.s3.sa-east-1.amazonaws.com/aws/remote-instrument-dev/latest.yaml",
   Parameters: [
     {
+      ParameterKey: "DdRemoteInstrumentLayerAwsAccount",
+      ParameterValue: process.env.DdRemoteInstrumentLayerAwsAccount,
+    },
+    {
       ParameterKey: "DdRemoteInstrumentLayer",
       ParameterValue: process.env.DdRemoteInstrumentLayer,
     },
@@ -409,8 +413,8 @@ async function updateStack(config) {
   const updateStackInput = Object.assign({}, createStackInput);
   updateStackInput.Parameters = [
     {
-      ParameterKey: "DdRemoteInstrumentLayer",
-      ParameterValue: process.env.DdRemoteInstrumentLayer,
+      ParameterKey: "DdRemoteInstrumentLayerAwsAccount",
+      ParameterValue: process.env.DdRemoteInstrumentLayerAwsAccount,
     },
     {
       ParameterKey: "DdExtensionLayerVersion",
@@ -423,6 +427,10 @@ async function updateStack(config) {
       UsePreviousValue: false,
     },
     // Only changing the above parameters. Every other parameters below are not changed.
+    {
+      ParameterKey: "DdRemoteInstrumentLayer",
+      UsePreviousValue: true,
+    },
     {
       ParameterKey: "DdRemoteInstrumentLayer",
       UsePreviousValue: true,
