@@ -304,6 +304,7 @@ const createStackInput = {
     {
       ParameterKey: "DdRemoteInstrumentLayerAwsAccount",
       ParameterValue: process.env.DdRemoteInstrumentLayerAwsAccount,
+      UsePreviousValue: true,
     },
     {
       ParameterKey: "DdRemoteInstrumentLayer",
@@ -414,7 +415,7 @@ async function updateStack(config) {
   updateStackInput.Parameters = [
     {
       ParameterKey: "DdRemoteInstrumentLayerAwsAccount",
-      ParameterValue: process.env.DdRemoteInstrumentLayerAwsAccount,
+      UsePreviousValue: true,
     },
     {
       ParameterKey: "DdExtensionLayerVersion",
