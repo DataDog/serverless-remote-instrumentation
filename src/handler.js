@@ -370,7 +370,7 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
   validateEvent(event);
 
   let functionFromEventIsInAllowList = false;
-  let functionName = event.detail.requestParameters.functionName;
+  let functionName = event.detail.requestParameters?.functionName;
 
   // special handling for specific event
   // event.detail.requestParameters.functionName for update function event can be ARN or function name
