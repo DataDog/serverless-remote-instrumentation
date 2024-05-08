@@ -48,7 +48,7 @@ Parameters:
     Description: Whether to enable code signing configurations.
   DdRemoteInstrumentLayer:
     Type: String
-    Default: arn:aws:lambda:eu-west-2:425362996713:layer:Datadog-Serverless-Remote-Instrumentation-ARM:20
+    Default: arn:aws:lambda:eu-west-2:425362996713:layer:Datadog-Serverless-Remote-Instrumentation-ARM:26
   DdApiKey:
     Type: String
     Description: >-
@@ -147,6 +147,7 @@ Resources:
           DD_PYTHON_LAYER_VERSION: !Ref DdPythonLayerVersion
           DD_NODE_LAYER_VERSION: !Ref DdNodeLayerVersion
           DD_MinimumMemorySize: !Ref MinimumMemorySize
+          DD_INSTRUMENTER_FUNCTION_NAME: !Ref InstrumenterFunctionName
       Tags:
         - Key: "dd_serverless_service"
           Value: "remote_instrumenter"
