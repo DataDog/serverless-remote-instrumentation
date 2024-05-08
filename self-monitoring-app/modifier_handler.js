@@ -31,7 +31,7 @@ const ORIGINAL_EXTENSION_VERSION = process.env.DdExtensionLayerVersion;
 
 exports.handler = async (event) => {
   console.log(JSON.stringify(event));
-  console.log(`process.env: ${JSON.stringify(process.env)}`)
+  console.log(`process.env: ${JSON.stringify(process.env)}`);
   const config = getConfig();
 
   if (!Object.prototype.hasOwnProperty.call(event, "eventName")) {
