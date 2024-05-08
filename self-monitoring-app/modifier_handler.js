@@ -474,8 +474,16 @@ async function updateStack(config) {
   );
 
   const command = new UpdateStackCommand(updateStackInput);
-  const response = await client.send(command);
-  console.log(`UpdateStackCommand response: ${JSON.stringify(response)}`);
+  try {
+    const response = await client.send(command);
+    console.log(`UpdateStackCommand response: ${JSON.stringify(response)}`);
+  } catch (error) {
+    if (error.message === "Stack [datadog-remote-instrument] does not exist") {
+      console.info(`Expected error. Error is: ${error}`);
+    } else {
+      console.error(`Unexpected error: ${error}`);
+    }
+  }
 }
 
 // uninstrument

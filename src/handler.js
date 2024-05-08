@@ -210,11 +210,14 @@ async function getConfig() {
     }
   }
 
-  let updatedDenyList = null;
+  let updatedDenyList;
   if (process.env.DD_DENY_LIST === "" || process.env.DD_DENY_LIST === null) {
-    updatedDenyList = process.env.DD_INSTRUMENTER_FUNCTION_NAME
+    updatedDenyList = process.env.DD_INSTRUMENTER_FUNCTION_NAME;
   } else {
-    updatedDenyList = process.env.DD_DENY_LIST + ',' + process.env.DD_INSTRUMENTER_FUNCTION_NAME
+    updatedDenyList =
+      process.env.DD_DENY_LIST +
+      "," +
+      process.env.DD_INSTRUMENTER_FUNCTION_NAME;
   }
 
   const config = {
