@@ -508,6 +508,7 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
         functionName,
         `Error is caught for functionName ${functionName}. Skipping instrumenting this function. Error is: ${error}`,
       );
+      return;
     }
   }
 
