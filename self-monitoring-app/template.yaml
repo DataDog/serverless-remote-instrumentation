@@ -168,6 +168,7 @@ Resources:
           DdExtensionLayerVersion: !Ref DdExtensionLayerVersion
           UpdatedDdExtensionLayerVersion: !Ref UpdatedDdExtensionLayerVersion
           DdRemoteInstrumentLayer: !Ref DdRemoteInstrumentLayer
+          DdRemoteInstrumentLayerAwsAccount: !Ref DdRemoteInstrumentLayerAwsAccount
 
       Code:
         ZipFile: |
