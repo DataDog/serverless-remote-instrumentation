@@ -428,6 +428,21 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
     );
   }
 
+  // handle create function event for runtime and functionArn
+  let functionArn = null;
+  let runtime = event.detail?.responseElements?.runtime;
+  if (event.detail.responseElements != null) {
+    functionArn = event.detail.responseElements.functionArn;
+  } else if (event.detail.eventName === "CreateFunction20150331") {
+    // no functionArn field if create from AWS UI
+    const functionName = event.detail.requestParameters.functionName;
+    functionArn = `arn:aws:lambda:${event.region}:${event.account}:function:${functionName}`;
+
+    if (runtime === null || runtime === undefined) {
+      runtime = event.detail?.requestParameters?.runtime;
+    }
+  }
+
   // check if the function has the tags that pass TagRule
   if (!functionFromEventIsInAllowList) {
     // call get function api to get tags and check if the function should be instrumented by tags
@@ -469,12 +484,12 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
           specifiedTags,
           instrumentOutcome,
           functionName,
-          functionArn,
+          null,
         )
       ) {
         logger.debugLogs(
           LAMBDA_EVENT,
-          PROCESSING,
+          SKIPPED,
           functionName,
           `Skipping remote instrumentation for function ${functionName}. It does not fit TagRule nor is in the AllowList`,
         );
@@ -493,23 +508,6 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
         functionName,
         `Error is caught for functionName ${functionName}. Skipping instrumenting this function. Error is: ${error}`,
       );
-    }
-  }
-
-  // handle create function event for runtime and functionArn
-  let functionArn = null;
-  let runtime = event.detail?.responseElements?.runtime;
-  if (event.detail.responseElements != null) {
-    functionArn = event.detail.responseElements.functionArn;
-  } else if (event.detail.eventName === "CreateFunction20150331") {
-    // no functionArn field if create from AWS UI
-    const account = event.account;
-    const region = event.region;
-    const functionName = event.detail.requestParameters.functionName;
-    functionArn = `arn:aws:lambda:${region}:${account}:function:${functionName}`;
-
-    if (runtime === null || runtime === undefined) {
-      runtime = event.detail?.requestParameters?.runtime;
     }
   }
 
