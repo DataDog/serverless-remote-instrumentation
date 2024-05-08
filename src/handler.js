@@ -210,6 +210,13 @@ async function getConfig() {
     }
   }
 
+  let updatedDenyList = null;
+  if (process.env.DD_DENY_LIST === "" || process.env.DD_DENY_LIST === null) {
+    updatedDenyList = process.env.DD_INSTRUMENTER_FUNCTION_NAME
+  } else {
+    updatedDenyList = process.env.DD_DENY_LIST + ',' + process.env.DD_INSTRUMENTER_FUNCTION_NAME
+  }
+
   const config = {
     AWS_REGION: process.env.AWS_REGION,
     DD_AWS_ACCOUNT_NUMBER: process.env.DD_AWS_ACCOUNT_NUMBER,
@@ -219,9 +226,9 @@ async function getConfig() {
       getFunctionNamesFromString(process.env.DD_ALLOW_LIST),
     ),
     TagRule: process.env.DD_TAG_RULE,
-    DenyList: process.env.DD_DENY_LIST,
+    DenyList: updatedDenyList,
     DenyListFunctionNameSet: new Set(
-      getFunctionNamesFromString(process.env.DD_DENY_LIST),
+      getFunctionNamesFromString(updatedDenyList),
     ),
 
     DD_EXTENSION_LAYER_VERSION: process.env.DD_EXTENSION_LAYER_VERSION,
