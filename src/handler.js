@@ -884,7 +884,9 @@ async function instrumentWithDatadogCi(
 
   // skip instrumenter function
   if (functionName === process.env.DD_INSTRUMENTER_FUNCTION_NAME) {
-    console.info(`Skipping instrumenting ${functionName} since it is the remote instrumenter function.`)
+    console.info(
+      `Skipping instrumenting ${functionName} since it is the remote instrumenter function.`,
+    );
     return;
   }
 
