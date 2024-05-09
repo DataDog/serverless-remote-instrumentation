@@ -210,16 +210,6 @@ async function getConfig() {
     }
   }
 
-  let updatedDenyList;
-  if (process.env.DD_DENY_LIST === "" || process.env.DD_DENY_LIST === null) {
-    updatedDenyList = process.env.DD_INSTRUMENTER_FUNCTION_NAME;
-  } else {
-    updatedDenyList =
-      process.env.DD_DENY_LIST +
-      "," +
-      process.env.DD_INSTRUMENTER_FUNCTION_NAME;
-  }
-
   const config = {
     AWS_REGION: process.env.AWS_REGION,
     DD_AWS_ACCOUNT_NUMBER: process.env.DD_AWS_ACCOUNT_NUMBER,
@@ -229,9 +219,9 @@ async function getConfig() {
       getFunctionNamesFromString(process.env.DD_ALLOW_LIST),
     ),
     TagRule: process.env.DD_TAG_RULE,
-    DenyList: updatedDenyList,
+    DenyList: process.env.DD_DENY_LIST,
     DenyListFunctionNameSet: new Set(
-      getFunctionNamesFromString(updatedDenyList),
+      getFunctionNamesFromString(process.env.DD_DENY_LIST),
     ),
 
     DD_EXTENSION_LAYER_VERSION: process.env.DD_EXTENSION_LAYER_VERSION,
@@ -889,8 +879,16 @@ async function instrumentWithDatadogCi(
   console.log(
     `instrumentWithDatadogCi, functionArns: ${operatedFunctionArns} , uninstrument: ${uninstrument}`,
   );
-  // filter out functions that are on the DenyList
+
   const functionName = functionArn.split(":")[6];
+
+  // skip instrumenter function
+  if (functionName === process.env.DD_INSTRUMENTER_FUNCTION_NAME) {
+    console.info(`Skipping instrumenting ${functionName} since it is the remote instrumenter function.`)
+    return;
+  }
+
+  // filter out functions that are on the DenyList
   if (
     uninstrument === false &&
     config.DenyListFunctionNameSet.has(functionName)
