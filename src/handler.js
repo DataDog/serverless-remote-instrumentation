@@ -568,7 +568,7 @@ function belowRecommendedMemorySize(
     );
     const message = `Current memory size ${currentMemorySize} MB is below threshold ${config.MinimumMemorySize} MB.`;
     logger.debugLogs(LAMBDA_EVENT, SKIPPED, functionName, message);
-    instrumentOutcome.instrument.failed[functionName] = {
+    instrumentOutcome.instrument.skipped[functionName] = {
       functionArn,
       reason: message,
     };
@@ -834,7 +834,7 @@ async function instrumentByFunctionNames(
         getFunctionCommandOutput.Configuration.MemorySize;
       if (currentMemorySize < parseInt(config.MinimumMemorySize)) {
         const message = `Current memory size ${currentMemorySize} MB is below threshold ${config.MinimumMemorySize} MB.`;
-        instrumentOutcome.instrument.failed[functionName] = {
+        instrumentOutcome.instrument.skipped[functionName] = {
           functionArn,
           reason: message,
         };
