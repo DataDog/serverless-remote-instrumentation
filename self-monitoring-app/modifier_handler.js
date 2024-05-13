@@ -31,7 +31,7 @@ const ORIGINAL_EXTENSION_VERSION = process.env.DdExtensionLayerVersion;
 
 exports.handler = async (event) => {
   console.log(JSON.stringify(event));
-  // console.log(`\n process.env: ${JSON.stringify(process.env)}`)
+  console.log(`process.env: ${JSON.stringify(process.env)}`);
   const config = getConfig();
 
   if (!Object.prototype.hasOwnProperty.call(event, "eventName")) {
@@ -302,6 +302,11 @@ const createStackInput = {
     "https://datadog-cloudformation-template-serverless-sandbox.s3.sa-east-1.amazonaws.com/aws/remote-instrument-dev/latest.yaml",
   Parameters: [
     {
+      ParameterKey: "DdRemoteInstrumentLayerAwsAccount",
+      ParameterValue: process.env.DdRemoteInstrumentLayerAwsAccount,
+      UsePreviousValue: true,
+    },
+    {
       ParameterKey: "DdRemoteInstrumentLayer",
       ParameterValue: process.env.DdRemoteInstrumentLayer,
     },
@@ -409,10 +414,6 @@ async function updateStack(config) {
   const updateStackInput = Object.assign({}, createStackInput);
   updateStackInput.Parameters = [
     {
-      ParameterKey: "DdRemoteInstrumentLayer",
-      ParameterValue: process.env.DdRemoteInstrumentLayer,
-    },
-    {
       ParameterKey: "DdExtensionLayerVersion",
       ParameterValue: UPDATED_EXTENSION_VERSION, // was "50"
       UsePreviousValue: false,
@@ -423,6 +424,10 @@ async function updateStack(config) {
       UsePreviousValue: false,
     },
     // Only changing the above parameters. Every other parameters below are not changed.
+    {
+      ParameterKey: "DdRemoteInstrumentLayerAwsAccount",
+      UsePreviousValue: true,
+    },
     {
       ParameterKey: "DdRemoteInstrumentLayer",
       UsePreviousValue: true,
@@ -469,8 +474,16 @@ async function updateStack(config) {
   );
 
   const command = new UpdateStackCommand(updateStackInput);
-  const response = await client.send(command);
-  console.log(`UpdateStackCommand response: ${JSON.stringify(response)}`);
+  try {
+    const response = await client.send(command);
+    console.log(`UpdateStackCommand response: ${JSON.stringify(response)}`);
+  } catch (error) {
+    if (error.message === "Stack [datadog-remote-instrument] does not exist") {
+      console.info(`Expected error. Error is: ${error}`);
+    } else {
+      console.error(`Unexpected error: ${error}`);
+    }
+  }
 }
 
 // uninstrument

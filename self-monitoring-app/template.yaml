@@ -14,7 +14,7 @@ Mappings:
 Parameters:
   DdRemoteInstrumentLayer:
     Type: String
-    Default: arn:aws:lambda:us-west-1:425362996713:layer:Datadog-Serverless-Remote-Instrumentation-ARM:25
+    Default: arn:aws:lambda:us-west-1:425362996713:layer:Datadog-Serverless-Remote-Instrumentation-ARM:29
   DdApiKey:
     Type: String
     Description: >-
@@ -86,6 +86,9 @@ Parameters:
       - "true"
       - "false"
     Default: "false"
+  DdRemoteInstrumentLayerAwsAccount:
+    Type: String
+    Default: '425362996713'
 
 
 Metadata:
@@ -109,7 +112,7 @@ Resources:
       - LambdaFunctionWithoutSpecifiedTags
       - LambdaWith128MbRam
     Properties:
-      TemplateURL: https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/remote-instrument-dev/0.8.3.yaml
+      TemplateURL: https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/remote-instrument-dev/0.8.27.yaml
       Parameters:
         DdRemoteInstrumentLayer: !Ref DdRemoteInstrumentLayer
         DdApiKey: !Ref DdApiKey
@@ -123,6 +126,7 @@ Resources:
         DdNodeLayerVersion: !Ref DdNodeLayerVersion
         DdAwsAccountNumber: '425362996713'
         EnableCodeSigningConfigurations: !Ref EnableCodeSigningConfigurations
+        DdRemoteInstrumentLayerAwsAccount: !Ref DdRemoteInstrumentLayerAwsAccount
   ModifierLambdaFunction:
     Type: 'AWS::Lambda::Function'
     DependsOn:
@@ -164,6 +168,7 @@ Resources:
           DdExtensionLayerVersion: !Ref DdExtensionLayerVersion
           UpdatedDdExtensionLayerVersion: !Ref UpdatedDdExtensionLayerVersion
           DdRemoteInstrumentLayer: !Ref DdRemoteInstrumentLayer
+          DdRemoteInstrumentLayerAwsAccount: !Ref DdRemoteInstrumentLayerAwsAccount
 
       Code:
         ZipFile: |

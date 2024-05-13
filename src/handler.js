@@ -4,7 +4,7 @@ const axios = require("axios");
 const cfnResponse = require("cfn-response"); // file will be auto-injected by CloudFormation
 const datadogCi = require("@datadog/datadog-ci/dist/cli.js");
 const tracer = require("dd-trace");
-const {LambdaClient, GetFunctionCommand} = require("@aws-sdk/client-lambda");
+const { LambdaClient, GetFunctionCommand } = require("@aws-sdk/client-lambda");
 const {
   ResourceGroupsTaggingAPIClient,
   GetResourcesCommand,
@@ -32,8 +32,8 @@ const UNINSTRUMENT = "Uninstrument";
 exports.handler = async (event, context) => {
   logger.logObject(event);
   const instrumentOutcome = {
-    instrument: {succeeded: {}, failed: {}, skipped: {}},
-    uninstrument: {succeeded: {}, failed: {}, skipped: {}},
+    instrument: { succeeded: {}, failed: {}, skipped: {} },
+    uninstrument: { succeeded: {}, failed: {}, skipped: {} },
   };
 
   const config = await getConfig();
@@ -231,7 +231,7 @@ async function getConfig() {
 
     MinimumMemorySize: process.env.DD_MinimumMemorySize,
   };
-  logger.logObject({...config, ...{eventName: "config"}});
+  logger.logObject({ ...config, ...{ eventName: "config" } });
   console.log(
     `AllowList: ${JSON.stringify([...config.AllowListFunctionNameSet])}`,
   );
@@ -246,7 +246,7 @@ async function uninstrumentBasedOnAllowListAndTagRule(
   instrumentOutcome,
 ) {
   // get the functions with DD_SLS_REMOTE_INSTRUMENTER_VERSION tag
-  const otherFilteringTags = {[DD_SLS_REMOTE_INSTRUMENTER_VERSION]: []};
+  const otherFilteringTags = { [DD_SLS_REMOTE_INSTRUMENTER_VERSION]: [] };
   const remoteInstrumentedFunctionNames =
     await getFunctionNamesByTagRuleOrOtherFilteringTags(
       config,
@@ -323,11 +323,13 @@ async function uninstrumentFunctions(
   await untagResourcesOfSlsTag(uninstrumentedFunctionArns, config);
 }
 
-function getRemoteInstrumentTagsFromConfig(config) {
-  const ddRemoteInstrumentLambdaTags = config.TagRule;
-  const tags = ddRemoteInstrumentLambdaTags.split(",");
-  console.log(`tags from env var are: ${JSON.stringify(tags)}`);
-  return tags;
+function getTagRuleFromConfig(config) {
+  const tagRule = config.TagRule;
+  const tagRuleTags = tagRule.split(",");
+  console.log(
+    `tags of TagRule from env var are: ${JSON.stringify(tagRuleTags)}`,
+  );
+  return tagRuleTags;
 }
 
 function getFunctionNamesFromString(s) {
@@ -370,7 +372,7 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
   validateEvent(event);
 
   let functionFromEventIsInAllowList = false;
-  let functionName = event.detail.requestParameters.functionName;
+  let functionName = event.detail.requestParameters?.functionName;
 
   // special handling for specific event
   // event.detail.requestParameters.functionName for update function event can be ARN or function name
@@ -379,7 +381,7 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
     Object.prototype.hasOwnProperty.call(event.detail, "eventName") &&
     event.detail.eventName === "UpdateFunctionConfiguration20150331v2"
   ) {
-    functionName = event.detail.responseElements.functionName
+    functionName = event.detail.responseElements.functionName;
     console.log(
       `The function name in the UpdateFunctionConfiguration20150331v2 event is: ${functionName}`,
     );
@@ -426,13 +428,28 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
     );
   }
 
+  // handle create function event for runtime and functionArn
+  let functionArn = null;
+  let runtime = event.detail?.responseElements?.runtime;
+  if (event.detail.responseElements != null) {
+    functionArn = event.detail.responseElements.functionArn;
+  } else if (event.detail.eventName === "CreateFunction20150331") {
+    // no functionArn field if create from AWS UI
+    const functionName = event.detail.requestParameters.functionName;
+    functionArn = `arn:aws:lambda:${event.region}:${event.account}:function:${functionName}`;
+
+    if (runtime === null || runtime === undefined) {
+      runtime = event.detail?.requestParameters?.runtime;
+    }
+  }
+
   // check if the function has the tags that pass TagRule
   if (!functionFromEventIsInAllowList) {
     // call get function api to get tags and check if the function should be instrumented by tags
     const params = {
       FunctionName: functionName,
     };
-    const client = new LambdaClient({region: config.AWS_REGION});
+    const client = new LambdaClient({ region: config.AWS_REGION });
     const command = new GetFunctionCommand(params);
 
     try {
@@ -458,7 +475,7 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
         return;
       }
 
-      const specifiedTags = getRemoteInstrumentTagsFromConfig(config); // tags: ['k1:v1', 'k2:v2']
+      const specifiedTags = getTagRuleFromConfig(config); // tags: ['k1:v1', 'k2:v2']
       if (
         typeof specifiedTags === "object" &&
         specifiedTags.length !== 0 &&
@@ -467,12 +484,12 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
           specifiedTags,
           instrumentOutcome,
           functionName,
-          functionArn,
+          null,
         )
       ) {
-        logger.debugLo9gs(
+        logger.debugLogs(
           LAMBDA_EVENT,
-          PROCESSING,
+          SKIPPED,
           functionName,
           `Skipping remote instrumentation for function ${functionName}. It does not fit TagRule nor is in the AllowList`,
         );
@@ -491,23 +508,7 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
         functionName,
         `Error is caught for functionName ${functionName}. Skipping instrumenting this function. Error is: ${error}`,
       );
-    }
-  }
-
-  // handle create function event for runtime and functionArn
-  let functionArn = null;
-  let runtime = event.detail?.responseElements?.runtime;
-  if (event.detail.responseElements != null) {
-    functionArn = event.detail.responseElements.functionArn;
-  } else if (event.detail.eventName === "CreateFunction20150331") {
-    // no functionArn field if create from AWS UI
-    const account = event.account;
-    const region = event.region;
-    const functionName = event.detail.requestParameters.functionName;
-    functionArn = `arn:aws:lambda:${region}:${account}:function:${functionName}`;
-
-    if (runtime === null || runtime === undefined) {
-      runtime = event.detail?.requestParameters?.runtime;
+      return;
     }
   }
 
@@ -546,7 +547,7 @@ function belowRecommendedMemorySize(
   instrumentOutcome,
   functionArn,
 ) {
-  let currentMemorySize = 1;  // in case there are unexpected eventNames
+  let currentMemorySize = 1; // in case there are unexpected eventNames
   // only need to check these 2 events
   if (event.detail.eventName === "CreateFunction20150331") {
     currentMemorySize = parseInt(event.detail?.requestParameters?.memorySize);
@@ -567,7 +568,7 @@ function belowRecommendedMemorySize(
     );
     const message = `Current memory size ${currentMemorySize} MB is below threshold ${config.MinimumMemorySize} MB.`;
     logger.debugLogs(LAMBDA_EVENT, SKIPPED, functionName, message);
-    instrumentOutcome.instrument.failed[functionName] = {
+    instrumentOutcome.instrument.skipped[functionName] = {
       functionArn,
       reason: message,
     };
@@ -647,7 +648,7 @@ async function getFunctionNamesFromResourceGroupsTaggingAPI(
     ResourceTypeFilters: ["lambda:function"],
   };
   const getResourcesCommand = new GetResourcesCommand(input);
-  let getResourcesCommandOutput = {ResourceTagMappingList: []};
+  let getResourcesCommandOutput = { ResourceTagMappingList: [] };
   try {
     getResourcesCommandOutput = await client.send(getResourcesCommand);
   } catch (error) {
@@ -699,7 +700,7 @@ async function getFunctionNamesByTagRuleOrOtherFilteringTags(
   // this function either use config to get filters from tagRule or use otherFilteringTags = { "service": ["service1", "service2"] }
   let tagsKvMapping = {};
   if (Object.keys(otherFilteringTags).length === 0) {
-    const specifiedTags = getRemoteInstrumentTagsFromConfig(config); // tags: ['k1:v1', 'k2:v2']
+    const specifiedTags = getTagRuleFromConfig(config); // tags: ['k1:v1', 'k2:v2']
     console.log(`specifiedTags: ${specifiedTags}`);
     if (specifiedTags === undefined || specifiedTags.length === 0) {
       return;
@@ -765,7 +766,7 @@ async function instrumentByFunctionNames(
   }
   const ddAwsAccountNumber = config.DD_AWS_ACCOUNT_NUMBER;
 
-  const client = new LambdaClient({region: config.AWS_REGION});
+  const client = new LambdaClient({ region: config.AWS_REGION });
   const instrumentedFunctionArns = [];
   for (const functionName of functionNames) {
     logger.log(`processing ${functionName}`, functionName, null);
@@ -819,17 +820,21 @@ async function instrumentByFunctionNames(
           functionArn,
           config.DD_LAYER_VERSIONS.extensionVersion,
           runtime,
-          reason
+          reason,
         );
-        instrumentOutcome.instrument.skipped[functionName] = {functionArn, reason};
+        instrumentOutcome.instrument.skipped[functionName] = {
+          functionArn,
+          reason,
+        };
         continue;
       }
 
       // memory size check
-      const currentMemorySize = getFunctionCommandOutput.Configuration.MemorySize;
+      const currentMemorySize =
+        getFunctionCommandOutput.Configuration.MemorySize;
       if (currentMemorySize < parseInt(config.MinimumMemorySize)) {
         const message = `Current memory size ${currentMemorySize} MB is below threshold ${config.MinimumMemorySize} MB.`;
-        instrumentOutcome.instrument.failed[functionName] = {
+        instrumentOutcome.instrument.skipped[functionName] = {
           functionArn,
           reason: message,
         };
@@ -874,8 +879,18 @@ async function instrumentWithDatadogCi(
   console.log(
     `instrumentWithDatadogCi, functionArns: ${operatedFunctionArns} , uninstrument: ${uninstrument}`,
   );
-  // filter out functions that are on the DenyList
+
   const functionName = functionArn.split(":")[6];
+
+  // skip instrumenter function
+  if (functionName === process.env.DD_INSTRUMENTER_FUNCTION_NAME) {
+    console.info(
+      `Skipping instrumenting ${functionName} since it is the remote instrumenter function.`,
+    );
+    return;
+  }
+
+  // filter out functions that are on the DenyList
   if (
     uninstrument === false &&
     config.DenyListFunctionNameSet.has(functionName)
@@ -944,7 +959,7 @@ async function instrumentWithDatadogCi(
         layerVersionObj.extensionVersion,
         runtime,
       );
-      instrumentOutcome.uninstrument[SUCCEEDED][functionName] = {functionArn};
+      instrumentOutcome.uninstrument[SUCCEEDED][functionName] = { functionArn };
     } else {
       logger.logInstrumentOutcome(
         INSTRUMENT,
@@ -954,7 +969,7 @@ async function instrumentWithDatadogCi(
         layerVersionObj.extensionVersion,
         runtime,
       );
-      instrumentOutcome.instrument[SUCCEEDED][functionName] = {functionArn};
+      instrumentOutcome.instrument[SUCCEEDED][functionName] = { functionArn };
     }
     operatedFunctionArns.push(functionArn);
     console.log(
@@ -970,7 +985,7 @@ async function instrumentWithDatadogCi(
         layerVersionObj.extensionVersion,
         runtime,
       );
-      instrumentOutcome.uninstrument[FAILED][functionName] = {functionArn};
+      instrumentOutcome.uninstrument[FAILED][functionName] = { functionArn };
     } else {
       logger.logInstrumentOutcome(
         INSTRUMENT,
@@ -980,7 +995,7 @@ async function instrumentWithDatadogCi(
         layerVersionObj.extensionVersion,
         runtime,
       );
-      instrumentOutcome.instrument[FAILED][functionName] = {functionArn};
+      instrumentOutcome.instrument[FAILED][functionName] = { functionArn };
     }
   }
 }
@@ -997,7 +1012,7 @@ async function tagResourcesWithSlsTag(functionArns, config) {
   });
   const input = {
     ResourceARNList: functionArns,
-    Tags: {[DD_SLS_REMOTE_INSTRUMENTER_VERSION]: `v${VERSION}`}, // use [] to specify KEY is a variable
+    Tags: { [DD_SLS_REMOTE_INSTRUMENTER_VERSION]: `v${VERSION}` }, // use [] to specify KEY is a variable
   };
   const tagResourcesCommand = new TagResourcesCommand(input);
   try {
