@@ -325,6 +325,9 @@ async function uninstrumentFunctions(
 
 function getTagRuleFromConfig(config) {
   const tagRule = config.TagRule;
+  if (tagRule === "") {
+    return [];
+  }
   const tagRuleTags = tagRule.split(",");
   console.log(
     `tags of TagRule from env var are: ${JSON.stringify(tagRuleTags)}`,
@@ -1044,10 +1047,10 @@ async function untagResourcesOfSlsTag(functionArns, config) {
       untagResourcesCommand,
     );
     console.log(
-      `api call output of untagResourcesCommandOutput: ${JSON.stringify(untagResourcesCommandOutput.ResourceTagMappingList)}`,
+      `untagResourcesCommandOutput: ${JSON.stringify(untagResourcesCommandOutput)}`,
     );
   } catch (error) {
-    console.error(`error: ${error.toString()} when untagging resources`);
+    console.error(`Error removing tags:`, error);
   }
 }
 
