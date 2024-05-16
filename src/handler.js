@@ -479,6 +479,10 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
       }
 
       const specifiedTags = getTagRuleFromConfig(config); // tags: ['k1:v1', 'k2:v2']
+      if (specifiedTags.length === 0) {
+        logger.debugLogs(INSTRUMENT, SKIPPED, functionName, `The function is not in the AllowList and the tagRule is empty.`)
+        return;
+      }
       if (
         typeof specifiedTags === "object" &&
         specifiedTags.length !== 0 &&
