@@ -54,6 +54,7 @@ Parameters:
     Description: >-
       The Datadog API key, which can be found from the APIs page
       (/organization-settings/api-keys).
+    AllowedPattern: ".+"
     NoEcho: true
   DdSite:
     Type: String
