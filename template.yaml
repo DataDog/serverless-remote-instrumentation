@@ -81,6 +81,7 @@ Parameters:
     Type: String
   DdTagRule:
     Type: String
+    Default: DD_REMOTE_INSTRUMENT_ENABLED:true
   DdDenyList:
     Type: String
   DdExtensionLayerVersion:
