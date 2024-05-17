@@ -45,9 +45,6 @@ Parameters:
       - "false"
     Default: "true"
     Description: Whether to enable code signing configurations.
-#  DdRemoteInstrumentLayer:
-#    Type: String
-#    Default: arn:aws:lambda:eu-west-2:425362996713:layer:Datadog-Serverless-Remote-Instrumentation-ARM:32
   DdRemoteInstrumentLayerVersion:
     Type: String
     Default: '32'
