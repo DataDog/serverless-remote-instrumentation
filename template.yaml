@@ -13,7 +13,7 @@ Metadata:
       - Label:
           default: Remote Instrumenter Configuration
         Parameters:
-          - DdRemoteInstrumentLayer
+          - DdRemoteInstrumentLayerVersion
           - DdTagRule
           - DdAllowList
           - DdDenyList
@@ -33,7 +33,6 @@ Metadata:
           - MinimumMemorySize
           - InstrumenterFunctionName
           - TrailName
-          - DdAwsAccountNumber
 
 Conditions:
   CreateCodeSigningConfig: !Equals [ !Ref EnableCodeSigningConfigurations, "true" ]
@@ -46,9 +45,9 @@ Parameters:
       - "false"
     Default: "true"
     Description: Whether to enable code signing configurations.
-  DdRemoteInstrumentLayer:
+  DdRemoteInstrumentLayerVersion:
     Type: String
-    Default: arn:aws:lambda:eu-west-2:425362996713:layer:Datadog-Serverless-Remote-Instrumentation-ARM:32
+    Default: '32'
   DdApiKey:
     Type: String
     Description: >-
@@ -70,24 +69,19 @@ Parameters:
       Define the Lambda function name which is instrumenting the other Lambda functions.
   BucketName:
     Type: String
-    Default: datadog-remote-instrument-YOUR-COMPANY-NAME
+    Default: datadog-remote-instrument-SOME-RANDOM-LOWER-CASE-STRING
     Description: >-
-      Since S3 buckets are globally unique across AWS regions, please update the name of the bucket that is used to store CloudTrail management event.
+      Since S3 buckets are globally unique across AWS regions, please update the name of the bucket that is used to store CloudTrail management event. And the bucket name should not contain upper case.
   TrailName:
     Type: String
     Default: datadog-serverless-instrumentation-trail
-  DdAwsAccountNumber:
-    Type: String
-    Default: '425362996713'
   DdAllowList:
     Type: String
-    Default: test-remote-instrument-node,test-remote-instrument-another-node,test-remote-instrument-does-not-exist,test-remote-instrument-python
   DdTagRule:
     Type: String
     Default: DD_REMOTE_INSTRUMENT_ENABLED:true
   DdDenyList:
     Type: String
-    Default: test-remote-instrument-another-node
   DdExtensionLayerVersion:
     Type: String
     Default: '50'
@@ -129,7 +123,7 @@ Resources:
       Layers:
         - !Sub 'arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Extension-ARM:50'
         - !Sub 'arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Node20-x:99'
-        - !Ref DdRemoteInstrumentLayer
+        - !Sub 'arn:aws:lambda:${AWS::Region}:${DdRemoteInstrumentLayerAwsAccount}:layer:Datadog-Serverless-Remote-Instrumentation-ARM:${DdRemoteInstrumentLayerVersion}'
       Environment:
         Variables:
           DD_LAMBDA_HANDLER: /opt/nodejs/node_modules/datadog-remote-instrument/handler.handler
@@ -140,7 +134,7 @@ Resources:
           DD_SERVICE: Datadog-Instrument
           DD_ENV: dev
           DD_SITE: !Ref DdSite
-          DD_AWS_ACCOUNT_NUMBER: !Ref DdAwsAccountNumber
+          DD_AWS_ACCOUNT_NUMBER: !Sub '${AWS::AccountId}'
           DD_ALLOW_LIST: !Ref DdAllowList
           DD_TAG_RULE: !Ref DdTagRule
           DD_DENY_LIST: !Ref DdDenyList

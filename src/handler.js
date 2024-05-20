@@ -480,7 +480,12 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
 
       const specifiedTags = getTagRuleFromConfig(config); // tags: ['k1:v1', 'k2:v2']
       if (specifiedTags.length === 0) {
-        logger.debugLogs(INSTRUMENT, SKIPPED, functionName, `The function is not in the AllowList and the tagRule is empty.`)
+        logger.debugLogs(
+          INSTRUMENT,
+          SKIPPED,
+          functionName,
+          `The function is not in the AllowList and the tagRule is empty.`,
+        );
         return;
       }
       if (
@@ -1172,8 +1177,8 @@ class Logger {
   log(message, targetFunctionName = null, targetFunctionArn = null) {
     const logEntry = {
       message,
-      targetFunctionName: targetFunctionName?.toLowerCase(),
-      targetFunctionArn: targetFunctionArn?.toLowerCase(),
+      targetFunctionName: targetFunctionName,
+      targetFunctionArn: targetFunctionArn,
     };
     console.log(JSON.stringify(logEntry));
   }
@@ -1191,8 +1196,8 @@ class Logger {
       JSON.stringify({
         ddSlsEventName,
         outcome,
-        targetFunctionName: targetFunctionName?.toLowerCase(),
-        targetFunctionArn: targetFunctionArn?.toLowerCase(),
+        targetFunctionName: targetFunctionName,
+        targetFunctionArn: targetFunctionArn,
         expectedExtensionVersion,
         runtime,
         reason,
@@ -1205,7 +1210,7 @@ class Logger {
       JSON.stringify({
         ddSlsEventName,
         outcome,
-        targetFunctionName: targetFunctionName?.toLowerCase(),
+        targetFunctionName: targetFunctionName,
         message,
       }),
     );
