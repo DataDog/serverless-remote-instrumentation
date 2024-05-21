@@ -12,9 +12,9 @@ Mappings:
       Version: 0.1.0
 
 Parameters:
-  DdRemoteInstrumentLayer:
+  DdRemoteInstrumentLayerVersion:
     Type: String
-    Default: arn:aws:lambda:us-west-1:425362996713:layer:Datadog-Serverless-Remote-Instrumentation-ARM:29
+    Default: '32'
   DdApiKey:
     Type: String
     Description: >-
@@ -97,7 +97,7 @@ Metadata:
       - Label:
           default: Frequently Used
         Parameters:
-          - DdRemoteInstrumentLayer
+          - DdRemoteInstrumentLayerVersion
           - DdApiKey
       - Label:
           default: Others
@@ -114,7 +114,7 @@ Resources:
     Properties:
       TemplateURL: https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/remote-instrument-dev/0.8.27.yaml
       Parameters:
-        DdRemoteInstrumentLayer: !Ref DdRemoteInstrumentLayer
+        DdRemoteInstrumentLayerVersion: !Ref DdRemoteInstrumentLayerVersion
         DdApiKey: !Ref DdApiKey
         DdSite: !Ref DdSite
         BucketName: !Ref BucketName
@@ -167,7 +167,7 @@ Resources:
           LambdaWithTagsUpdatedToBeInDenyListFunctionName: !Ref LambdaWithTagsUpdatedToBeInDenyListFunctionName
           DdExtensionLayerVersion: !Ref DdExtensionLayerVersion
           UpdatedDdExtensionLayerVersion: !Ref UpdatedDdExtensionLayerVersion
-          DdRemoteInstrumentLayer: !Ref DdRemoteInstrumentLayer
+          DdRemoteInstrumentLayer: !Sub 'arn:aws:lambda:${AWS::Region}:${DdRemoteInstrumentLayerAwsAccount}:layer:Datadog-Serverless-Remote-Instrumentation-ARM:${DdRemoteInstrumentLayerVersion}'
           DdRemoteInstrumentLayerAwsAccount: !Ref DdRemoteInstrumentLayerAwsAccount
 
       Code:
