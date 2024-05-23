@@ -6,6 +6,24 @@ Mappings:
   Constants:
     DatadogRemoteInstrumentDemoApp:
       Version: 0.0.1
+  S3:
+    Bucket:
+      Name: "kimi123456"
+#      Name: !Join
+#        - '-'
+#        - - !Ref BucketPrefix
+#          - !Ref AWS::AccountId
+#          - !Ref AWS::Region
+#          - 'bucket'
+#          - !Select
+#            - 0
+#            - !Split
+#              - '-'
+#              - !Select
+#                - 2
+#                - !Split
+#                  - /
+#                  - !Ref AWS::StackId
 
 Metadata:
   AWS::CloudFormation::Interface:
@@ -19,7 +37,7 @@ Metadata:
           - DdDenyList
           - DdApiKey
           - EnableCodeSigningConfigurations
-          - BucketName
+#          - BucketName
       - Label:
           default: Layer Versions
         Parameters:
@@ -67,11 +85,14 @@ Parameters:
     Default: datadog-remote-instrumenter
     Description: >-
       Define the Lambda function name which is instrumenting the other Lambda functions.
-  BucketName:
+#  BucketName:
+#    Type: String
+#    Default: datadog-remote-instrument-
+#    Description: >-
+#      Since S3 buckets are globally unique across AWS regions, please update the name of the bucket that is used to store CloudTrail management event. And the bucket name should not contain upper case.
+  BucketPrefix:
     Type: String
-    Default: datadog-remote-instrument-SOME-RANDOM-LOWER-CASE-STRING
-    Description: >-
-      Since S3 buckets are globally unique across AWS regions, please update the name of the bucket that is used to store CloudTrail management event. And the bucket name should not contain upper case.
+    Default: datadog-remote-instrument
   TrailName:
     Type: String
     Default: datadog-serverless-instrumentation-trail
@@ -98,7 +119,7 @@ Parameters:
     Type: String
     Default: '464622532012'
     Description: >- 
-      have to do this so that we can use dev layer in the sandbox account   
+      have to do this so that we can use dev layer in the sandbox account    
 
 Resources:
   CloudFormationLifeCycle:
@@ -221,7 +242,8 @@ Resources:
     DependsOn:
       - S3Bucket
     Properties:
-      S3BucketName: !Ref BucketName
+#      S3BucketName: !Ref BucketName
+      S3BucketName: !FindInMap [ S3, Bucket, Name ]
       IsLogging: true
       TrailName: !Ref TrailName
       EnableLogFileValidation: false
@@ -246,11 +268,16 @@ Resources:
     Type: 'AWS::S3::Bucket'
     DeletionPolicy: Delete
     Properties:
-      BucketName: !Ref BucketName
+#      BucketName: !Ref BucketName
+      BucketName: !FindInMap [ S3, Bucket, Name ]
+
   S3BucketPolicy:
     Type: AWS::S3::BucketPolicy
+    DependsOn:
+      - S3Bucket
     Properties:
-      Bucket: !Ref BucketName
+#      Bucket: !Ref BucketName
+      Bucket: !FindInMap [ S3, Bucket, Name ]
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -259,7 +286,8 @@ Resources:
             Principal:
               Service: cloudtrail.amazonaws.com
             Action: s3:GetBucketAcl
-            Resource: !Sub "arn:aws:s3:::${BucketName}"
+#            Resource: !Sub "arn:aws:s3:::${BucketName}"
+            Resource: !Join [":", ["arn:aws:s3::", !FindInMap [ S3, Bucket, Name ]]]
             Condition:
               StringEquals:
                 AWS:SourceArn: !Sub "arn:aws:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/${TrailName}"
@@ -268,7 +296,8 @@ Resources:
             Principal:
               Service: cloudtrail.amazonaws.com
             Action: s3:PutObject
-            Resource: !Sub "arn:aws:s3:::${BucketName}/*"
+#            Resource: !Sub "arn:aws:s3:::${BucketName}/*"
+            Resource: !Join [ "/", [!Join [":", ["arn:aws:s3::", !FindInMap [ S3, Bucket, Name ]]], "*"]]
             Condition:
               StringEquals:
                 AWS:SourceArn: !Sub "arn:aws:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/${TrailName}"
