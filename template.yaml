@@ -43,8 +43,8 @@ Parameters:
     AllowedValues:
       - "true"
       - "false"
-    Default: "false"
-#    Default: "true"  # TODO: change to true for private beta
+#    Default: "false"
+    Default: "true"
     Description: Whether to enable code signing configurations.
   DdRemoteInstrumentLayerVersion:
     Type: String
@@ -97,8 +97,8 @@ Parameters:
     Default: '512'
   DdRemoteInstrumentLayerAwsAccount:
     Type: String
-    Default: '425362996713'
-#    Default: '464622532012'  # TODO: change to true for private beta
+#    Default: '425362996713'
+    Default: '464622532012'
     Description: >- 
       have to do this so that we can use dev layer in the sandbox account   
 
@@ -268,7 +268,6 @@ Resources:
     DependsOn:
       - S3Bucket
     Properties:
-#      Bucket: !Ref BucketName
       Bucket: !Ref S3Bucket
       PolicyDocument:
         Version: '2012-10-17'
