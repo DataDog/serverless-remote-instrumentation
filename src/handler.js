@@ -29,6 +29,11 @@ const SKIPPED = "skipped";
 const SUCCEEDED = "succeeded";
 const UNINSTRUMENT = "Uninstrument";
 
+// reason code
+const INSUFFICIENT_MEMORY = "insufficient-memory";
+const ALREADY_CORRECT_EXTENSION_AND_LAYER =
+  "already-correct-extension-and-layer";
+
 exports.handler = async (event, context) => {
   logger.logObject(event);
   const instrumentOutcome = {
@@ -569,6 +574,7 @@ function belowRecommendedMemorySize(
     currentMemorySize = parseInt(event.detail?.responseElements?.memorySize);
   }
   if (currentMemorySize < parseInt(config.MinimumMemorySize)) {
+    const reason = `Current memory size ${currentMemorySize} MB is below threshold ${config.MinimumMemorySize} MB.`;
     logger.logInstrumentOutcome(
       INSTRUMENT,
       FAILED,
@@ -576,13 +582,14 @@ function belowRecommendedMemorySize(
       null,
       null,
       null,
-      `Current memory size ${currentMemorySize} MB is below threshold ${config.MinimumMemorySize} MB.`,
+      reason,
+      INSUFFICIENT_MEMORY,
     );
-    const message = `Current memory size ${currentMemorySize} MB is below threshold ${config.MinimumMemorySize} MB.`;
-    logger.debugLogs(LAMBDA_EVENT, SKIPPED, functionName, message);
+    logger.debugLogs(LAMBDA_EVENT, SKIPPED, functionName, reason);
     instrumentOutcome.instrument.skipped[functionName] = {
       functionArn,
-      reason: message,
+      reason: reason,
+      reasonCode: INSUFFICIENT_MEMORY,
     };
     return true;
   }
@@ -833,10 +840,12 @@ async function instrumentByFunctionNames(
           config.DD_LAYER_VERSIONS.extensionVersion,
           runtime,
           reason,
+          ALREADY_CORRECT_EXTENSION_AND_LAYER,
         );
         instrumentOutcome.instrument.skipped[functionName] = {
           functionArn,
           reason,
+          reasonCode: ALREADY_CORRECT_EXTENSION_AND_LAYER,
         };
         continue;
       }
@@ -849,6 +858,7 @@ async function instrumentByFunctionNames(
         instrumentOutcome.instrument.skipped[functionName] = {
           functionArn,
           reason: message,
+          reasonCode: INSUFFICIENT_MEMORY,
         };
         logger.logInstrumentOutcome(
           INSTRUMENT,
@@ -858,6 +868,7 @@ async function instrumentByFunctionNames(
           null,
           runtime,
           `Current memory size ${currentMemorySize} MB is below ${config.MinimumMemorySize} MB`,
+          INSUFFICIENT_MEMORY,
         );
         continue;
       }
@@ -1191,6 +1202,7 @@ class Logger {
     expectedExtensionVersion = null,
     runtime = null,
     reason = null,
+    reasonCode = null,
   ) {
     console.log(
       JSON.stringify({
@@ -1201,6 +1213,7 @@ class Logger {
         expectedExtensionVersion,
         runtime,
         reason,
+        reasonCode,
       }),
     );
   }
