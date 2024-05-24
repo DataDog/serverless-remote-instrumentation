@@ -19,7 +19,6 @@ Metadata:
           - DdDenyList
           - DdApiKey
           - EnableCodeSigningConfigurations
-          - BucketName
       - Label:
           default: Layer Versions
         Parameters:
@@ -31,6 +30,7 @@ Metadata:
         Parameters:
           - DdSite
           - MinimumMemorySize
+          - BucketPrefix
           - InstrumenterFunctionName
           - TrailName
 
@@ -43,6 +43,7 @@ Parameters:
     AllowedValues:
       - "true"
       - "false"
+#    Default: "false"
     Default: "true"
     Description: Whether to enable code signing configurations.
   DdRemoteInstrumentLayerVersion:
@@ -67,9 +68,9 @@ Parameters:
     Default: datadog-remote-instrumenter
     Description: >-
       Define the Lambda function name which is instrumenting the other Lambda functions.
-  BucketName:
+  BucketPrefix:
     Type: String
-    Default: datadog-remote-instrument-SOME-RANDOM-LOWER-CASE-STRING
+    Default: datadog-remote-instrument
     Description: >-
       Since S3 buckets are globally unique across AWS regions, please update the name of the bucket that is used to store CloudTrail management event. And the bucket name should not contain upper case.
   TrailName:
@@ -96,6 +97,7 @@ Parameters:
     Default: '512'
   DdRemoteInstrumentLayerAwsAccount:
     Type: String
+#    Default: '425362996713'
     Default: '464622532012'
     Description: >- 
       have to do this so that we can use dev layer in the sandbox account   
@@ -220,8 +222,9 @@ Resources:
     Type: AWS::CloudTrail::Trail
     DependsOn:
       - S3Bucket
+      - S3BucketPolicy
     Properties:
-      S3BucketName: !Ref BucketName
+      S3BucketName: !Ref S3Bucket
       IsLogging: true
       TrailName: !Ref TrailName
       EnableLogFileValidation: false
@@ -246,11 +249,26 @@ Resources:
     Type: 'AWS::S3::Bucket'
     DeletionPolicy: Delete
     Properties:
-      BucketName: !Ref BucketName
+      BucketName: !Join
+        - '-'
+        - - !Ref BucketPrefix
+          - 'bucket'
+          - !Select
+            - 0
+            - !Split
+              - '-'
+              - !Select
+                - 2
+                - !Split
+                  - /
+                  - !Ref AWS::StackId
+
   S3BucketPolicy:
     Type: AWS::S3::BucketPolicy
+    DependsOn:
+      - S3Bucket
     Properties:
-      Bucket: !Ref BucketName
+      Bucket: !Ref S3Bucket
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -259,7 +277,7 @@ Resources:
             Principal:
               Service: cloudtrail.amazonaws.com
             Action: s3:GetBucketAcl
-            Resource: !Sub "arn:aws:s3:::${BucketName}"
+            Resource: !GetAtt S3Bucket.Arn
             Condition:
               StringEquals:
                 AWS:SourceArn: !Sub "arn:aws:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/${TrailName}"
@@ -268,7 +286,7 @@ Resources:
             Principal:
               Service: cloudtrail.amazonaws.com
             Action: s3:PutObject
-            Resource: !Sub "arn:aws:s3:::${BucketName}/*"
+            Resource: !Join ['/', [!GetAtt S3Bucket.Arn, '*']]
             Condition:
               StringEquals:
                 AWS:SourceArn: !Sub "arn:aws:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/${TrailName}"
