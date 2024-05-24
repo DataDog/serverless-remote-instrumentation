@@ -233,6 +233,7 @@ async function getConfig() {
     DD_PYTHON_LAYER_VERSION: process.env.DD_PYTHON_LAYER_VERSION,
     DD_NODE_LAYER_VERSION: process.env.DD_NODE_LAYER_VERSION,
     DD_LAYER_VERSIONS: layerVersions,
+    DD_INSTRUMENTER_FUNCTION_NAME: process.env.DD_INSTRUMENTER_FUNCTION_NAME,
 
     MinimumMemorySize: process.env.DD_MinimumMemorySize,
   };
@@ -397,7 +398,7 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
   console.log(`The current function name is ${functionName}`);
 
   if (config.DenyList === "*") {
-    logger.logInstrumentOutcome(INSTRUMENT, SKIPPED, functionName);
+    logger.logInstrumentOutcome(INSTRUMENT, SKIPPED, functionName, null, null, null, `denylist is *`, `deny-all-functions`);
     return;
   }
   logger.debugLogs(
@@ -1172,6 +1173,10 @@ async function getLatestLayersFromS3() {
 }
 
 class Logger {
+  async constructor(config) {
+    this.config = config;
+  }
+
   emitFrontEndEvent(ddSlsEventName, triggeredBy, instrumentOutcome, config) {
     console.log(
       JSON.stringify({
@@ -1204,6 +1209,9 @@ class Logger {
     reason = null,
     reasonCode = null,
   ) {
+    if (targetFunctionArn === this.config.DD_INSTRUMENTER_FUNCTION_NAME){
+      return;
+    }
     console.log(
       JSON.stringify({
         ddSlsEventName,
@@ -1234,4 +1242,4 @@ class Logger {
   }
 }
 
-const logger = new Logger();
+const logger = new Logger(await getConfig());
