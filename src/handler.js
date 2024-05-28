@@ -69,7 +69,7 @@ exports.handler = async (event, context) => {
       event.detail.eventName === "TagResource20170331v2"
     ) {
       console.log(
-        "TODO: Processing of (Un)TagResource20170331v2 is not yet implemented yet.",
+        "TODO: Processing of (Un)TagResource20170331v2 is not yet implemented.",
       );
       return;
     }
@@ -605,6 +605,7 @@ function shouldBeRemoteInstrumentedByTag(
   functionArn,
 ) {
   const targetFunctionTagsObj = getFunctionCommandOutput.Tags; // {"env":"prod", "team":"serverless"}
+  console.log(`getFunctionCommandOutput.Tags: ${targetFunctionTagsObj}`)
   if (typeof targetFunctionTagsObj === "undefined") {
     console.log("no tags found on the function");
     return false;
