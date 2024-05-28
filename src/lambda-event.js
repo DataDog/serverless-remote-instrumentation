@@ -34,4 +34,4 @@ function shouldSkipLambdaEvent(event, config) {
   return false;
 }
 
-module.exports = shouldSkipLambdaEvent();
+module.exports = shouldSkipLambdaEvent;
