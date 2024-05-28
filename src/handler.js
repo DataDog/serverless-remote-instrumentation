@@ -398,7 +398,16 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
   console.log(`The current function name is ${functionName}`);
 
   if (config.DenyList === "*") {
-    logger.logInstrumentOutcome(INSTRUMENT, SKIPPED, functionName, null, null, null, `denylist is *`, `deny-all-functions`);
+    logger.logInstrumentOutcome(
+      INSTRUMENT,
+      SKIPPED,
+      functionName,
+      null,
+      null,
+      null,
+      `denylist is *`,
+      `deny-all-functions`,
+    );
     return;
   }
   logger.debugLogs(
@@ -605,7 +614,7 @@ function shouldBeRemoteInstrumentedByTag(
   functionArn,
 ) {
   const targetFunctionTagsObj = getFunctionCommandOutput.Tags; // {"env":"prod", "team":"serverless"}
-  console.log(`getFunctionCommandOutput.Tags: ${targetFunctionTagsObj}`)
+  console.log(`getFunctionCommandOutput.Tags: ${targetFunctionTagsObj}`);
   if (typeof targetFunctionTagsObj === "undefined") {
     console.log("no tags found on the function");
     return false;
@@ -790,7 +799,9 @@ async function instrumentByFunctionNames(
   const client = new LambdaClient({ region: config.AWS_REGION });
   const instrumentedFunctionArns = [];
   for (const functionName of functionNames) {
-    logger.log(`processing ${functionName}`, functionName, null);
+    console.log(
+      JSON.stringify({ message: `processing ${functionName}`, functionName }),
+    );
     // console.log(`processing ${functionName}`)
 
     // filter out functions that are on the DenyList
@@ -817,7 +828,13 @@ async function instrumentByFunctionNames(
       // instrument checks
       const layers = getFunctionCommandOutput.Configuration.Layers || [];
       const functionArn = `arn:aws:lambda:${config.AWS_REGION}:${ddAwsAccountNumber}:function:${functionName}`;
-      logger.log("instrumentByFunctionNames", functionName, functionArn);
+      console.log(
+        JSON.stringify({
+          message: "instrumentByFunctionNames",
+          functionName,
+          functionArn,
+        }),
+      );
       const runtime = getFunctionCommandOutput.Configuration?.Runtime;
       if (runtime === undefined) {
         console.error(
@@ -1174,7 +1191,7 @@ async function getLatestLayersFromS3() {
 }
 
 class Logger {
-  async constructor(config) {
+  constructor(config) {
     this.config = config;
   }
 
@@ -1191,15 +1208,6 @@ class Logger {
     );
   }
 
-  log(message, targetFunctionName = null, targetFunctionArn = null) {
-    const logEntry = {
-      message,
-      targetFunctionName: targetFunctionName,
-      targetFunctionArn: targetFunctionArn,
-    };
-    console.log(JSON.stringify(logEntry));
-  }
-
   logInstrumentOutcome(
     ddSlsEventName,
     outcome,
@@ -1210,7 +1218,7 @@ class Logger {
     reason = null,
     reasonCode = null,
   ) {
-    if (targetFunctionName === this.config.DD_INSTRUMENTER_FUNCTION_NAME){
+    if (targetFunctionName === this.config.DD_INSTRUMENTER_FUNCTION_NAME) {
       return;
     }
     console.log(
@@ -1243,4 +1251,8 @@ class Logger {
   }
 }
 
-const logger = new Logger(await getConfig());
+let logger = null;
+(async () => {
+  const config = await getConfig();
+  logger = new Logger(config);
+})();
