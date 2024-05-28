@@ -1210,7 +1210,7 @@ class Logger {
     reason = null,
     reasonCode = null,
   ) {
-    if (targetFunctionArn === this.config.DD_INSTRUMENTER_FUNCTION_NAME){
+    if (targetFunctionName === this.config.DD_INSTRUMENTER_FUNCTION_NAME){
       return;
     }
     console.log(
