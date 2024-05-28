@@ -11,6 +11,7 @@ const {
   TagResourcesCommand,
   UntagResourcesCommand,
 } = require("@aws-sdk/client-resource-groups-tagging-api");
+const { shouldSkipLambdaEvent } = require("./lambda-event");
 
 const NODE = "node";
 const PYTHON = "python";
@@ -50,27 +51,7 @@ exports.handler = async (event, context) => {
     Object.prototype.hasOwnProperty.call(event, "source") &&
     event.source === "aws.lambda"
   ) {
-    const eventNamesToSkip = new Set([
-      "AddPermission20150331",
-      "AddPermission20150331v2",
-      "DeleteFunction20150331",
-      "PublishLayerVersion20181031",
-      "RemovePermission20150331",
-      "PutFunctionConcurrency20171031",
-      "RemovePermission20150331v2",
-      "UpdateFunctionCode20150331v2",
-    ]);
-    if (eventNamesToSkip.has(event.detail?.eventName)) {
-      console.log(`${event.detail?.eventName} event is skipped.`);
-      return;
-    }
-    if (
-      event.detail.eventName === "UntagResource20170331v2" ||
-      event.detail.eventName === "TagResource20170331v2"
-    ) {
-      console.log(
-        "TODO: Processing of (Un)TagResource20170331v2 is not yet implemented.",
-      );
+    if (shouldSkipLambdaEvent(event, config)) {
       return;
     }
     logger.emitFrontEndEvent(
@@ -1218,9 +1199,6 @@ class Logger {
     reason = null,
     reasonCode = null,
   ) {
-    if (targetFunctionName === this.config.DD_INSTRUMENTER_FUNCTION_NAME) {
-      return;
-    }
     console.log(
       JSON.stringify({
         ddSlsEventName,
@@ -1251,8 +1229,4 @@ class Logger {
   }
 }
 
-let logger = null;
-(async () => {
-  const config = await getConfig();
-  logger = new Logger(config);
-})();
+const logger = new Logger();
