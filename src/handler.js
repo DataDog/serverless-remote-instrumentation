@@ -1172,10 +1172,6 @@ async function getLatestLayersFromS3() {
 }
 
 class Logger {
-  constructor(config) {
-    this.config = config;
-  }
-
   emitFrontEndEvent(ddSlsEventName, triggeredBy, instrumentOutcome, config) {
     console.log(
       JSON.stringify({
