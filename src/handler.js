@@ -616,7 +616,7 @@ function shouldBeRemoteInstrumentedByTag(
   )) {
     if (!Object.prototype.hasOwnProperty.call(targetFunctionTagsObj, tag)) {
       const message = `this function should NOT be remote instrumented by tagRule because it does not have ${tag} tag`;
-      instrumentOutcome.instrument.failed[functionName] = {
+      instrumentOutcome.instrument.skipped[functionName] = {
         functionArn,
         reason: message,
       };
@@ -635,7 +635,7 @@ function shouldBeRemoteInstrumentedByTag(
     // targeted functions should have tag value (e.g. staging) in the targeted tags values (e.g. [staging, prod])
     if (!targetedTagsValues.includes(targetFunctionTagsObj[tag])) {
       const message = `this function should NOT be remote instrumented by tagRule because value of tag ${tag} : ${targetFunctionTagsObj[tag]} is not in ${targetedTagsValues}`;
-      instrumentOutcome.instrument.failed[functionName] = {
+      instrumentOutcome.instrument.skipped[functionName] = {
         functionArn,
         reason: message,
       };
