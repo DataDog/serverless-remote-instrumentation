@@ -48,7 +48,7 @@ Parameters:
     Description: Whether to enable code signing configurations.
   DdRemoteInstrumentLayerVersion:
     Type: String
-    Default: '32'
+    Default: '33'
   DdApiKey:
     Type: String
     Description: >-
@@ -118,7 +118,7 @@ Resources:
       Runtime: nodejs20.x
       CodeSigningConfigArn: !If [CreateCodeSigningConfig, !Ref InstrumenterCodeSigningConfig, !Ref "AWS::NoValue"]
       ReservedConcurrentExecutions: 1
-      Timeout: 840
+      Timeout: 900
       MemorySize: 512
       Role: !GetAtt LambdaExecutionRole.Arn
       Handler: /opt/nodejs/node_modules/datadog-lambda-js/handler.handler
