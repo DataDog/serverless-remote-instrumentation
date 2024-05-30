@@ -11,6 +11,7 @@ const {
   TagResourcesCommand,
   UntagResourcesCommand,
 } = require("@aws-sdk/client-resource-groups-tagging-api");
+const { shouldSkipLambdaEvent } = require("./lambda-event");
 
 const NODE = "node";
 const PYTHON = "python";
@@ -29,6 +30,11 @@ const SKIPPED = "skipped";
 const SUCCEEDED = "succeeded";
 const UNINSTRUMENT = "Uninstrument";
 
+// reason code
+const INSUFFICIENT_MEMORY = "insufficient-memory";
+const ALREADY_CORRECT_EXTENSION_AND_LAYER =
+  "already-correct-extension-and-layer";
+
 exports.handler = async (event, context) => {
   logger.logObject(event);
   const instrumentOutcome = {
@@ -45,27 +51,7 @@ exports.handler = async (event, context) => {
     Object.prototype.hasOwnProperty.call(event, "source") &&
     event.source === "aws.lambda"
   ) {
-    const eventNamesToSkip = new Set([
-      "AddPermission20150331",
-      "AddPermission20150331v2",
-      "DeleteFunction20150331",
-      "PublishLayerVersion20181031",
-      "RemovePermission20150331",
-      "PutFunctionConcurrency20171031",
-      "RemovePermission20150331v2",
-      "UpdateFunctionCode20150331v2",
-    ]);
-    if (eventNamesToSkip.has(event.detail?.eventName)) {
-      console.log(`${event.detail?.eventName} event is skipped.`);
-      return;
-    }
-    if (
-      event.detail.eventName === "UntagResource20170331v2" ||
-      event.detail.eventName === "TagResource20170331v2"
-    ) {
-      console.log(
-        "TODO: Processing of (Un)TagResource20170331v2 is not yet implemented yet.",
-      );
+    if (shouldSkipLambdaEvent(event, config)) {
       return;
     }
     logger.emitFrontEndEvent(
@@ -228,6 +214,7 @@ async function getConfig() {
     DD_PYTHON_LAYER_VERSION: process.env.DD_PYTHON_LAYER_VERSION,
     DD_NODE_LAYER_VERSION: process.env.DD_NODE_LAYER_VERSION,
     DD_LAYER_VERSIONS: layerVersions,
+    DD_INSTRUMENTER_FUNCTION_NAME: process.env.DD_INSTRUMENTER_FUNCTION_NAME,
 
     MinimumMemorySize: process.env.DD_MinimumMemorySize,
   };
@@ -392,7 +379,16 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
   console.log(`The current function name is ${functionName}`);
 
   if (config.DenyList === "*") {
-    logger.logInstrumentOutcome(INSTRUMENT, SKIPPED, functionName);
+    logger.logInstrumentOutcome(
+      INSTRUMENT,
+      SKIPPED,
+      functionName,
+      null,
+      null,
+      null,
+      `denylist is *`,
+      `deny-all-functions`,
+    );
     return;
   }
   logger.debugLogs(
@@ -569,6 +565,7 @@ function belowRecommendedMemorySize(
     currentMemorySize = parseInt(event.detail?.responseElements?.memorySize);
   }
   if (currentMemorySize < parseInt(config.MinimumMemorySize)) {
+    const reason = `Current memory size ${currentMemorySize} MB is below threshold ${config.MinimumMemorySize} MB.`;
     logger.logInstrumentOutcome(
       INSTRUMENT,
       FAILED,
@@ -576,13 +573,14 @@ function belowRecommendedMemorySize(
       null,
       null,
       null,
-      `Current memory size ${currentMemorySize} MB is below threshold ${config.MinimumMemorySize} MB.`,
+      reason,
+      INSUFFICIENT_MEMORY,
     );
-    const message = `Current memory size ${currentMemorySize} MB is below threshold ${config.MinimumMemorySize} MB.`;
-    logger.debugLogs(LAMBDA_EVENT, SKIPPED, functionName, message);
+    logger.debugLogs(LAMBDA_EVENT, SKIPPED, functionName, reason);
     instrumentOutcome.instrument.skipped[functionName] = {
       functionArn,
-      reason: message,
+      reason: reason,
+      reasonCode: INSUFFICIENT_MEMORY,
     };
     return true;
   }
@@ -597,6 +595,7 @@ function shouldBeRemoteInstrumentedByTag(
   functionArn,
 ) {
   const targetFunctionTagsObj = getFunctionCommandOutput.Tags; // {"env":"prod", "team":"serverless"}
+  console.log(`getFunctionCommandOutput.Tags: ${targetFunctionTagsObj}`);
   if (typeof targetFunctionTagsObj === "undefined") {
     console.log("no tags found on the function");
     return false;
@@ -609,7 +608,7 @@ function shouldBeRemoteInstrumentedByTag(
   )) {
     if (!Object.prototype.hasOwnProperty.call(targetFunctionTagsObj, tag)) {
       const message = `this function should NOT be remote instrumented by tagRule because it does not have ${tag} tag`;
-      instrumentOutcome.instrument.failed[functionName] = {
+      instrumentOutcome.instrument.skipped[functionName] = {
         functionArn,
         reason: message,
       };
@@ -628,7 +627,7 @@ function shouldBeRemoteInstrumentedByTag(
     // targeted functions should have tag value (e.g. staging) in the targeted tags values (e.g. [staging, prod])
     if (!targetedTagsValues.includes(targetFunctionTagsObj[tag])) {
       const message = `this function should NOT be remote instrumented by tagRule because value of tag ${tag} : ${targetFunctionTagsObj[tag]} is not in ${targetedTagsValues}`;
-      instrumentOutcome.instrument.failed[functionName] = {
+      instrumentOutcome.instrument.skipped[functionName] = {
         functionArn,
         reason: message,
       };
@@ -781,7 +780,9 @@ async function instrumentByFunctionNames(
   const client = new LambdaClient({ region: config.AWS_REGION });
   const instrumentedFunctionArns = [];
   for (const functionName of functionNames) {
-    logger.log(`processing ${functionName}`, functionName, null);
+    console.log(
+      JSON.stringify({ message: `processing ${functionName}`, functionName }),
+    );
     // console.log(`processing ${functionName}`)
 
     // filter out functions that are on the DenyList
@@ -808,7 +809,13 @@ async function instrumentByFunctionNames(
       // instrument checks
       const layers = getFunctionCommandOutput.Configuration.Layers || [];
       const functionArn = `arn:aws:lambda:${config.AWS_REGION}:${ddAwsAccountNumber}:function:${functionName}`;
-      logger.log("instrumentByFunctionNames", functionName, functionArn);
+      console.log(
+        JSON.stringify({
+          message: "instrumentByFunctionNames",
+          functionName,
+          functionArn,
+        }),
+      );
       const runtime = getFunctionCommandOutput.Configuration?.Runtime;
       if (runtime === undefined) {
         console.error(
@@ -833,10 +840,12 @@ async function instrumentByFunctionNames(
           config.DD_LAYER_VERSIONS.extensionVersion,
           runtime,
           reason,
+          ALREADY_CORRECT_EXTENSION_AND_LAYER,
         );
         instrumentOutcome.instrument.skipped[functionName] = {
           functionArn,
           reason,
+          reasonCode: ALREADY_CORRECT_EXTENSION_AND_LAYER,
         };
         continue;
       }
@@ -849,6 +858,7 @@ async function instrumentByFunctionNames(
         instrumentOutcome.instrument.skipped[functionName] = {
           functionArn,
           reason: message,
+          reasonCode: INSUFFICIENT_MEMORY,
         };
         logger.logInstrumentOutcome(
           INSTRUMENT,
@@ -858,6 +868,7 @@ async function instrumentByFunctionNames(
           null,
           runtime,
           `Current memory size ${currentMemorySize} MB is below ${config.MinimumMemorySize} MB`,
+          INSUFFICIENT_MEMORY,
         );
         continue;
       }
@@ -1174,15 +1185,6 @@ class Logger {
     );
   }
 
-  log(message, targetFunctionName = null, targetFunctionArn = null) {
-    const logEntry = {
-      message,
-      targetFunctionName: targetFunctionName,
-      targetFunctionArn: targetFunctionArn,
-    };
-    console.log(JSON.stringify(logEntry));
-  }
-
   logInstrumentOutcome(
     ddSlsEventName,
     outcome,
@@ -1191,6 +1193,7 @@ class Logger {
     expectedExtensionVersion = null,
     runtime = null,
     reason = null,
+    reasonCode = null,
   ) {
     console.log(
       JSON.stringify({
@@ -1201,6 +1204,7 @@ class Logger {
         expectedExtensionVersion,
         runtime,
         reason,
+        reasonCode,
       }),
     );
   }
