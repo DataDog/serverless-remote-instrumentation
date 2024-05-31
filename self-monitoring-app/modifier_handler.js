@@ -286,7 +286,11 @@ async function deleteStack(config) {
 
   try {
     await getBucketNameFromStackNameAndDelete(nestedStackName, config);
-  } catch {
+  } catch (e) {
+    console.warn(
+      `getBucketNameFromStackNameAndDelete failed for nestedStackName: ${nestedStackName}`,
+    );
+    console.warn(`${JSON.stringify(e)}`);
     console.log(
       `Nested stack may not exist anymore. Trying to get s3BucketName from ${INSTRUMENTER_STACK_NAME} stack now...`,
     );
