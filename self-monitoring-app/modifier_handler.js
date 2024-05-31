@@ -28,6 +28,9 @@ const SERVICE_NAME = "remote-instrument-self-monitor";
 const UPDATED_EXTENSION_VERSION = process.env.UpdatedDdExtensionLayerVersion;
 const ORIGINAL_EXTENSION_VERSION = process.env.DdExtensionLayerVersion;
 
+// need to be updated to match ther template URL in the self-monitoring app's template yaml file
+const INSTRUMENTER_TEMPLATE_VERSION = '0.36.0'
+
 exports.handler = async (event) => {
   console.log(JSON.stringify(event));
   console.log(`process.env: ${JSON.stringify(process.env)}`);
@@ -280,14 +283,17 @@ async function deleteStack(config) {
     nestedStackName = await getNestedInstrumenterStackName(config);
     stackNamesToDelete.push(nestedStackName);
   }
-  if (nestedStackName !== "") {
-    // only one of the nested stack or periodically created stack would exist at the same time
-    let s3BucketName = getS3BucketNameByStackName(nestedStackName, config);
+
+  let s3BucketName = null;
+  try {
+    s3BucketName = await getS3BucketNameByStackName(nestedStackName, config);
     await emptyBucket(s3BucketName, config);
     console.log(`bucket ${s3BucketName} is emptied now`);
     await deleteS3Bucket(s3BucketName, config);
-  } else {
-    let s3BucketName = getS3BucketNameByStackName(
+  } catch {
+    console.log(`Nested stack may not exist anymore. Trying to get s3BucketName from ${INSTRUMENTER_STACK_NAME} stack now...`)
+
+    s3BucketName = await getS3BucketNameByStackName(
       INSTRUMENTER_STACK_NAME,
       config,
     );
@@ -329,16 +335,12 @@ async function getS3BucketNameByStackName(stackName, config) {
 const createStackInput = {
   StackName: INSTRUMENTER_STACK_NAME,
   TemplateURL:
-    "https://datadog-cloudformation-template-serverless-sandbox.s3.sa-east-1.amazonaws.com/aws/remote-instrument-dev/latest.yaml",
+    `https://datadog-cloudformation-template-serverless-sandbox.s3.sa-east-1.amazonaws.com/aws/remote-instrument-dev/${INSTRUMENTER_TEMPLATE_VERSION}.yaml`,
   Parameters: [
     {
       ParameterKey: "DdRemoteInstrumentLayerAwsAccount",
       ParameterValue: process.env.DdRemoteInstrumentLayerAwsAccount,
       UsePreviousValue: true,
-    },
-    {
-      ParameterKey: "DdRemoteInstrumentLayer",
-      ParameterValue: process.env.DdRemoteInstrumentLayer,
     },
     {
       ParameterKey: "DdApiKey",
@@ -424,10 +426,6 @@ async function updateStack(config) {
     // Only changing the above parameters. Every other parameters below are not changed.
     {
       ParameterKey: "DdRemoteInstrumentLayerAwsAccount",
-      UsePreviousValue: true,
-    },
-    {
-      ParameterKey: "DdRemoteInstrumentLayer",
       UsePreviousValue: true,
     },
     {
