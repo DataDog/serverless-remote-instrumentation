@@ -21,7 +21,6 @@ const { sendDistributionMetric } = require("datadog-lambda-js");
 const ENV = "self-monitor-dev";
 const INSTRUMENTER_STACK_NAME = "datadog-remote-instrument";
 const SELF_MONITOR_STACK_NAME = "remote-instrument-self-monitor";
-const S3_BUCKET_NAME = "remote-instrument-self-monitor";
 const NODE = "node";
 const DD_AWS_ACCOUNT_NUMBER = "425362996713"; // serverless sandbox
 const SERVICE_NAME = "remote-instrument-self-monitor";
@@ -270,19 +269,32 @@ async function getNestedInstrumenterStackName(config) {
 
 // delete stack
 async function deleteStack(config) {
-  const stackNamesToDelete = [INSTRUMENTER_STACK_NAME];
+  const stackNamesToDelete = [INSTRUMENTER_STACK_NAME]; // periodically created stack
+  let nestedStackName = ""; // nested stack when the self-monitoring app first created
   try {
-    const nestedStackName = await getNestedInstrumenterStackName(config);
+    nestedStackName = await getNestedInstrumenterStackName(config);
     stackNamesToDelete.push(nestedStackName);
   } catch {
+    // manually retry for the 2nd time to avoid needing to use another package
     console.log("failed to fetch nestedStackName. trying again");
-    const nestedStackName = await getNestedInstrumenterStackName(config);
+    nestedStackName = await getNestedInstrumenterStackName(config);
     stackNamesToDelete.push(nestedStackName);
   }
-
-  await emptyBucket(S3_BUCKET_NAME, config);
-  console.log(`bucket ${S3_BUCKET_NAME} is emptied now`);
-  await deleteS3Bucket(S3_BUCKET_NAME, config);
+  if (nestedStackName !== "") {
+    // only one of the nested stack or periodically created stack would exist at the same time
+    let s3BucketName = getS3BucketNameByStackName(nestedStackName, config);
+    await emptyBucket(s3BucketName, config);
+    console.log(`bucket ${s3BucketName} is emptied now`);
+    await deleteS3Bucket(s3BucketName, config);
+  } else {
+    let s3BucketName = getS3BucketNameByStackName(
+      INSTRUMENTER_STACK_NAME,
+      config,
+    );
+    await emptyBucket(s3BucketName, config);
+    console.log(`bucket ${s3BucketName} is emptied now`);
+    await deleteS3Bucket(s3BucketName, config);
+  }
 
   const client = new CloudFormationClient({ region: config.AWS_REGION });
 
@@ -294,6 +306,24 @@ async function deleteStack(config) {
     const response = await client.send(command);
     console.log(`DeleteStackCommand response: ${JSON.stringify(response)}`);
   }
+}
+
+async function getS3BucketNameByStackName(stackName, config) {
+  const client = new CloudFormationClient({ region: config.AWS_REGION });
+  const input = {
+    // DescribeStackResourcesInput
+    StackName: stackName,
+    LogicalResourceId: "S3Bucket",
+  };
+  const command = new DescribeStackResourcesCommand(input);
+  const response = await client.send(command);
+  console.log(`DescribeStackResourcesCommand: ${JSON.stringify(response)}`);
+
+  const s3BucketName = response.StackResources[0].PhysicalResourceId;
+  console.log(
+    `s3BucketName from DescribeStackResourcesCommand: ${s3BucketName}`,
+  );
+  return s3BucketName;
 }
 
 const createStackInput = {
@@ -318,16 +348,6 @@ const createStackInput = {
     {
       ParameterKey: "DdSite",
       ParameterValue: "datadoghq.com",
-      UsePreviousValue: true,
-    },
-    {
-      ParameterKey: "BucketName",
-      ParameterValue: S3_BUCKET_NAME,
-      UsePreviousValue: true,
-    },
-    {
-      ParameterKey: "DdAwsAccountNumber",
-      ParameterValue: "425362996713",
       UsePreviousValue: true,
     },
     {
@@ -366,37 +386,15 @@ const createStackInput = {
       ParameterValue: "false",
     },
   ],
-  // DisableRollback: false,
-  // RollbackConfiguration: { // RollbackConfiguration
-  //     RollbackTriggers: [ // RollbackTriggers
-  //         { // RollbackTrigger
-  //             Arn: "STRING_VALUE", // required
-  //             Type: "STRING_VALUE", // required
-  //         },
-  //     ],
-  //     MonitoringTimeInMinutes: Number("int"),
-  // },
   TimeoutInMinutes: 5, // minutes
-  // NotificationARNs: [ // NotificationARNs
-  //     "STRING_VALUE",
-  // ],
   Capabilities: ["CAPABILITY_IAM"],
-  // ResourceTypes: [ // ResourceTypes
-  //     "STRING_VALUE",
-  // ],
-  // RoleARN: "STRING_VALUE",
   OnFailure: "DELETE", // DO_NOTHING, ROLLBACK, or DELETE
-  // StackPolicyBody: "STRING_VALUE",
-  // StackPolicyURL: "STRING_VALUE",
   Tags: [
     {
       Key: "DD_PRESERVE_STACK",
       Value: "true",
     },
   ],
-  // ClientRequestToken: "STRING_VALUE",
-  // EnableTerminationProtection: true || false,
-  // RetainExceptOnCreate: true || false,
 };
 
 // create stack
@@ -442,10 +440,6 @@ async function updateStack(config) {
     },
     {
       ParameterKey: "BucketName",
-      UsePreviousValue: true,
-    },
-    {
-      ParameterKey: "DdAwsAccountNumber",
       UsePreviousValue: true,
     },
     {
