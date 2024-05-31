@@ -29,7 +29,7 @@ const UPDATED_EXTENSION_VERSION = process.env.UpdatedDdExtensionLayerVersion;
 const ORIGINAL_EXTENSION_VERSION = process.env.DdExtensionLayerVersion;
 
 // need to be updated to match ther template URL in the self-monitoring app's template yaml file
-const INSTRUMENTER_TEMPLATE_VERSION = '0.36.0'
+const INSTRUMENTER_TEMPLATE_VERSION = "0.36.0";
 
 exports.handler = async (event) => {
   console.log(JSON.stringify(event));
@@ -284,22 +284,13 @@ async function deleteStack(config) {
     stackNamesToDelete.push(nestedStackName);
   }
 
-  let s3BucketName = null;
   try {
-    s3BucketName = await getS3BucketNameByStackName(nestedStackName, config);
-    await emptyBucket(s3BucketName, config);
-    console.log(`bucket ${s3BucketName} is emptied now`);
-    await deleteS3Bucket(s3BucketName, config);
+    await getBucketNameFromStackNameAndDelete(nestedStackName, config);
   } catch {
-    console.log(`Nested stack may not exist anymore. Trying to get s3BucketName from ${INSTRUMENTER_STACK_NAME} stack now...`)
-
-    s3BucketName = await getS3BucketNameByStackName(
-      INSTRUMENTER_STACK_NAME,
-      config,
+    console.log(
+      `Nested stack may not exist anymore. Trying to get s3BucketName from ${INSTRUMENTER_STACK_NAME} stack now...`,
     );
-    await emptyBucket(s3BucketName, config);
-    console.log(`bucket ${s3BucketName} is emptied now`);
-    await deleteS3Bucket(s3BucketName, config);
+    await getBucketNameFromStackNameAndDelete(INSTRUMENTER_STACK_NAME, config);
   }
 
   const client = new CloudFormationClient({ region: config.AWS_REGION });
@@ -332,10 +323,20 @@ async function getS3BucketNameByStackName(stackName, config) {
   return s3BucketName;
 }
 
+async function getBucketNameFromStackNameAndDelete(stackName, config) {
+  let s3BucketName = await getS3BucketNameByStackName(
+    INSTRUMENTER_STACK_NAME,
+    config,
+  );
+  await emptyBucket(s3BucketName, config);
+  await sleep(10000);
+  console.log(`Bucket ${s3BucketName} should be emptied now`);
+  await deleteS3Bucket(s3BucketName, config);
+}
+
 const createStackInput = {
   StackName: INSTRUMENTER_STACK_NAME,
-  TemplateURL:
-    `https://datadog-cloudformation-template-serverless-sandbox.s3.sa-east-1.amazonaws.com/aws/remote-instrument-dev/${INSTRUMENTER_TEMPLATE_VERSION}.yaml`,
+  TemplateURL: `https://datadog-cloudformation-template-serverless-sandbox.s3.sa-east-1.amazonaws.com/aws/remote-instrument-dev/${INSTRUMENTER_TEMPLATE_VERSION}.yaml`,
   Parameters: [
     {
       ParameterKey: "DdRemoteInstrumentLayerAwsAccount",
@@ -434,10 +435,6 @@ async function updateStack(config) {
     },
     {
       ParameterKey: "DdSite",
-      UsePreviousValue: true,
-    },
-    {
-      ParameterKey: "BucketName",
       UsePreviousValue: true,
     },
     {
