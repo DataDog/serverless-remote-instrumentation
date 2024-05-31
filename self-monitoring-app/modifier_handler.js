@@ -5,12 +5,12 @@ const {
   DeleteStackCommand,
   DescribeStackResourcesCommand,
 } = require("@aws-sdk/client-cloudformation");
-// const {
-//   S3Client,
-//   ListObjectsV2Command,
-//   DeleteObjectsCommand,
-//   // DeleteBucketCommand,
-// } = require("@aws-sdk/client-s3");
+const {
+  S3Client,
+  ListObjectsV2Command,
+  DeleteObjectsCommand,
+  DeleteBucketCommand,
+} = require("@aws-sdk/client-s3");
 const { LambdaClient, GetFunctionCommand } = require("@aws-sdk/client-lambda");
 const datadogCi = require("@datadog/datadog-ci/dist/cli.js");
 
@@ -187,71 +187,71 @@ async function getFunction(config, functionName) {
 }
 
 // delete s3 bucket
-// async function deleteS3Bucket(bucketName, config) {
-//   const s3Client = new S3Client({ region: config.AWS_REGION });
-//
-//   try {
-//     const data = await s3Client.send(
-//       new DeleteBucketCommand({ Bucket: bucketName }),
-//     );
-//     console.log("Delete S3 bucket succeeded", JSON.stringify(data));
-//   } catch (err) {
-//     // try to delete the bucket before stack is delete just in case stack deletion failed
-//     // to delete the bucket which will block the stack creation later on.
-//     console.log("Delete S3 bucket error", err);
-//   }
-// }
+async function deleteS3Bucket(bucketName, config) {
+  const s3Client = new S3Client({ region: config.AWS_REGION });
+
+  try {
+    const data = await s3Client.send(
+      new DeleteBucketCommand({ Bucket: bucketName }),
+    );
+    console.log("Delete S3 bucket succeeded", JSON.stringify(data));
+  } catch (err) {
+    // try to delete the bucket before stack is delete just in case stack deletion failed
+    // to delete the bucket which will block the stack creation later on.
+    console.log("Delete S3 bucket error", err);
+  }
+}
 
 // delete all objects in a bucket
-// async function emptyBucket(bucketName, config) {
-//   const s3Client = new S3Client({ region: config.AWS_REGION }); // Replace YOUR_REGION with your S3 bucket region
-//
-//   // Function to list all objects in the bucket
-//   async function listAllObjects(bucketName) {
-//     const allObjects = [];
-//     let isTruncated = true;
-//     let token;
-//
-//     while (isTruncated) {
-//       const { Contents, IsTruncated, NextContinuationToken } =
-//         await s3Client.send(
-//           new ListObjectsV2Command({
-//             Bucket: bucketName,
-//             ContinuationToken: token,
-//           }),
-//         );
-//
-//       allObjects.push(...Contents);
-//       isTruncated = IsTruncated;
-//       token = NextContinuationToken;
-//     }
-//
-//     return allObjects;
-//   }
-//
-//   // Function to delete all objects in the bucket
-//   async function deleteAllObjects(bucketName) {
-//     const objects = await listAllObjects(bucketName);
-//
-//     // S3's DeleteObjects API can take multiple keys, so split the list into chunks if necessary
-//     while (objects.length > 0) {
-//       const chunk = objects.splice(0, 1000); // S3 API supports deleting up to 1000 objects at once
-//       const deleteParams = {
-//         Bucket: bucketName,
-//         Delete: {
-//           Objects: chunk.map(({ Key }) => ({ Key })),
-//           Quiet: true,
-//         },
-//       };
-//
-//       await s3Client.send(new DeleteObjectsCommand(deleteParams));
-//     }
-//   }
-//
-//   deleteAllObjects(bucketName)
-//     .then(() => console.log("All objects deleted successfully."))
-//     .catch((error) => console.error("An error occurred:", error));
-// }
+async function emptyBucket(bucketName, config) {
+  const s3Client = new S3Client({ region: config.AWS_REGION }); // Replace YOUR_REGION with your S3 bucket region
+
+  // Function to list all objects in the bucket
+  async function listAllObjects(bucketName) {
+    const allObjects = [];
+    let isTruncated = true;
+    let token;
+
+    while (isTruncated) {
+      const { Contents, IsTruncated, NextContinuationToken } =
+        await s3Client.send(
+          new ListObjectsV2Command({
+            Bucket: bucketName,
+            ContinuationToken: token,
+          }),
+        );
+
+      allObjects.push(...Contents);
+      isTruncated = IsTruncated;
+      token = NextContinuationToken;
+    }
+
+    return allObjects;
+  }
+
+  // Function to delete all objects in the bucket
+  async function deleteAllObjects(bucketName) {
+    const objects = await listAllObjects(bucketName);
+
+    // S3's DeleteObjects API can take multiple keys, so split the list into chunks if necessary
+    while (objects.length > 0) {
+      const chunk = objects.splice(0, 1000); // S3 API supports deleting up to 1000 objects at once
+      const deleteParams = {
+        Bucket: bucketName,
+        Delete: {
+          Objects: chunk.map(({ Key }) => ({ Key })),
+          Quiet: true,
+        },
+      };
+
+      await s3Client.send(new DeleteObjectsCommand(deleteParams));
+    }
+  }
+
+  deleteAllObjects(bucketName)
+    .then(() => console.log("All objects deleted successfully."))
+    .catch((error) => console.error("An error occurred:", error));
+}
 
 async function getNestedInstrumenterStackName(config) {
   const client = new CloudFormationClient({ region: config.AWS_REGION });
@@ -284,18 +284,18 @@ async function deleteStack(config) {
     stackNamesToDelete.push(nestedStackName);
   }
 
-  // try {
-  //   await getBucketNameFromStackNameAndDelete(nestedStackName, config);
-  // } catch (e) {
-  //   console.warn(
-  //     `getBucketNameFromStackNameAndDelete failed for nestedStackName: ${nestedStackName}`,
-  //   );
-  //   console.warn(`${JSON.stringify(e)}`);
-  //   console.log(
-  //     `Nested stack may not exist anymore. Trying to get s3BucketName from ${INSTRUMENTER_STACK_NAME} stack now...`,
-  //   );
-  //   await getBucketNameFromStackNameAndDelete(INSTRUMENTER_STACK_NAME, config);
-  // }
+  try {
+    await getBucketNameFromStackNameAndDelete(nestedStackName, config);
+  } catch (e) {
+    console.warn(
+      `getBucketNameFromStackNameAndDelete failed for nestedStackName: ${nestedStackName}`,
+    );
+    console.warn(`${JSON.stringify(e)}`);
+    console.log(
+      `Nested stack may not exist anymore. Trying to get s3BucketName from ${INSTRUMENTER_STACK_NAME} stack now...`,
+    );
+    await getBucketNameFromStackNameAndDelete(INSTRUMENTER_STACK_NAME, config);
+  }
 
   const client = new CloudFormationClient({ region: config.AWS_REGION });
 
@@ -306,38 +306,38 @@ async function deleteStack(config) {
     };
     const command = new DeleteStackCommand(deleteStackInput);
     const response = await client.send(command);
-    console.log(`DeleteStackCommand response: ${JSON.stringify(response)}`);
+    console.log(`DeleteStackCommand response for deleting ${stackName}: ${JSON.stringify(response)}`);
   }
 }
 
-// async function getS3BucketNameByStackName(stackName, config) {
-//   const client = new CloudFormationClient({ region: config.AWS_REGION });
-//   const input = {
-//     // DescribeStackResourcesInput
-//     StackName: stackName,
-//     LogicalResourceId: "S3Bucket",
-//   };
-//   const command = new DescribeStackResourcesCommand(input);
-//   const response = await client.send(command);
-//   console.log(`DescribeStackResourcesCommand: ${JSON.stringify(response)}`);
-//
-//   const s3BucketName = response.StackResources[0].PhysicalResourceId;
-//   console.log(
-//     `s3BucketName from DescribeStackResourcesCommand: ${s3BucketName}`,
-//   );
-//   return s3BucketName;
-// }
+async function getS3BucketNameByStackName(stackName, config) {
+  const client = new CloudFormationClient({ region: config.AWS_REGION });
+  const input = {
+    // DescribeStackResourcesInput
+    StackName: stackName,
+    LogicalResourceId: "S3Bucket",
+  };
+  const command = new DescribeStackResourcesCommand(input);
+  const response = await client.send(command);
+  console.log(`DescribeStackResourcesCommand: ${JSON.stringify(response)}`);
 
-// async function getBucketNameFromStackNameAndDelete(stackName, config) {
-//   let s3BucketName = await getS3BucketNameByStackName(
-//     INSTRUMENTER_STACK_NAME,
-//     config,
-//   );
-//   await emptyBucket(s3BucketName, config);
-//   await sleep(10000);
-//   console.log(`Bucket ${s3BucketName} should be emptied now`);
-//   await deleteS3Bucket(s3BucketName, config);
-// }
+  const s3BucketName = response.StackResources[0].PhysicalResourceId;
+  console.log(
+    `s3BucketName from DescribeStackResourcesCommand: ${s3BucketName}`,
+  );
+  return s3BucketName;
+}
+
+async function getBucketNameFromStackNameAndDelete(stackName, config) {
+  let s3BucketName = await getS3BucketNameByStackName(
+    INSTRUMENTER_STACK_NAME,
+    config,
+  );
+  await emptyBucket(s3BucketName, config);
+  await sleep(10000);
+  console.log(`Bucket ${s3BucketName} should be emptied now`);
+  await deleteS3Bucket(s3BucketName, config);
+}
 
 const createStackInput = {
   StackName: INSTRUMENTER_STACK_NAME,
