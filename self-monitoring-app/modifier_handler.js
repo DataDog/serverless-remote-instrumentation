@@ -304,9 +304,15 @@ async function deleteStack(config) {
       StackName: stackName,
       DeletionMode: "FORCE_DELETE_STACK",
     };
-    const command = new DeleteStackCommand(deleteStackInput);
-    const response = await client.send(command);
-    console.log(`DeleteStackCommand response for deleting ${stackName}: ${JSON.stringify(response)}`);
+    try {
+      const command = new DeleteStackCommand(deleteStackInput);
+      const response = await client.send(command);
+      console.log(
+        `datadog-remote-instrument response for deleting ${stackName}: ${JSON.stringify(response)}`,
+      );
+    } catch (e) {
+      console.log(`DeleteStackCommand failed with error: ${JSON.stringify(e)}`);
+    }
   }
 }
 
@@ -330,7 +336,7 @@ async function getS3BucketNameByStackName(stackName, config) {
 
 async function getBucketNameFromStackNameAndDelete(stackName, config) {
   let s3BucketName = await getS3BucketNameByStackName(
-    INSTRUMENTER_STACK_NAME,
+    stackName,
     config,
   );
   await emptyBucket(s3BucketName, config);
