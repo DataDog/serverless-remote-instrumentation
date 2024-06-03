@@ -146,7 +146,7 @@ Resources:
           DD_LAMBDA_HANDLER: index.handler
           DD_TRACE_ENABLED: true
           DD_API_KEY: !Ref DdApiKey
-          DD_LOG_LEVEL: DEBUG
+#          DD_LOG_LEVEL: DEBUG
           DD_TRACE_DEBUG: false
           DD_SERVICE: remote-instrument-modifier
           DD_ENV: dev
