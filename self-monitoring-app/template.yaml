@@ -14,7 +14,7 @@ Mappings:
 Parameters:
   DdRemoteInstrumentLayerVersion:
     Type: String
-    Default: '36'
+    Default: '38'
   DdApiKey:
     Type: String
     Description: >-
