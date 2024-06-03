@@ -32,4 +32,4 @@ module.exports.shouldSkipLambdaEvent = function (event, config) {
     return true;
   }
   return false;
-}
+};
