@@ -1,4 +1,4 @@
-function shouldSkipLambdaEvent(event, config) {
+module.exports.shouldSkipLambdaEvent = function (event, config) {
   const eventNamesToSkip = new Set([
     "AddPermission20150331",
     "AddPermission20150331v2",
@@ -32,6 +32,4 @@ function shouldSkipLambdaEvent(event, config) {
     return true;
   }
   return false;
-}
-
-module.exports = shouldSkipLambdaEvent;
+};
