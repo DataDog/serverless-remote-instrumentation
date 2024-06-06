@@ -21,13 +21,15 @@ const { sendDistributionMetric } = require("datadog-lambda-js");
 const ENV = "self-monitor-dev";
 const INSTRUMENTER_STACK_NAME = "datadog-remote-instrument";
 const SELF_MONITOR_STACK_NAME = "remote-instrument-self-monitor";
-const S3_BUCKET_NAME = "remote-instrument-self-monitor";
 const NODE = "node";
 const DD_AWS_ACCOUNT_NUMBER = "425362996713"; // serverless sandbox
 const SERVICE_NAME = "remote-instrument-self-monitor";
 
 const UPDATED_EXTENSION_VERSION = process.env.UpdatedDdExtensionLayerVersion;
 const ORIGINAL_EXTENSION_VERSION = process.env.DdExtensionLayerVersion;
+
+// need to be updated to match ther template URL in the self-monitoring app's template yaml file
+const INSTRUMENTER_TEMPLATE_VERSION = "0.38.0";
 
 exports.handler = async (event) => {
   console.log(JSON.stringify(event));
@@ -270,45 +272,87 @@ async function getNestedInstrumenterStackName(config) {
 
 // delete stack
 async function deleteStack(config) {
-  const stackNamesToDelete = [INSTRUMENTER_STACK_NAME];
+  const stackNamesToDelete = [INSTRUMENTER_STACK_NAME]; // periodically created stack
+  let nestedStackName = ""; // nested stack when the self-monitoring app first created
   try {
-    const nestedStackName = await getNestedInstrumenterStackName(config);
+    nestedStackName = await getNestedInstrumenterStackName(config);
     stackNamesToDelete.push(nestedStackName);
   } catch {
+    // manually retry for the 2nd time to avoid needing to use another package
     console.log("failed to fetch nestedStackName. trying again");
-    const nestedStackName = await getNestedInstrumenterStackName(config);
+    nestedStackName = await getNestedInstrumenterStackName(config);
     stackNamesToDelete.push(nestedStackName);
   }
 
-  await emptyBucket(S3_BUCKET_NAME, config);
-  console.log(`bucket ${S3_BUCKET_NAME} is emptied now`);
-  await deleteS3Bucket(S3_BUCKET_NAME, config);
+  try {
+    await getBucketNameFromStackNameAndDelete(nestedStackName, config);
+  } catch (e) {
+    console.warn(
+      `getBucketNameFromStackNameAndDelete failed for nestedStackName: ${nestedStackName}`,
+    );
+    console.warn(`${JSON.stringify(e)}`);
+    console.log(
+      `Nested stack may not exist anymore. Trying to get s3BucketName from ${INSTRUMENTER_STACK_NAME} stack now...`,
+    );
+    await getBucketNameFromStackNameAndDelete(INSTRUMENTER_STACK_NAME, config);
+  }
 
   const client = new CloudFormationClient({ region: config.AWS_REGION });
 
   for (const stackName of stackNamesToDelete) {
     const deleteStackInput = {
       StackName: stackName,
+      DeletionMode: "FORCE_DELETE_STACK",
     };
-    const command = new DeleteStackCommand(deleteStackInput);
-    const response = await client.send(command);
-    console.log(`DeleteStackCommand response: ${JSON.stringify(response)}`);
+    try {
+      const command = new DeleteStackCommand(deleteStackInput);
+      const response = await client.send(command);
+      console.log(
+        `datadog-remote-instrument response for deleting ${stackName}: ${JSON.stringify(response)}`,
+      );
+    } catch (e) {
+      console.log(`DeleteStackCommand failed with error: ${JSON.stringify(e)}`);
+    }
   }
+}
+
+async function getS3BucketNameByStackName(stackName, config) {
+  const client = new CloudFormationClient({ region: config.AWS_REGION });
+  const input = {
+    // DescribeStackResourcesInput
+    StackName: stackName,
+    LogicalResourceId: "S3Bucket",
+  };
+  const command = new DescribeStackResourcesCommand(input);
+  const response = await client.send(command);
+  console.log(`DescribeStackResourcesCommand: ${JSON.stringify(response)}`);
+
+  const s3BucketName = response.StackResources[0].PhysicalResourceId;
+  console.log(
+    `s3BucketName from DescribeStackResourcesCommand: ${s3BucketName}`,
+  );
+  return s3BucketName;
+}
+
+async function getBucketNameFromStackNameAndDelete(stackName, config) {
+  let s3BucketName = await getS3BucketNameByStackName(
+    stackName,
+    config,
+  );
+  await emptyBucket(s3BucketName, config);
+  await sleep(10000);
+  console.log(`Bucket ${s3BucketName} should be emptied now`);
+  await deleteS3Bucket(s3BucketName, config);
 }
 
 const createStackInput = {
   StackName: INSTRUMENTER_STACK_NAME,
-  TemplateURL:
-    "https://datadog-cloudformation-template-serverless-sandbox.s3.sa-east-1.amazonaws.com/aws/remote-instrument-dev/latest.yaml",
+  TemplateURL: `https://datadog-cloudformation-template-serverless-sandbox.s3.sa-east-1.amazonaws.com/aws/remote-instrument-dev/${INSTRUMENTER_TEMPLATE_VERSION}.yaml`,
   Parameters: [
     {
       ParameterKey: "DdRemoteInstrumentLayerAwsAccount",
       ParameterValue: process.env.DdRemoteInstrumentLayerAwsAccount,
       UsePreviousValue: true,
-    },
-    {
-      ParameterKey: "DdRemoteInstrumentLayer",
-      ParameterValue: process.env.DdRemoteInstrumentLayer,
     },
     {
       ParameterKey: "DdApiKey",
@@ -318,16 +362,6 @@ const createStackInput = {
     {
       ParameterKey: "DdSite",
       ParameterValue: "datadoghq.com",
-      UsePreviousValue: true,
-    },
-    {
-      ParameterKey: "BucketName",
-      ParameterValue: S3_BUCKET_NAME,
-      UsePreviousValue: true,
-    },
-    {
-      ParameterKey: "DdAwsAccountNumber",
-      ParameterValue: "425362996713",
       UsePreviousValue: true,
     },
     {
@@ -366,37 +400,15 @@ const createStackInput = {
       ParameterValue: "false",
     },
   ],
-  // DisableRollback: false,
-  // RollbackConfiguration: { // RollbackConfiguration
-  //     RollbackTriggers: [ // RollbackTriggers
-  //         { // RollbackTrigger
-  //             Arn: "STRING_VALUE", // required
-  //             Type: "STRING_VALUE", // required
-  //         },
-  //     ],
-  //     MonitoringTimeInMinutes: Number("int"),
-  // },
   TimeoutInMinutes: 5, // minutes
-  // NotificationARNs: [ // NotificationARNs
-  //     "STRING_VALUE",
-  // ],
   Capabilities: ["CAPABILITY_IAM"],
-  // ResourceTypes: [ // ResourceTypes
-  //     "STRING_VALUE",
-  // ],
-  // RoleARN: "STRING_VALUE",
   OnFailure: "DELETE", // DO_NOTHING, ROLLBACK, or DELETE
-  // StackPolicyBody: "STRING_VALUE",
-  // StackPolicyURL: "STRING_VALUE",
   Tags: [
     {
       Key: "DD_PRESERVE_STACK",
       Value: "true",
     },
   ],
-  // ClientRequestToken: "STRING_VALUE",
-  // EnableTerminationProtection: true || false,
-  // RetainExceptOnCreate: true || false,
 };
 
 // create stack
@@ -429,23 +441,11 @@ async function updateStack(config) {
       UsePreviousValue: true,
     },
     {
-      ParameterKey: "DdRemoteInstrumentLayer",
-      UsePreviousValue: true,
-    },
-    {
       ParameterKey: "DdApiKey",
       UsePreviousValue: true,
     },
     {
       ParameterKey: "DdSite",
-      UsePreviousValue: true,
-    },
-    {
-      ParameterKey: "BucketName",
-      UsePreviousValue: true,
-    },
-    {
-      ParameterKey: "DdAwsAccountNumber",
       UsePreviousValue: true,
     },
     {

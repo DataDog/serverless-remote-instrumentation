@@ -12,9 +12,9 @@ Mappings:
       Version: 0.1.0
 
 Parameters:
-  DdRemoteInstrumentLayer:
+  DdRemoteInstrumentLayerVersion:
     Type: String
-    Default: arn:aws:lambda:us-west-1:425362996713:layer:Datadog-Serverless-Remote-Instrumentation-ARM:29
+    Default: '38'
   DdApiKey:
     Type: String
     Description: >-
@@ -35,9 +35,6 @@ Parameters:
     Default: remote-instrument-self-monitoring-modifier
     Description: >-
       Define the Lambda function name which is remote instrumenting the other Lambda functions.
-  BucketName:
-    Type: String
-    Default: remote-instrument-self-monitor
   DdAllowList:
     Type: String
     Default: remote-instrument-self-monitor-node,remote-instrument-self-monitor-python,some-function-does-not-exist-for-testing-purpose
@@ -77,9 +74,6 @@ Parameters:
   DdNodeLayerVersion:
     Type: String
     Default: '100'
-  DdAwsAccountNumber:
-    Type: String
-    Default: '425362996713'
   EnableCodeSigningConfigurations:
     Type: String
     AllowedValues:
@@ -97,7 +91,7 @@ Metadata:
       - Label:
           default: Frequently Used
         Parameters:
-          - DdRemoteInstrumentLayer
+          - DdRemoteInstrumentLayerVersion
           - DdApiKey
       - Label:
           default: Others
@@ -112,19 +106,17 @@ Resources:
       - LambdaFunctionWithoutSpecifiedTags
       - LambdaWith128MbRam
     Properties:
-      TemplateURL: https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/remote-instrument-dev/0.8.27.yaml
+      TemplateURL: https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/remote-instrument-dev/0.36.0.yaml
       Parameters:
-        DdRemoteInstrumentLayer: !Ref DdRemoteInstrumentLayer
+        DdRemoteInstrumentLayerVersion: !Ref DdRemoteInstrumentLayerVersion
         DdApiKey: !Ref DdApiKey
         DdSite: !Ref DdSite
-        BucketName: !Ref BucketName
         DdAllowList: !Ref DdAllowList
         DdDenyList: !Ref DdDenyList
         DdTagRule: !Ref DdTagRule
         DdExtensionLayerVersion: !Ref DdExtensionLayerVersion
         DdPythonLayerVersion: !Ref DdPythonLayerVersion
         DdNodeLayerVersion: !Ref DdNodeLayerVersion
-        DdAwsAccountNumber: '425362996713'
         EnableCodeSigningConfigurations: !Ref EnableCodeSigningConfigurations
         DdRemoteInstrumentLayerAwsAccount: !Ref DdRemoteInstrumentLayerAwsAccount
   ModifierLambdaFunction:
@@ -154,7 +146,7 @@ Resources:
           DD_LAMBDA_HANDLER: index.handler
           DD_TRACE_ENABLED: true
           DD_API_KEY: !Ref DdApiKey
-          DD_LOG_LEVEL: DEBUG
+#          DD_LOG_LEVEL: DEBUG
           DD_TRACE_DEBUG: false
           DD_SERVICE: remote-instrument-modifier
           DD_ENV: dev
@@ -167,7 +159,7 @@ Resources:
           LambdaWithTagsUpdatedToBeInDenyListFunctionName: !Ref LambdaWithTagsUpdatedToBeInDenyListFunctionName
           DdExtensionLayerVersion: !Ref DdExtensionLayerVersion
           UpdatedDdExtensionLayerVersion: !Ref UpdatedDdExtensionLayerVersion
-          DdRemoteInstrumentLayer: !Ref DdRemoteInstrumentLayer
+          DdRemoteInstrumentLayer: !Sub 'arn:aws:lambda:${AWS::Region}:${DdRemoteInstrumentLayerAwsAccount}:layer:Datadog-Serverless-Remote-Instrumentation-ARM:${DdRemoteInstrumentLayerVersion}'
           DdRemoteInstrumentLayerAwsAccount: !Ref DdRemoteInstrumentLayerAwsAccount
 
       Code:
@@ -251,7 +243,7 @@ Resources:
           - Effect: Allow
             Action:
               - s3:*
-            Resource: !Sub arn:aws:s3:::${BucketName}
+            Resource: 'arn:aws:s3:::datadog-remote-instrument'
 
   NodeLambdaFunction:
     Type: 'AWS::Lambda::Function'
