@@ -248,7 +248,7 @@ async function emptyBucket(bucketName, config) {
     }
   }
 
-  deleteAllObjects(bucketName)
+  await deleteAllObjects(bucketName)
     .then(() => console.log("All objects deleted successfully."))
     .catch((error) => console.error("An error occurred:", error));
 }
@@ -335,12 +335,9 @@ async function getS3BucketNameByStackName(stackName, config) {
 }
 
 async function getBucketNameFromStackNameAndDelete(stackName, config) {
-  let s3BucketName = await getS3BucketNameByStackName(
-    stackName,
-    config,
-  );
+  let s3BucketName = await getS3BucketNameByStackName(stackName, config);
   await emptyBucket(s3BucketName, config);
-  await sleep(10000);
+  await sleep(60000);
   console.log(`Bucket ${s3BucketName} should be emptied now`);
   await deleteS3Bucket(s3BucketName, config);
 }
