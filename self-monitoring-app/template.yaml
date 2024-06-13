@@ -14,7 +14,7 @@ Mappings:
 Parameters:
   DdRemoteInstrumentLayerVersion:
     Type: String
-    Default: '38'
+    Default: '39'
   DdApiKey:
     Type: String
     Description: >-
@@ -106,7 +106,7 @@ Resources:
       - LambdaFunctionWithoutSpecifiedTags
       - LambdaWith128MbRam
     Properties:
-      TemplateURL: https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/remote-instrument-dev/0.36.0.yaml
+      TemplateURL: https://datadog-cloudformation-template-serverless-sandbox.s3.amazonaws.com/aws/remote-instrument-dev/0.39.0.yaml
       Parameters:
         DdRemoteInstrumentLayerVersion: !Ref DdRemoteInstrumentLayerVersion
         DdApiKey: !Ref DdApiKey
