@@ -19,6 +19,7 @@ const DD_SLS_REMOTE_INSTRUMENTER_VERSION = "dd_sls_remote_instrumenter_version";
 
 // consts
 const DENIED = "denied";
+const DEBUG_INSTRUMENT = "DebugInstrument";
 const FAILED = "failed";
 const INSTRUMENT = "Instrument";
 const IN_PROGRESS = "in_progress";
@@ -477,7 +478,7 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
       const specifiedTags = getTagRuleFromConfig(config); // tags: ['k1:v1', 'k2:v2']
       if (specifiedTags.length === 0) {
         logger.debugLogs(
-          INSTRUMENT,
+          DEBUG_INSTRUMENT,
           SKIPPED,
           functionName,
           `The function is not in the AllowList and the tagRule is empty.`,
@@ -919,7 +920,7 @@ async function instrumentWithDatadogCi(
     config.DenyListFunctionNameSet.has(functionName)
   ) {
     logger.debugLogs(
-      "Instrument",
+      DEBUG_INSTRUMENT,
       DENIED,
       functionName,
       `function ${functionName} will not be instrumented because it is in the DenyList ${JSON.stringify(config.DenyListFunctionNameSet)}. Instrumentation stopped for this function.`,
