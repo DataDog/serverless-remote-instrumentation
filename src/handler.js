@@ -392,8 +392,7 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
     );
     return;
   }
-  logger.debugLogs(
-    LAMBDA_EVENT,
+  logger.frontendLambdaEvents(
     PROCESSING,
     functionName,
     "Lambda management event is received and starting instrumentation",
@@ -401,8 +400,7 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
 
   // filter out functions that are on the DenyList
   if (config.DenyListFunctionNameSet.has(functionName)) {
-    logger.debugLogs(
-      LAMBDA_EVENT,
+    logger.frontendLambdaEvents(
       PROCESSING,
       functionName,
       `function ${functionName} is on the DenyList ${JSON.stringify([...config.DenyListFunctionNameSet])}. Instrumentation has stopped.`,
@@ -413,15 +411,13 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
   // check if lambda management events is for function that are in the allow list
   if (config.AllowListFunctionNameSet.has(functionName)) {
     functionFromEventIsInAllowList = true;
-    logger.debugLogs(
-      LAMBDA_EVENT,
+    logger.frontendLambdaEvents(
       PROCESSING,
       functionName,
       `${functionName} in the AllowListFunctionNameSet: ${JSON.stringify([...config.AllowListFunctionNameSet])}`,
     );
   } else {
-    logger.debugLogs(
-      LAMBDA_EVENT,
+    logger.frontendLambdaEvents(
       PROCESSING,
       functionName,
       `${functionName} is NOT in the AllowListFunctionNameSet: ${JSON.stringify([...config.AllowListFunctionNameSet])}`,
@@ -466,8 +462,7 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
           targetLambdaRuntime,
         )
       ) {
-        logger.debugLogs(
-          LAMBDA_EVENT,
+        logger.frontendLambdaEvents(
           PROCESSING,
           functionName,
           `Function ${functionName} is already instrumented with correct extension and tracer layer versions! `,
@@ -496,23 +491,20 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
           null,
         )
       ) {
-        logger.debugLogs(
-          LAMBDA_EVENT,
+        logger.frontendLambdaEvents(
           SKIPPED,
           functionName,
           `Skipping remote instrumentation for function ${functionName}. It does not fit TagRule nor is in the AllowList`,
         );
         return;
       }
-      logger.debugLogs(
-        LAMBDA_EVENT,
+      logger.frontendLambdaEvents(
         PROCESSING,
         functionName,
         `${functionName} is not in the AllowList but matches TagRule`,
       );
     } catch (error) {
-      logger.debugLogs(
-        LAMBDA_EVENT,
+      logger.frontendLambdaEvents(
         PROCESSING,
         functionName,
         `Error is caught for functionName ${functionName}. Skipping instrumenting this function. Error is: ${error}`,
@@ -577,7 +569,7 @@ function belowRecommendedMemorySize(
       reason,
       INSUFFICIENT_MEMORY,
     );
-    logger.debugLogs(LAMBDA_EVENT, SKIPPED, functionName, reason);
+    logger.frontendLambdaEvents(SKIPPED, functionName, reason);
     instrumentOutcome.instrument.skipped[functionName] = {
       functionArn,
       reason: reason,
@@ -1173,19 +1165,6 @@ async function getLatestLayersFromS3() {
 }
 
 class Logger {
-  emitFrontEndEvent(ddSlsEventName, triggeredBy, instrumentOutcome, config) {
-    console.log(
-      JSON.stringify({
-        ddSlsEventName,
-        triggeredBy,
-        outcome: instrumentOutcome,
-        allowList: config.AllowList,
-        denyList: config.DenyList,
-        tagRule: config.TagRule,
-      }),
-    );
-  }
-
   logInstrumentOutcome(
     ddSlsEventName,
     outcome,
@@ -1210,6 +1189,32 @@ class Logger {
     );
   }
 
+  emitFrontEndEvent(ddSlsEventName, triggeredBy, instrumentOutcome, config) {
+    // emit REMOTE_INSTRUMENTATION_STARTED and REMOTE_INSTRUMENTATION_ENDED event
+    console.log(
+      JSON.stringify({
+        ddSlsEventName,
+        triggeredBy,
+        outcome: instrumentOutcome,
+        allowList: config?.AllowList,
+        denyList: config?.DenyList,
+        tagRule: config?.TagRule,
+      }),
+    );
+  }
+
+  frontendLambdaEvents(outcome, targetFunctionName, message = null) {
+    // all for LAMBDA_EVENT
+    console.log(
+      JSON.stringify({
+        ddSlsEventName: LAMBDA_EVENT,
+        outcome,
+        targetFunctionName: targetFunctionName,
+        message,
+      }),
+    );
+  }
+
   debugLogs(ddSlsEventName, outcome, targetFunctionName, message = null) {
     console.log(
       JSON.stringify({
@@ -1222,6 +1227,7 @@ class Logger {
   }
 
   logObject(event) {
+    // For logging lambda payload and configs
     console.log(JSON.stringify(event));
   }
 }
