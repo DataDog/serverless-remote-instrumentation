@@ -9,7 +9,7 @@ Mappings:
 
 Metadata:
   AWS::CloudFormation::Interface:
-    ParameterGroups:
+    ParameterGroups:t
       - Label:
           default: Remote Instrumenter Configuration
         Parameters:
