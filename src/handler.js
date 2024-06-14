@@ -61,7 +61,7 @@ exports.handler = async (event, context) => {
       null,
       config,
     );
-    await instrumentBySingleEvent(event, config, instrumentOutcome);
+    await instrumentByEventWrapper(event, config, instrumentOutcome);
     logger.emitFrontEndEvent(
       REMOTE_INSTRUMENTATION_ENDED,
       LAMBDA_EVENT,
@@ -69,7 +69,7 @@ exports.handler = async (event, context) => {
       config,
     );
 
-    // Stack created
+    // Created stack or deleted Stack
   } else if (Object.prototype.hasOwnProperty.call(event, "RequestType")) {
     if (event.RequestType === "Delete") {
       console.log("Getting CloudFormation Delete event.");
@@ -82,13 +82,18 @@ exports.handler = async (event, context) => {
       null,
       config,
     );
-    await firstTimeInstrumentationByAllowList(
+
+    await uninstrumentBasedOnAllowListAndTagRuleWrapper(
+      config,
+      instrumentOutcome,
+    );
+    await instrumentByAllowListWrapper(
       allowListFunctionNames,
       config,
       instrumentOutcome,
     );
-    await firstTimeInstrumentationByTagRule(config, instrumentOutcome);
-    // send response to CloudFormation custom resource endpoint to continue stack creation
+    await instrumentByTagRuleWrapper(config, instrumentOutcome);
+
     await cfnResponse.send(event, context, "SUCCESS");
     logger.emitFrontEndEvent(
       REMOTE_INSTRUMENTATION_ENDED,
@@ -110,16 +115,16 @@ exports.handler = async (event, context) => {
       null,
       config,
     );
-    await stackUpdateUninstrumentBasedOnAllowListAndTagRule(
+    await uninstrumentBasedOnAllowListAndTagRuleWrapper(
       config,
       instrumentOutcome,
     );
-    await stackUpdateInstrumentByAllowList(
+    await instrumentByAllowListWrapper(
       allowListFunctionNames,
       config,
       instrumentOutcome,
     );
-    await stackUpdateInstrumentByTagRule(config, instrumentOutcome);
+    await instrumentByTagRuleWrapper(config, instrumentOutcome);
     logger.emitFrontEndEvent(
       REMOTE_INSTRUMENTATION_ENDED,
       "StackUpdate",
@@ -133,30 +138,21 @@ exports.handler = async (event, context) => {
 
 //// wrappers
 // single
-const instrumentBySingleEvent = tracer.wrap(
+const instrumentByEventWrapper = tracer.wrap(
   "Instrument.BySingleLambdaEvent",
   instrumentByEvent,
 );
-// first time instrumentation
-const firstTimeInstrumentationByAllowList = tracer.wrap(
-  "FirstTimeBulkInstrument.ByAllowList",
-  instrumentByFunctionNames,
-);
-const firstTimeInstrumentationByTagRule = tracer.wrap(
-  "FirstTimeBulkInstrument.ByTagRule",
-  instrumentationByTagRule,
-);
-// stack update
-const stackUpdateUninstrumentBasedOnAllowListAndTagRule = tracer.wrap(
-  "StackUpdate.CheckAnythingToUninstrument",
+// create and update stack
+const uninstrumentBasedOnAllowListAndTagRuleWrapper = tracer.wrap(
+  "UninstrumentBasedOnAllowListAndTagRule",
   uninstrumentBasedOnAllowListAndTagRule,
 );
-const stackUpdateInstrumentByAllowList = tracer.wrap(
-  "StackUpdate.Instrument.ByAllowList",
+const instrumentByAllowListWrapper = tracer.wrap(
+  "InstrumentByAllowList",
   instrumentByFunctionNames,
 );
-const stackUpdateInstrumentByTagRule = tracer.wrap(
-  "StackUpdate.Instrument.ByTagRule",
+const instrumentByTagRuleWrapper = tracer.wrap(
+  "InstrumentByTagRule",
   instrumentationByTagRule,
 );
 
