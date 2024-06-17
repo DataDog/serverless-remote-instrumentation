@@ -29,7 +29,7 @@ const UPDATED_EXTENSION_VERSION = process.env.UpdatedDdExtensionLayerVersion;
 const ORIGINAL_EXTENSION_VERSION = process.env.DdExtensionLayerVersion;
 
 // need to be updated to match ther template URL in the self-monitoring app's template yaml file
-const INSTRUMENTER_TEMPLATE_VERSION = "0.39.0";
+const INSTRUMENTER_TEMPLATE_VERSION = "0.40.0";
 
 exports.handler = async (event) => {
   console.log(JSON.stringify(event));
