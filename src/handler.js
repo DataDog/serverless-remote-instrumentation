@@ -19,6 +19,7 @@ const DD_SLS_REMOTE_INSTRUMENTER_VERSION = "dd_sls_remote_instrumenter_version";
 
 // consts
 const DENIED = "denied";
+const DEBUG_INSTRUMENT = "DebugInstrument";
 const FAILED = "failed";
 const INSTRUMENT = "Instrument";
 const IN_PROGRESS = "in_progress";
@@ -60,7 +61,7 @@ exports.handler = async (event, context) => {
       null,
       config,
     );
-    await instrumentBySingleEvent(event, config, instrumentOutcome);
+    await instrumentByEventWrapper(event, config, instrumentOutcome);
     logger.emitFrontEndEvent(
       REMOTE_INSTRUMENTATION_ENDED,
       LAMBDA_EVENT,
@@ -68,7 +69,7 @@ exports.handler = async (event, context) => {
       config,
     );
 
-    // Stack created
+    // Created stack or deleted Stack
   } else if (Object.prototype.hasOwnProperty.call(event, "RequestType")) {
     if (event.RequestType === "Delete") {
       console.log("Getting CloudFormation Delete event.");
@@ -81,13 +82,18 @@ exports.handler = async (event, context) => {
       null,
       config,
     );
-    await firstTimeInstrumentationByAllowList(
+
+    await uninstrumentBasedOnAllowListAndTagRuleWrapper(
+      config,
+      instrumentOutcome,
+    );
+    await instrumentByAllowListWrapper(
       allowListFunctionNames,
       config,
       instrumentOutcome,
     );
-    await firstTimeInstrumentationByTagRule(config, instrumentOutcome);
-    // send response to CloudFormation custom resource endpoint to continue stack creation
+    await instrumentByTagRuleWrapper(config, instrumentOutcome);
+
     await cfnResponse.send(event, context, "SUCCESS");
     logger.emitFrontEndEvent(
       REMOTE_INSTRUMENTATION_ENDED,
@@ -109,16 +115,16 @@ exports.handler = async (event, context) => {
       null,
       config,
     );
-    await stackUpdateUninstrumentBasedOnAllowListAndTagRule(
+    await uninstrumentBasedOnAllowListAndTagRuleWrapper(
       config,
       instrumentOutcome,
     );
-    await stackUpdateInstrumentByAllowList(
+    await instrumentByAllowListWrapper(
       allowListFunctionNames,
       config,
       instrumentOutcome,
     );
-    await stackUpdateInstrumentByTagRule(config, instrumentOutcome);
+    await instrumentByTagRuleWrapper(config, instrumentOutcome);
     logger.emitFrontEndEvent(
       REMOTE_INSTRUMENTATION_ENDED,
       "StackUpdate",
@@ -132,30 +138,21 @@ exports.handler = async (event, context) => {
 
 //// wrappers
 // single
-const instrumentBySingleEvent = tracer.wrap(
+const instrumentByEventWrapper = tracer.wrap(
   "Instrument.BySingleLambdaEvent",
   instrumentByEvent,
 );
-// first time instrumentation
-const firstTimeInstrumentationByAllowList = tracer.wrap(
-  "FirstTimeBulkInstrument.ByAllowList",
-  instrumentByFunctionNames,
-);
-const firstTimeInstrumentationByTagRule = tracer.wrap(
-  "FirstTimeBulkInstrument.ByTagRule",
-  instrumentationByTagRule,
-);
-// stack update
-const stackUpdateUninstrumentBasedOnAllowListAndTagRule = tracer.wrap(
-  "StackUpdate.CheckAnythingToUninstrument",
+// create and update stack
+const uninstrumentBasedOnAllowListAndTagRuleWrapper = tracer.wrap(
+  "UninstrumentBasedOnAllowListAndTagRule",
   uninstrumentBasedOnAllowListAndTagRule,
 );
-const stackUpdateInstrumentByAllowList = tracer.wrap(
-  "StackUpdate.Instrument.ByAllowList",
+const instrumentByAllowListWrapper = tracer.wrap(
+  "InstrumentByAllowList",
   instrumentByFunctionNames,
 );
-const stackUpdateInstrumentByTagRule = tracer.wrap(
-  "StackUpdate.Instrument.ByTagRule",
+const instrumentByTagRuleWrapper = tracer.wrap(
+  "InstrumentByTagRule",
   instrumentationByTagRule,
 );
 
@@ -391,8 +388,7 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
     );
     return;
   }
-  logger.debugLogs(
-    LAMBDA_EVENT,
+  logger.frontendLambdaEvents(
     PROCESSING,
     functionName,
     "Lambda management event is received and starting instrumentation",
@@ -400,8 +396,7 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
 
   // filter out functions that are on the DenyList
   if (config.DenyListFunctionNameSet.has(functionName)) {
-    logger.debugLogs(
-      LAMBDA_EVENT,
+    logger.frontendLambdaEvents(
       PROCESSING,
       functionName,
       `function ${functionName} is on the DenyList ${JSON.stringify([...config.DenyListFunctionNameSet])}. Instrumentation has stopped.`,
@@ -412,15 +407,13 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
   // check if lambda management events is for function that are in the allow list
   if (config.AllowListFunctionNameSet.has(functionName)) {
     functionFromEventIsInAllowList = true;
-    logger.debugLogs(
-      LAMBDA_EVENT,
+    logger.frontendLambdaEvents(
       PROCESSING,
       functionName,
       `${functionName} in the AllowListFunctionNameSet: ${JSON.stringify([...config.AllowListFunctionNameSet])}`,
     );
   } else {
-    logger.debugLogs(
-      LAMBDA_EVENT,
+    logger.frontendLambdaEvents(
       PROCESSING,
       functionName,
       `${functionName} is NOT in the AllowListFunctionNameSet: ${JSON.stringify([...config.AllowListFunctionNameSet])}`,
@@ -465,8 +458,7 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
           targetLambdaRuntime,
         )
       ) {
-        logger.debugLogs(
-          LAMBDA_EVENT,
+        logger.frontendLambdaEvents(
           PROCESSING,
           functionName,
           `Function ${functionName} is already instrumented with correct extension and tracer layer versions! `,
@@ -477,7 +469,7 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
       const specifiedTags = getTagRuleFromConfig(config); // tags: ['k1:v1', 'k2:v2']
       if (specifiedTags.length === 0) {
         logger.debugLogs(
-          INSTRUMENT,
+          DEBUG_INSTRUMENT,
           SKIPPED,
           functionName,
           `The function is not in the AllowList and the tagRule is empty.`,
@@ -495,23 +487,20 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
           null,
         )
       ) {
-        logger.debugLogs(
-          LAMBDA_EVENT,
+        logger.frontendLambdaEvents(
           SKIPPED,
           functionName,
           `Skipping remote instrumentation for function ${functionName}. It does not fit TagRule nor is in the AllowList`,
         );
         return;
       }
-      logger.debugLogs(
-        LAMBDA_EVENT,
+      logger.frontendLambdaEvents(
         PROCESSING,
         functionName,
         `${functionName} is not in the AllowList but matches TagRule`,
       );
     } catch (error) {
-      logger.debugLogs(
-        LAMBDA_EVENT,
+      logger.frontendLambdaEvents(
         PROCESSING,
         functionName,
         `Error is caught for functionName ${functionName}. Skipping instrumenting this function. Error is: ${error}`,
@@ -576,7 +565,7 @@ function belowRecommendedMemorySize(
       reason,
       INSUFFICIENT_MEMORY,
     );
-    logger.debugLogs(LAMBDA_EVENT, SKIPPED, functionName, reason);
+    logger.frontendLambdaEvents(SKIPPED, functionName, reason);
     instrumentOutcome.instrument.skipped[functionName] = {
       functionArn,
       reason: reason,
@@ -919,7 +908,7 @@ async function instrumentWithDatadogCi(
     config.DenyListFunctionNameSet.has(functionName)
   ) {
     logger.debugLogs(
-      "Instrument",
+      DEBUG_INSTRUMENT,
       DENIED,
       functionName,
       `function ${functionName} will not be instrumented because it is in the DenyList ${JSON.stringify(config.DenyListFunctionNameSet)}. Instrumentation stopped for this function.`,
@@ -1172,19 +1161,6 @@ async function getLatestLayersFromS3() {
 }
 
 class Logger {
-  emitFrontEndEvent(ddSlsEventName, triggeredBy, instrumentOutcome, config) {
-    console.log(
-      JSON.stringify({
-        ddSlsEventName,
-        triggeredBy,
-        outcome: instrumentOutcome,
-        allowList: config.AllowList,
-        denyList: config.DenyList,
-        tagRule: config.TagRule,
-      }),
-    );
-  }
-
   logInstrumentOutcome(
     ddSlsEventName,
     outcome,
@@ -1209,6 +1185,32 @@ class Logger {
     );
   }
 
+  emitFrontEndEvent(ddSlsEventName, triggeredBy, instrumentOutcome, config) {
+    // emit REMOTE_INSTRUMENTATION_STARTED and REMOTE_INSTRUMENTATION_ENDED event
+    console.log(
+      JSON.stringify({
+        ddSlsEventName,
+        triggeredBy,
+        outcome: instrumentOutcome,
+        allowList: config?.AllowList,
+        denyList: config?.DenyList,
+        tagRule: config?.TagRule,
+      }),
+    );
+  }
+
+  frontendLambdaEvents(outcome, targetFunctionName, message = null) {
+    // all for LAMBDA_EVENT
+    console.log(
+      JSON.stringify({
+        ddSlsEventName: LAMBDA_EVENT,
+        outcome,
+        targetFunctionName: targetFunctionName,
+        message,
+      }),
+    );
+  }
+
   debugLogs(ddSlsEventName, outcome, targetFunctionName, message = null) {
     console.log(
       JSON.stringify({
@@ -1221,6 +1223,7 @@ class Logger {
   }
 
   logObject(event) {
+    // For logging lambda payload and configs
     console.log(JSON.stringify(event));
   }
 }
