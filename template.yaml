@@ -5,7 +5,7 @@ Description: Datadog Lambda Remote Instrumentation App
 Mappings:
   Constants:
     DatadogRemoteInstrumentDemoApp:
-      Version: 0.0.1
+      Version: 0.40.0
 
 Metadata:
   AWS::CloudFormation::Interface:
@@ -190,6 +190,7 @@ Resources:
               - lambda:GetLayerVersion
             Resource:
             - !Sub arn:aws:lambda:${AWS::Region}:464622532012:layer:*
+            - !Sub arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Serverless-Remote-Instrumentation-ARM:*
             - !Sub arn:aws:lambda:${AWS::Region}:${DdRemoteInstrumentLayerAwsAccount}:layer:*
           - Effect: Allow
             Action:
