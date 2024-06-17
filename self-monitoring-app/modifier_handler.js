@@ -29,7 +29,7 @@ const UPDATED_EXTENSION_VERSION = process.env.UpdatedDdExtensionLayerVersion;
 const ORIGINAL_EXTENSION_VERSION = process.env.DdExtensionLayerVersion;
 
 // need to be updated to match ther template URL in the self-monitoring app's template yaml file
-const INSTRUMENTER_TEMPLATE_VERSION = "0.38.0";
+const INSTRUMENTER_TEMPLATE_VERSION = "0.40.0";
 
 exports.handler = async (event) => {
   console.log(JSON.stringify(event));
@@ -248,7 +248,7 @@ async function emptyBucket(bucketName, config) {
     }
   }
 
-  deleteAllObjects(bucketName)
+  await deleteAllObjects(bucketName)
     .then(() => console.log("All objects deleted successfully."))
     .catch((error) => console.error("An error occurred:", error));
 }
@@ -335,12 +335,9 @@ async function getS3BucketNameByStackName(stackName, config) {
 }
 
 async function getBucketNameFromStackNameAndDelete(stackName, config) {
-  let s3BucketName = await getS3BucketNameByStackName(
-    stackName,
-    config,
-  );
+  let s3BucketName = await getS3BucketNameByStackName(stackName, config);
   await emptyBucket(s3BucketName, config);
-  await sleep(10000);
+  await sleep(60000);
   console.log(`Bucket ${s3BucketName} should be emptied now`);
   await deleteS3Bucket(s3BucketName, config);
 }
