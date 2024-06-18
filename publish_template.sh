@@ -48,7 +48,7 @@ function aws-login() {
     cfg=( "$@" )
     shift
     if [ "$ACCOUNT" = "prod" ] ; then
-        aws-vault exec prod-engineering --  ${cfg[@]}
+        aws-vault exec sso-prod-engineering --  ${cfg[@]}
     else
         aws-vault exec sso-serverless-sandbox-account-admin-8h --  ${cfg[@]}
     fi
@@ -66,10 +66,10 @@ echo "Validating template.yaml..."
 aws-login aws cloudformation validate-template --template-body file://dist/template.yaml
 echo "Uploading the CloudFormation Template"
 if [ "$ACCOUNT" = "prod" ]; then
-    # Make sure we are on the main branch
+    # Make sure we are on the prod branch
     BRANCH=$(git rev-parse --abbrev-ref HEAD)
-    if [ $BRANCH != "main" ]; then
-        echo "ERROR: Not on the main branch, aborting."
+    if [ $BRANCH != "prod" ]; then
+        echo "ERROR: Not on the prod branch, aborting."
         exit 1
     fi
 
@@ -82,7 +82,7 @@ if [ "$ACCOUNT" = "prod" ]; then
     fi
 
     # Get the latest code
-    git pull origin main
+    git pull origin prod
 
     # Bump version number in template.yml
     echo "Bumping the version number to ${SAMPLE_APP_VERSION}..."
@@ -93,7 +93,7 @@ if [ "$ACCOUNT" = "prod" ]; then
     echo "Committing version number change..."
     git add template.yaml
     git commit -m "Bump version from ${CURRENT_VERSION} to ${SAMPLE_APP_VERSION}"
-    git push origin main
+    git push origin prod
 
     git tag v${SAMPLE_APP_VERSION}
 
