@@ -5,7 +5,7 @@ Description: Datadog Lambda Remote Instrumentation App
 Mappings:
   Constants:
     DatadogRemoteInstrumentDemoApp:
-      Version: 0.40.0
+      Version: 0.3.0
 
 Metadata:
   AWS::CloudFormation::Interface:
@@ -43,12 +43,11 @@ Parameters:
     AllowedValues:
       - "true"
       - "false"
-#    Default: "false"
-    Default: "true"
+    Default: "false"
     Description: Whether to enable code signing configurations.
   DdRemoteInstrumentLayerVersion:
     Type: String
-    Default: '40'
+    Default: '3'
   DdApiKey:
     Type: String
     Description: >-
@@ -97,7 +96,6 @@ Parameters:
     Default: '512'
   DdRemoteInstrumentLayerAwsAccount:
     Type: String
-#    Default: '425362996713'
     Default: '464622532012'
     Description: >- 
       have to do this so that we can use dev layer in the sandbox account   
@@ -205,8 +203,6 @@ Resources:
             Condition:
               ArnEquals:
                 lambda:SourceFunctionArn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${InstrumenterFunctionName}
-#            Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*  # doesn't work
-#            Resource: 'arn:aws:lambda:*'  # doesn't work
 
   InstrumenterCodeSigningConfig:
     Type: "AWS::Lambda::CodeSigningConfig"
