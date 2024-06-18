@@ -100,6 +100,12 @@ publish_layer() {
         --compatible-architectures arm64 \
         --region $region | jq -r '.Version')
 
+    permission=$(aws lambda add-layer-version-permission --layer-name $layer_name \
+        --version-number $version_nbr \
+        --statement-id "release-$version_nbr" \
+        --action lambda:GetLayerVersion --principal "*" \
+        --region $region)
+
     echo $version_nbr
 }
 
