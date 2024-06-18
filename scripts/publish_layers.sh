@@ -95,7 +95,6 @@ publish_layer() {
 
     version_nbr=$(aws lambda publish-layer-version --layer-name "${layer_name}" \
         --description "Datadog Serverless Remote Instrumentation ARM" \
-        --compatible-architectures arm64 \
         --zip-file "fileb://${file}" \
         --compatible-architectures arm64 \
         --region $region | jq -r '.Version')
