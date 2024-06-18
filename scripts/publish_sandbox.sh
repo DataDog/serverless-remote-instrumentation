@@ -53,4 +53,9 @@ SCRIPTS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 cd $SCRIPTS_DIR/..
 
 VERSION=$VERSION ARCHITECTURE=$ARCHITECTURE ./scripts/build_layer.sh
+
+echo "Signing the layer"
+aws-vault exec sso-prod-engineering -- ./scripts/sign_layers.sh prod
+
+echo "Publishing layers to sandbox"
 VERSION=$VERSION ARCHITECTURE=$ARCHITECTURE REGIONS=$REGION aws-vault exec sso-serverless-sandbox-account-admin-8h -- ./scripts/publish_layers.sh

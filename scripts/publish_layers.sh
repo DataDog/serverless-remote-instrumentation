@@ -90,12 +90,12 @@ index_of_layer() {
 
 publish_layer() {
     region=$1
-    layer=$2
+    layer_name=$2
     file=$3
-    architecture="--compatible-architectures arm64"
-    version_nbr=$(aws lambda publish-layer-version --layer-name "${layer}" \
+
+    version_nbr=$(aws lambda publish-layer-version --layer-name "${layer_name}" \
         --description "Datadog Serverless Remote Instrumentation ARM" \
-        $architecture \
+        --compatible-architectures arm64 \
         --zip-file "fileb://${file}" \
         --compatible-architectures arm64 \
         --region $region | jq -r '.Version')
