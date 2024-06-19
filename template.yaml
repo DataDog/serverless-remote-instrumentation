@@ -5,7 +5,7 @@ Description: Datadog Lambda Remote Instrumentation App
 Mappings:
   Constants:
     DatadogRemoteInstrumentDemoApp:
-      Version: 0.3.1
+      Version: 0.3.2
 
 Metadata:
   AWS::CloudFormation::Interface:
