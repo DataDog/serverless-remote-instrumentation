@@ -84,13 +84,13 @@ Parameters:
     Type: String
   DdExtensionLayerVersion:
     Type: String
-    Default: '50'
+    Default: '58'
   DdPythonLayerVersion:
     Type: String
-    Default: '70'
+    Default: '96'
   DdNodeLayerVersion:
     Type: String
-    Default: '100'
+    Default: '112'
   MinimumMemorySize:
     Type: String
     Default: '512'
