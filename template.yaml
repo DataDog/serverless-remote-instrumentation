@@ -19,6 +19,7 @@ Metadata:
           - DdDenyList
           - DdApiKey
           - EnableCodeSigningConfigurations
+          - DdInstrumenterFunctionEnv
       - Label:
           default: Layer Versions
         Parameters:
@@ -99,6 +100,11 @@ Parameters:
     Default: '464622532012'
     Description: >- 
       have to do this so that we can use dev layer in the sandbox account   
+  DdInstrumenterFunctionEnv:
+    Type: String
+    Default: 'dev'
+    Description: >-
+      DD_ENV value for the remote instrumenter Lambda function
 
 Resources:
   CloudFormationLifeCycle:
@@ -132,7 +138,7 @@ Resources:
           DD_LOG_LEVEL: DEBUG
           DD_TRACE_DEBUG: false
           DD_SERVICE: Datadog-Instrument
-          DD_ENV: dev
+          DD_ENV: !Ref DdInstrumenterFunctionEnv
           DD_SITE: !Ref DdSite
           DD_AWS_ACCOUNT_NUMBER: !Sub '${AWS::AccountId}'
           DD_ALLOW_LIST: !Ref DdAllowList
