@@ -127,7 +127,7 @@ echo
 echo "Serverless Sample App release process complete!"
 
 if [ "$ACCOUNT" = "prod" ] ; then
-    echo "Create and merge a pull request with the version bumps"
+    echo "Create and merge a pull request with the version bumps:"
     echo "https://github.com/DataDog/Serverless-Remote-Instrumentation/pull/new/$RELEASE_BRANCH"
     echo "Create the release with the pushed tag in GitHub:"
     echo "https://github.com/DataDog/Serverless-Remote-Instrumentation/releases/new?tag=v$SAMPLE_APP_VERSION&title=v$SAMPLE_APP_VERSION"
