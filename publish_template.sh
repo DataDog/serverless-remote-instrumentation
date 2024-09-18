@@ -84,6 +84,10 @@ if [ "$ACCOUNT" = "prod" ]; then
     # Get the latest code
     git pull origin prod
 
+    # Create a release branch
+    RELEASE_BRANCH="release/${SAMPLE_APP_VERSION}"
+    git checkout -b $RELEASE_BRANCH
+
     # Bump version number in template.yml
     echo "Bumping the version number to ${SAMPLE_APP_VERSION}..."
     perl -pi -e "s/Version: [0-9\.]+/Version: ${SAMPLE_APP_VERSION}/g" template.yaml
@@ -93,7 +97,7 @@ if [ "$ACCOUNT" = "prod" ]; then
     echo "Committing version number change..."
     git add template.yaml
     git commit -m "Bump version from ${CURRENT_VERSION} to ${SAMPLE_APP_VERSION}"
-    git push origin prod
+    git push origin $RELEASE_BRANCH
 
     git tag v${SAMPLE_APP_VERSION}
 
@@ -123,5 +127,8 @@ echo
 echo "Serverless Sample App release process complete!"
 
 if [ "$ACCOUNT" = "prod" ] ; then
-    echo "Don't forget to create the release with the pushed tag in GitHub!"
+    echo "Create and merge a pull request with the version bumps"
+    echo "https://github.com/DataDog/Serverless-Remote-Instrumentation/pull/new/$RELEASE_BRANCH"
+    echo "Create the release with the pushed tag in GitHub:"
+    echo "https://github.com/DataDog/Serverless-Remote-Instrumentation/releases/new?tag=v$SAMPLE_APP_VERSION&title=v$SAMPLE_APP_VERSION"
 fi
