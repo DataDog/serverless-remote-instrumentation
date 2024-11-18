@@ -131,6 +131,11 @@ exports.handler = async (event, context) => {
       instrumentOutcome,
       config,
     );
+  } else if (
+    Object.prototype.hasOwnProperty.call(event, "event-type") &&
+    event["event-type"] === "Scheduled Instrumenter Invocation"
+  ) {
+    console.log("Received an invocation from the scheduler");
   } else {
     console.error("Unexpected event encountered. Please check event.");
   }
