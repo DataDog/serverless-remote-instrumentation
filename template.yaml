@@ -336,7 +336,7 @@ Resources:
         detail-type:
           - CloudFormation Stack Status Change
         resources:
-#          - wildcard: !Sub "arn:aws:cloudformation:*:*:stack/${StackName}*/*"  -> does not work
+          # - wildcard: !Sub "arn:aws:cloudformation:*:*:stack/${StackName}*/*"  -> does not work
           # Hardcoded stack name so the customer cannot change their stack name until RC integration is released
           - wildcard: arn:aws:cloudformation:*:*:stack/datadog-remote-instrument*/*
         detail:
@@ -357,3 +357,41 @@ Resources:
       Action: lambda:InvokeFunction
       Principal: events.amazonaws.com
       SourceArn: !GetAtt StackUpdateEventRule.Arn
+
+  LambdaSchedulerRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      Path: "/"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Policies:
+      - PolicyName: root
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+          - Effect: Allow
+            Action:
+            - lambda:InvokeFunction
+            Resource: !GetAtt LambdaFunction.Arn
+
+  LambdaInvocationScheduler:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Description: "Schedule for invoking the instrumenter lambda function"
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      Name: "datadog-remote-instrument-scheduler"
+      ScheduleExpression: rate(5 minutes)
+      State: ENABLED
+      Target:
+        Arn: !GetAtt LambdaFunction.Arn
+        RoleArn: !GetAtt LambdaSchedulerRole.Arn
+        Input: |
+            {
+                "event-type": "Scheduled Instrumenter Invocation"
+            }
