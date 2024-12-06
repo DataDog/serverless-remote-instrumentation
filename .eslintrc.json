@@ -2,8 +2,6 @@
   "extends": ["plugin:prettier/recommended"],
   "plugins": ["prettier"],
   "rules": {
-    "prettier/prettier": "warn",
-    "arrow-body-style": "off",
-    "prefer-arrow-callback": "off"
+    "prettier/prettier": "warn"
   }
 }

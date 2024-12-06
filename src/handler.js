@@ -3,7 +3,6 @@ const VERSION = "1.0.0";
 const axios = require("axios");
 const cfnResponse = require("cfn-response"); // file will be auto-injected by CloudFormation
 const datadogCi = require("@datadog/datadog-ci/dist/cli.js");
-const tracer = require("dd-trace");
 const { LambdaClient, GetFunctionCommand } = require("@aws-sdk/client-lambda");
 const {
   ResourceGroupsTaggingAPIClient,
@@ -12,6 +11,11 @@ const {
   UntagResourcesCommand,
 } = require("@aws-sdk/client-resource-groups-tagging-api");
 const { shouldSkipLambdaEvent } = require("./lambda-event");
+const {
+  getConfigsFromRC: getConfigFromRC,
+  adaptToOldRuleFormat,
+} = require("./config");
+const { Logger, LAMBDA_EVENT } = require("./logger");
 
 const NODE = "node";
 const PYTHON = "python";
@@ -23,7 +27,6 @@ const DEBUG_INSTRUMENT = "DebugInstrument";
 const FAILED = "failed";
 const INSTRUMENT = "Instrument";
 const IN_PROGRESS = "in_progress";
-const LAMBDA_EVENT = "LambdaEvent";
 const REMOTE_INSTRUMENTATION_STARTED = "RemoteInstrumentationStarted";
 const REMOTE_INSTRUMENTATION_ENDED = "RemoteInstrumentationEnded";
 const PROCESSING = "processing";
@@ -36,6 +39,8 @@ const INSUFFICIENT_MEMORY = "insufficient-memory";
 const ALREADY_CORRECT_EXTENSION_AND_LAYER =
   "already-correct-extension-and-layer";
 
+const logger = new Logger();
+
 exports.handler = async (event, context) => {
   logger.logObject(event);
   const instrumentOutcome = {
@@ -43,8 +48,9 @@ exports.handler = async (event, context) => {
     uninstrument: { succeeded: {}, failed: {}, skipped: {} },
   };
 
-  const config = await getConfig();
-  const allowListFunctionNames = getFunctionNamesFromString(config.AllowList);
+  const awsAccountID = context.invokedFunctionArn.split(":")[4];
+  const config = await getConfig(awsAccountID);
+  const allowListFunctionNames = config.AllowList;
 
   // One Lambda CloudTrail management event, only at most one Lambda will be updated
   if (
@@ -61,7 +67,7 @@ exports.handler = async (event, context) => {
       null,
       config,
     );
-    await instrumentByEventWrapper(event, config, instrumentOutcome);
+    await instrumentByEvent(event, config, instrumentOutcome);
     logger.emitFrontEndEvent(
       REMOTE_INSTRUMENTATION_ENDED,
       LAMBDA_EVENT,
@@ -83,16 +89,7 @@ exports.handler = async (event, context) => {
       config,
     );
 
-    await uninstrumentBasedOnAllowListAndTagRuleWrapper(
-      config,
-      instrumentOutcome,
-    );
-    await instrumentByAllowListWrapper(
-      allowListFunctionNames,
-      config,
-      instrumentOutcome,
-    );
-    await instrumentByTagRuleWrapper(config, instrumentOutcome);
+    await instrument(config, instrumentOutcome, allowListFunctionNames);
 
     await cfnResponse.send(event, context, "SUCCESS");
     logger.emitFrontEndEvent(
@@ -115,16 +112,7 @@ exports.handler = async (event, context) => {
       null,
       config,
     );
-    await uninstrumentBasedOnAllowListAndTagRuleWrapper(
-      config,
-      instrumentOutcome,
-    );
-    await instrumentByAllowListWrapper(
-      allowListFunctionNames,
-      config,
-      instrumentOutcome,
-    );
-    await instrumentByTagRuleWrapper(config, instrumentOutcome);
+    await instrument(config, instrumentOutcome, allowListFunctionNames);
     logger.emitFrontEndEvent(
       REMOTE_INSTRUMENTATION_ENDED,
       "StackUpdate",
@@ -136,38 +124,42 @@ exports.handler = async (event, context) => {
     event["event-type"] === "Scheduled Instrumenter Invocation"
   ) {
     console.log("Received an invocation from the scheduler");
+    logger.emitFrontEndEvent(
+      REMOTE_INSTRUMENTATION_STARTED,
+      "ScheduledInvocation",
+      null,
+      config,
+    );
+    await instrument(config, instrumentOutcome, allowListFunctionNames);
+    logger.emitFrontEndEvent(
+      REMOTE_INSTRUMENTATION_ENDED,
+      "ScheduledInvocation",
+      instrumentOutcome,
+      config,
+    );
   } else {
     console.error("Unexpected event encountered. Please check event.");
   }
 };
 
-//// wrappers
-// single
-const instrumentByEventWrapper = tracer.wrap(
-  "Instrument.BySingleLambdaEvent",
-  instrumentByEvent,
-);
-// create and update stack
-const uninstrumentBasedOnAllowListAndTagRuleWrapper = tracer.wrap(
-  "UninstrumentBasedOnAllowListAndTagRule",
-  uninstrumentBasedOnAllowListAndTagRule,
-);
-const instrumentByAllowListWrapper = tracer.wrap(
-  "InstrumentByAllowList",
-  instrumentByFunctionNames,
-);
-const instrumentByTagRuleWrapper = tracer.wrap(
-  "InstrumentByTagRule",
-  instrumentationByTagRule,
-);
+async function instrument(config, instrumentOutcome, allowListFunctionNames) {
+  await uninstrumentBasedOnAllowListAndTagRule(config, instrumentOutcome);
+  await instrumentByFunctionNames(
+    allowListFunctionNames,
+    config,
+    instrumentOutcome,
+  );
+  await instrumentationByTagRule(config, instrumentOutcome);
+}
 
-async function getConfig() {
-  // Get layer configs from CloudFormation params. If they don't exist, use latest layer from S3
+async function getConfig(awsAccountID) {
+  const configs = await getConfigFromRC(awsAccountID, process.env.AWS_REGION);
+  const adaptedConfig = adaptToOldRuleFormat(configs);
   const response = await getLatestLayersFromS3();
   const layerVersions = {
-    extensionVersion: process.env.DD_EXTENSION_LAYER_VERSION,
-    pythonLayerVersion: process.env.DD_PYTHON_LAYER_VERSION,
-    nodeLayerVersion: process.env.DD_NODE_LAYER_VERSION,
+    extensionVersion: adaptedConfig.extensionVersion?.toString(),
+    pythonLayerVersion: adaptedConfig.pythonLayerVersion?.toString(),
+    nodeLayerVersion: adaptedConfig.nodeLayerVersion?.toString(),
   };
   console.log(`process.env: ${JSON.stringify(process.env)}`);
 
@@ -175,19 +167,19 @@ async function getConfig() {
     try {
       const jsonData = response.data;
 
-      if (layerVersions.extensionVersion === "") {
+      if (layerVersions.extensionVersion === undefined) {
         layerVersions.extensionVersion = getVersionFromLayerArn(
           jsonData,
           "Datadog-Extension",
         );
       }
-      if (layerVersions.pythonLayerVersion === "") {
+      if (layerVersions.pythonLayerVersion === undefined) {
         layerVersions.pythonLayerVersion = getVersionFromLayerArn(
           jsonData,
           "Datadog-Python39",
         );
       }
-      if (layerVersions.nodeLayerVersion === "") {
+      if (layerVersions.nodeLayerVersion === undefined) {
         layerVersions.nodeLayerVersion = getVersionFromLayerArn(
           jsonData,
           "Datadog-Node16-x",
@@ -202,19 +194,11 @@ async function getConfig() {
     AWS_REGION: process.env.AWS_REGION,
     DD_AWS_ACCOUNT_NUMBER: process.env.DD_AWS_ACCOUNT_NUMBER,
 
-    AllowList: process.env.DD_ALLOW_LIST,
-    AllowListFunctionNameSet: new Set(
-      getFunctionNamesFromString(process.env.DD_ALLOW_LIST),
-    ),
-    TagRule: process.env.DD_TAG_RULE,
-    DenyList: process.env.DD_DENY_LIST,
-    DenyListFunctionNameSet: new Set(
-      getFunctionNamesFromString(process.env.DD_DENY_LIST),
-    ),
-
-    DD_EXTENSION_LAYER_VERSION: process.env.DD_EXTENSION_LAYER_VERSION,
-    DD_PYTHON_LAYER_VERSION: process.env.DD_PYTHON_LAYER_VERSION,
-    DD_NODE_LAYER_VERSION: process.env.DD_NODE_LAYER_VERSION,
+    AllowList: adaptedConfig.allowList,
+    AllowListFunctionNameSet: new Set(adaptedConfig.allowList),
+    TagRule: adaptedConfig.tagRule,
+    DenyList: adaptedConfig.denyList,
+    DenyListFunctionNameSet: new Set(adaptedConfig.denyList),
     DD_LAYER_VERSIONS: layerVersions,
     DD_INSTRUMENTER_FUNCTION_NAME: process.env.DD_INSTRUMENTER_FUNCTION_NAME,
 
@@ -310,27 +294,6 @@ async function uninstrumentFunctions(
     );
   }
   await untagResourcesOfSlsTag(uninstrumentedFunctionArns, config);
-}
-
-function getTagRuleFromConfig(config) {
-  const tagRule = config.TagRule;
-  if (tagRule === "") {
-    return [];
-  }
-  const tagRuleTags = tagRule.split(",");
-  console.log(
-    `tags of TagRule from env var are: ${JSON.stringify(tagRuleTags)}`,
-  );
-  return tagRuleTags;
-}
-
-function getFunctionNamesFromString(s) {
-  const functionNamesArray = s.split(",");
-  console.log(
-    "Function names parsed by getFunctionNamesFromString:",
-    functionNamesArray,
-  );
-  return functionNamesArray;
 }
 
 function validateEvent(event) {
@@ -471,7 +434,7 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
         return;
       }
 
-      const specifiedTags = getTagRuleFromConfig(config); // tags: ['k1:v1', 'k2:v2']
+      const specifiedTags = config.TagRule; // tags: ['k1:v1', 'k2:v2']
       if (specifiedTags.length === 0) {
         logger.debugLogs(
           DEBUG_INSTRUMENT,
@@ -705,7 +668,7 @@ async function getFunctionNamesByTagRuleOrOtherFilteringTags(
   // this function either use config to get filters from tagRule or use otherFilteringTags = { "service": ["service1", "service2"] }
   let tagsKvMapping = {};
   if (Object.keys(otherFilteringTags).length === 0) {
-    const specifiedTags = getTagRuleFromConfig(config); // tags: ['k1:v1', 'k2:v2']
+    const specifiedTags = config.TagRule;
     console.log(`specifiedTags: ${specifiedTags}`);
     if (specifiedTags === undefined || specifiedTags.length === 0) {
       return;
@@ -1164,73 +1127,3 @@ async function getLatestLayersFromS3() {
     console.error(error);
   }
 }
-
-class Logger {
-  logInstrumentOutcome(
-    ddSlsEventName,
-    outcome,
-    targetFunctionName = null,
-    targetFunctionArn = null,
-    expectedExtensionVersion = null,
-    runtime = null,
-    reason = null,
-    reasonCode = null,
-  ) {
-    console.log(
-      JSON.stringify({
-        ddSlsEventName,
-        outcome,
-        targetFunctionName: targetFunctionName,
-        targetFunctionArn: targetFunctionArn,
-        expectedExtensionVersion,
-        runtime,
-        reason,
-        reasonCode,
-      }),
-    );
-  }
-
-  emitFrontEndEvent(ddSlsEventName, triggeredBy, instrumentOutcome, config) {
-    // emit REMOTE_INSTRUMENTATION_STARTED and REMOTE_INSTRUMENTATION_ENDED event
-    console.log(
-      JSON.stringify({
-        ddSlsEventName,
-        triggeredBy,
-        outcome: instrumentOutcome,
-        allowList: config?.AllowList,
-        denyList: config?.DenyList,
-        tagRule: config?.TagRule,
-      }),
-    );
-  }
-
-  frontendLambdaEvents(outcome, targetFunctionName, message = null) {
-    // all for LAMBDA_EVENT
-    console.log(
-      JSON.stringify({
-        ddSlsEventName: LAMBDA_EVENT,
-        outcome,
-        targetFunctionName: targetFunctionName,
-        message,
-      }),
-    );
-  }
-
-  debugLogs(ddSlsEventName, outcome, targetFunctionName, message = null) {
-    console.log(
-      JSON.stringify({
-        ddSlsEventName,
-        outcome,
-        targetFunctionName: targetFunctionName,
-        message,
-      }),
-    );
-  }
-
-  logObject(event) {
-    // For logging lambda payload and configs
-    console.log(JSON.stringify(event));
-  }
-}
-
-const logger = new Logger();
