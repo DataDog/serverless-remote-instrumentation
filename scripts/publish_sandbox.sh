@@ -54,8 +54,5 @@ cd $SCRIPTS_DIR/..
 
 VERSION=$VERSION ARCHITECTURE=$ARCHITECTURE ./scripts/build_layer.sh
 
-# echo "Signing the layer"
-# aws-vault exec sso-prod-engineering -- ./scripts/sign_layers.sh prod
-
 echo "Publishing layers to sandbox"
 VERSION=$VERSION ARCHITECTURE=$ARCHITECTURE REGIONS=$REGION aws-vault exec sso-serverless-sandbox-account-admin -- ./scripts/publish_layers.sh
