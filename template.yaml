@@ -103,7 +103,6 @@ Resources:
       Handler: /opt/nodejs/node_modules/datadog-remote-instrument/handler.handler
       Layers:
         - !Sub 'arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Extension-ARM:50'
-        - !Sub 'arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Node20-x:99'
         - !Sub 'arn:aws:lambda:${AWS::Region}:${DdRemoteInstrumentLayerAwsAccount}:layer:Datadog-Serverless-Remote-Instrumentation-ARM:${DdRemoteInstrumentLayerVersion}'
       Environment:
         Variables:
