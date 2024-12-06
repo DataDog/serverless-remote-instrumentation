@@ -7,7 +7,6 @@ const ENTITY_TYPES = new Set(["lambda"]);
 const FILTER_TYPES = new Set(["function_name", "tag"]);
 
 // RcConfig represents a serverless remote instrumentation configuration file
-
 class RcConfig {
   constructor(configJSON) {
     this.setConfigVersion(configJSON.config_version);
@@ -127,7 +126,7 @@ class RcConfig {
 }
 exports.RcConfig = RcConfig;
 
-exports.getConfigsFromRC = async function (accountID, region) {
+exports.getConfigsFromRC = async function getConfigsFromRC(accountID, region) {
   payload = {
     client: {
       state: {
@@ -184,7 +183,7 @@ function getConfigsFromResponse(response) {
 
 // Adapt rule filters into the format currently used by the extension. This will be removed once the instrumenter
 // targeting logic is updated.
-exports.adaptToOldRuleFormat = function (rcConfigs) {
+exports.adaptToOldRuleFormat = function adaptToOldRuleFormat(rcConfigs) {
   let legacyConfig = {
     allowList: [],
     denyList: [],
@@ -194,7 +193,7 @@ exports.adaptToOldRuleFormat = function (rcConfigs) {
     nodeLayerVersion: undefined,
   };
   let rcConfig;
-  if (rcConfigs && rcConfigs.length) {
+  if (rcConfigs?.length) {
     rcConfig = rcConfigs[0];
   } else {
     return legacyConfig;
@@ -225,9 +224,9 @@ exports.adaptToOldRuleFormat = function (rcConfigs) {
   }
 
   if (
-    legacyConfig.tagRule.length == 0 &&
-    legacyConfig.allowList.length == 0 &&
-    legacyConfig.denyList.length == 0
+    legacyConfig.tagRule.length === 0 &&
+    legacyConfig.allowList.length === 0 &&
+    legacyConfig.denyList.length === 0
   ) {
     legacyConfig.denyList = "*";
   }
