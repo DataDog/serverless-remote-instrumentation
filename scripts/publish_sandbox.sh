@@ -33,7 +33,7 @@ if [ -z $VERSION ]; then
     echo "No version specified, automatically incrementing version number"
 
     LAST_LAYER_VERSION=$(
-        aws-vault exec sso-serverless-sandbox-account-admin-8h -- \
+        aws-vault exec sso-serverless-sandbox-account-admin -- \
         aws lambda list-layer-versions \
             --layer-name $LAYER_NAME \
             --region $REGION \
@@ -54,8 +54,8 @@ cd $SCRIPTS_DIR/..
 
 VERSION=$VERSION ARCHITECTURE=$ARCHITECTURE ./scripts/build_layer.sh
 
-echo "Signing the layer"
-aws-vault exec sso-prod-engineering -- ./scripts/sign_layers.sh prod
+# echo "Signing the layer"
+# aws-vault exec sso-prod-engineering -- ./scripts/sign_layers.sh prod
 
 echo "Publishing layers to sandbox"
-VERSION=$VERSION ARCHITECTURE=$ARCHITECTURE REGIONS=$REGION aws-vault exec sso-serverless-sandbox-account-admin-8h -- ./scripts/publish_layers.sh
+VERSION=$VERSION ARCHITECTURE=$ARCHITECTURE REGIONS=$REGION aws-vault exec sso-serverless-sandbox-account-admin -- ./scripts/publish_layers.sh
