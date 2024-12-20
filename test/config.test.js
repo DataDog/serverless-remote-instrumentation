@@ -1,4 +1,5 @@
-const RcConfig = require("./config").RcConfig;
+const { RcConfig, getConfigsFromResponse } = require("../src/config");
+const { FILTER_TYPES } = require("../src/consts");
 
 describe("Config constructor", () => {
   function constructTestJSON(
@@ -127,7 +128,7 @@ describe("Config constructor", () => {
       },
     ]);
     expect(() => new RcConfig(testJSON)).toThrow(
-      "Received invalid configuration: filterType field must be one of 'function_name, tag', but received 'invalid'",
+      `Received invalid configuration: filterType field must be one of '${Array.from(FILTER_TYPES).join(", ")}', but received 'invalid'`,
     );
   });
 
@@ -143,5 +144,79 @@ describe("Config constructor", () => {
     expect(() => new RcConfig(testJSON)).toThrow(
       "Received invalid configuration: rule filter values field must be a non-empty array",
     );
+  });
+});
+
+describe("getConfigsFromResponse", () => {
+  test("should error when there is no data", () => {
+    expect(() => getConfigsFromResponse({})).toThrow(
+      "Failed to retrieve configs",
+    );
+  });
+  test("should error when target files have no raw data", () => {
+    expect(() =>
+      getConfigsFromResponse({ data: { target_files: [{}] } }),
+    ).toThrow("Error retrieving raw data from configs");
+  });
+  test("should error on invalid config", () => {
+    expect(() =>
+      getConfigsFromResponse({
+        data: {
+          target_files: [
+            {
+              raw: "invalid",
+            },
+          ],
+        },
+      }),
+    ).toThrow("Error parsing config");
+  });
+  test("should return empty list when there are no configs", () => {
+    expect(getConfigsFromResponse({ data: { target_files: [] } })).toEqual([]);
+  });
+
+  test("should deserialize configs into objects", () => {
+    const configs = getConfigsFromResponse({
+      data: {
+        target_files: [
+          {
+            raw: btoa(
+              JSON.stringify({
+                config_version: 1,
+                entity_type: "lambda",
+                instrumentation_settings: {
+                  extension_version: 10,
+                  node_layer_version: 20,
+                  python_layer_version: 30,
+                },
+                priority: 1,
+                rule_filters: [
+                  {
+                    key: "env",
+                    values: ["prod"],
+                    allow: true,
+                    filter_type: "tag",
+                  },
+                  {
+                    key: "functionname",
+                    values: ["hello-world"],
+                    allow: false,
+                    filter_type: "function_name",
+                  },
+                ],
+              }),
+            ),
+          },
+        ],
+      },
+    });
+    expect(configs.length).toBe(1);
+    expect(configs[0].configVersion).toBe(1);
+    expect(configs[0].entityType).toBe("lambda");
+    expect(configs[0].extensionVersion).toBe(10);
+    expect(configs[0].nodeLayerVersion).toBe(20);
+    expect(configs[0].pythonLayerVersion).toBe(30);
+    expect(configs[0].priority).toBe(1);
+    expect(configs[0].ruleFilters.length).toBe(2);
   });
 });

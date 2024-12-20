@@ -1,5 +1,4 @@
-const LAMBDA_EVENT = "LambdaEvent";
-exports.LAMBDA_EVENT = LAMBDA_EVENT;
+const { LAMBDA_EVENT } = require("./consts");
 
 class Logger {
   logInstrumentOutcome(
@@ -10,7 +9,7 @@ class Logger {
     expectedExtensionVersion = null,
     runtime = null,
     reason = null,
-    reasonCode = null
+    reasonCode = null,
   ) {
     console.log(
       JSON.stringify({
@@ -22,50 +21,38 @@ class Logger {
         runtime,
         reason,
         reasonCode,
-      })
+      }),
     );
   }
 
-  emitFrontEndEvent(ddSlsEventName, triggeredBy, instrumentOutcome, config) {
-    // emit REMOTE_INSTRUMENTATION_STARTED and REMOTE_INSTRUMENTATION_ENDED event
+  // Emit events for the frontend to use to display instrumentation statuses RemoteInstrumentationStarted and RemoteInstrumentationEnded.
+  // Used for both lambda management and scheduled instrumentation events.
+  emitFrontEndEvent(ddSlsEventName, triggeredBy, instrumentOutcome, configs) {
     console.log(
       JSON.stringify({
         ddSlsEventName,
         triggeredBy,
         outcome: instrumentOutcome,
-        allowList: config?.AllowList,
-        denyList: config?.DenyList,
-        tagRule: config?.TagRule,
-      })
+        config: JSON.stringify(configs),
+      }),
     );
   }
 
-  frontendLambdaEvents(outcome, targetFunctionName, message = null) {
-    // all for LAMBDA_EVENT
+  // Emit events for the frontend to use to display instrumentation status.
+  // Used for lambda management events.
+  frontendLambdaEvents(status, targetFunctionName, message = null) {
     console.log(
       JSON.stringify({
         ddSlsEventName: LAMBDA_EVENT,
-        outcome,
+        status,
         targetFunctionName: targetFunctionName,
         message,
-      })
-    );
-  }
-
-  debugLogs(ddSlsEventName, outcome, targetFunctionName, message = null) {
-    console.log(
-      JSON.stringify({
-        ddSlsEventName,
-        outcome,
-        targetFunctionName: targetFunctionName,
-        message,
-      })
+      }),
     );
   }
 
   logObject(event) {
-    // For logging lambda payload and configs
     console.log(JSON.stringify(event));
   }
 }
-exports.Logger = Logger;
+exports.logger = new Logger();
