@@ -307,16 +307,16 @@ function needsInstrumentationUpdate(
         reason: reason,
         reasonCode: NOT_SATISFYING_TARGETING_RULES,
       };
-      logger.logInstrumentOutcome(
-        INSTRUMENT,
-        SKIPPED,
-        functionName,
-        functionArn,
-        null,
-        runtime,
-        reason,
-        NOT_SATISFYING_TARGETING_RULES,
-      );
+
+      logger.logInstrumentOutcome({
+        ddSlsEventName: INSTRUMENT,
+        outcome: SKIPPED,
+        targetFunctionName: functionName,
+        targetFunctionArn: functionArn,
+        runtime: runtime,
+        reason: reason,
+        reasonCode: NOT_SATISFYING_TARGETING_RULES,
+      });
       return {
         instrument: false,
         uninstrument: false,
@@ -356,16 +356,15 @@ function needsInstrumentationUpdate(
       reason: reason,
       reasonCode: REMOTE_INSTRUMENTER_FUNCTION,
     };
-    logger.logInstrumentOutcome(
-      INSTRUMENT,
-      SKIPPED,
-      functionName,
-      functionArn,
-      null,
-      runtime,
-      reason,
-      REMOTE_INSTRUMENTER_FUNCTION,
-    );
+    logger.logInstrumentOutcome({
+      ddSlsEventName: INSTRUMENT,
+      outcome: SKIPPED,
+      targetFunctionName: functionName,
+      targetFunctionArn: functionArn,
+      runtime: runtime,
+      reason: reason,
+      reasonCode: REMOTE_INSTRUMENTER_FUNCTION,
+    });
     return { instrument: false, uninstrument: false, tag: false, untag: false };
   }
 
@@ -385,16 +384,15 @@ function needsInstrumentationUpdate(
       reason: reason,
       reasonCode: INSUFFICIENT_MEMORY,
     };
-    logger.logInstrumentOutcome(
-      INSTRUMENT,
-      SKIPPED,
-      functionName,
-      functionArn,
-      null,
-      runtime,
-      reason,
-      INSUFFICIENT_MEMORY,
-    );
+    logger.logInstrumentOutcome({
+      ddSlsEventName: INSTRUMENT,
+      outcome: SKIPPED,
+      targetFunctionName: functionName,
+      targetFunctionArn: functionArn,
+      runtime: runtime,
+      reason: reason,
+      reasonCode: INSUFFICIENT_MEMORY,
+    });
     return { instrument: false, uninstrument: false, tag: false, untag: false };
   }
 
@@ -420,16 +418,15 @@ function needsInstrumentationUpdate(
       reason: reason,
       reasonCode: UNSUPPORTED_RUNTIME,
     };
-    logger.logInstrumentOutcome(
-      INSTRUMENT,
-      SKIPPED,
-      functionName,
-      functionArn,
-      null,
-      runtime,
-      reason,
-      UNSUPPORTED_RUNTIME,
-    );
+    logger.logInstrumentOutcome({
+      ddSlsEventName: INSTRUMENT,
+      outcome: SKIPPED,
+      targetFunctionName: functionName,
+      targetFunctionArn: functionArn,
+      runtime: runtime,
+      reason: reason,
+      reasonCode: UNSUPPORTED_RUNTIME,
+    });
     return { instrument: false, uninstrument: false, tag: false, untag: false };
   }
 
@@ -444,16 +441,15 @@ function needsInstrumentationUpdate(
       );
     }
     const reason = `Function '${functionName}' is already instrumented with correct extension and tracer layer versions.`;
-    logger.logInstrumentOutcome(
-      INSTRUMENT,
-      SKIPPED,
-      functionName,
-      functionArn,
-      config.extensionVersion,
-      runtime,
-      reason,
-      ALREADY_CORRECT_EXTENSION_AND_LAYER,
-    );
+    logger.logInstrumentOutcome({
+      ddSlsEventName: INSTRUMENT,
+      outcome: SKIPPED,
+      targetFunctionName: functionName,
+      targetFunctionArn: functionArn,
+      runtime: runtime,
+      reason: reason,
+      reasonCode: ALREADY_CORRECT_EXTENSION_AND_LAYER,
+    });
     instrumentOutcome.instrument.skipped[functionName] = {
       functionArn,
       reason: reason,

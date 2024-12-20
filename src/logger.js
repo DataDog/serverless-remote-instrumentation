@@ -1,7 +1,7 @@
 const { LAMBDA_EVENT } = require("./consts");
 
 class Logger {
-  logInstrumentOutcome(
+  logInstrumentOutcome({
     ddSlsEventName,
     outcome,
     targetFunctionName = null,
@@ -10,13 +10,13 @@ class Logger {
     runtime = null,
     reason = null,
     reasonCode = null,
-  ) {
+  }) {
     console.log(
       JSON.stringify({
         ddSlsEventName,
         outcome,
-        targetFunctionName: targetFunctionName,
-        targetFunctionArn: targetFunctionArn,
+        targetFunctionName,
+        targetFunctionArn,
         expectedExtensionVersion,
         runtime,
         reason,

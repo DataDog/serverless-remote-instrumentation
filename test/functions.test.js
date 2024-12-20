@@ -12,14 +12,14 @@ const {
 } = require("../src/consts");
 
 // Creates a test config object
-function testConfig(
+function createTestConfig({
   entityType,
   extensionVersion,
   nodeLayerVersion,
   pythonLayerVersion,
   priority,
   ruleFilters,
-) {
+}) {
   return {
     configVersion: 1,
     entityType: entityType,
@@ -34,14 +34,14 @@ function testConfig(
 }
 
 // Creates a test lambda function object
-function testLambdaFunction(
+function createTestLambdaFunction({
   functionName,
   functionArn,
   memorySize,
   runtime,
   tags,
   layers,
-) {
+}) {
   return {
     FunctionName: functionName,
     FunctionArn: functionArn,
@@ -258,7 +258,14 @@ describe("isCorrectlyInstrumented", () => {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Node:2",
             },
           ],
-          testConfig("lambda", 1, 2, 3, 1, []),
+          createTestConfig({
+            entityType: "lambda",
+            extensionVersion: 1,
+            nodeLayerVersion: 2,
+            pythonLayerVersion: 3,
+            priority: 1,
+            ruleFilters: [],
+          }),
           "nodejs14.x",
         ),
       ).toBe(true);
@@ -274,7 +281,14 @@ describe("isCorrectlyInstrumented", () => {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Node:5",
             },
           ],
-          testConfig("lambda", 1, 2, 3, 1, []),
+          createTestConfig({
+            entityType: "lambda",
+            extensionVersion: 1,
+            nodeLayerVersion: 2,
+            pythonLayerVersion: 3,
+            priority: 1,
+            ruleFilters: [],
+          }),
           "nodejs14.x",
         ),
       ).toBe(false);
@@ -287,7 +301,14 @@ describe("isCorrectlyInstrumented", () => {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Extension:1",
             },
           ],
-          testConfig("lambda", 1, 2, 3, 1, []),
+          createTestConfig({
+            entityType: "lambda",
+            extensionVersion: 1,
+            nodeLayerVersion: 2,
+            pythonLayerVersion: 3,
+            priority: 1,
+            ruleFilters: [],
+          }),
           "nodejs14.x",
         ),
       ).toBe(false);
@@ -303,7 +324,14 @@ describe("isCorrectlyInstrumented", () => {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Python:5",
             },
           ],
-          testConfig("lambda", 1, 2, 3, 1, []),
+          createTestConfig({
+            entityType: "lambda",
+            extensionVersion: 1,
+            nodeLayerVersion: 2,
+            pythonLayerVersion: 3,
+            priority: 1,
+            ruleFilters: [],
+          }),
           "python3.8",
         ),
       ).toBe(false);
@@ -316,7 +344,14 @@ describe("isCorrectlyInstrumented", () => {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Extension:1",
             },
           ],
-          testConfig("lambda", 1, 2, 3, 1, []),
+          createTestConfig({
+            entityType: "lambda",
+            extensionVersion: 1,
+            nodeLayerVersion: 2,
+            pythonLayerVersion: 3,
+            priority: 1,
+            ruleFilters: [],
+          }),
           "python3.8",
         ),
       ).toBe(false);
@@ -332,7 +367,14 @@ describe("isCorrectlyInstrumented", () => {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Node:2",
             },
           ],
-          testConfig("lambda", 1, 2, 3, 1, []),
+          createTestConfig({
+            entityType: "lambda",
+            extensionVersion: 1,
+            nodeLayerVersion: 2,
+            pythonLayerVersion: 3,
+            priority: 1,
+            ruleFilters: [],
+          }),
           "nodejs14.x",
         ),
       ).toBe(false);
@@ -345,7 +387,14 @@ describe("isCorrectlyInstrumented", () => {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Node:2",
             },
           ],
-          testConfig("lambda", 1, 2, 3, 1, []),
+          createTestConfig({
+            entityType: "lambda",
+            extensionVersion: 1,
+            nodeLayerVersion: 2,
+            pythonLayerVersion: 3,
+            priority: 1,
+            ruleFilters: [],
+          }),
           "nodejs14.x",
         ),
       ).toBe(false);
@@ -360,7 +409,14 @@ describe("isCorrectlyInstrumented", () => {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Node:2",
             },
           ],
-          testConfig("lambda", undefined, 2, 3, 1, []),
+          createTestConfig({
+            entityType: "lambda",
+            extensionVersion: undefined,
+            nodeLayerVersion: 2,
+            pythonLayerVersion: 3,
+            priority: 1,
+            ruleFilters: [],
+          }),
           "nodejs14.x",
         ),
       ).toBe(true);
@@ -376,7 +432,14 @@ describe("isCorrectlyInstrumented", () => {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Node:2",
             },
           ],
-          testConfig("lambda", undefined, 2, 3, 1, []),
+          createTestConfig({
+            entityType: "lambda",
+            extensionVersion: undefined,
+            nodeLayerVersion: 2,
+            pythonLayerVersion: 3,
+            priority: 1,
+            ruleFilters: [],
+          }),
           "nodejs14.x",
         ),
       ).toBe(false);
@@ -389,7 +452,14 @@ describe("isCorrectlyInstrumented", () => {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Node:5",
             },
           ],
-          testConfig("lambda", undefined, 2, 3, 1, []),
+          createTestConfig({
+            entityType: "lambda",
+            extensionVersion: undefined,
+            nodeLayerVersion: 2,
+            pythonLayerVersion: 3,
+            priority: 1,
+            ruleFilters: [],
+          }),
           "nodejs14.x",
         ),
       ).toBe(false);
@@ -398,7 +468,14 @@ describe("isCorrectlyInstrumented", () => {
       expect(
         isCorrectlyInstrumented(
           [],
-          testConfig("lambda", undefined, 2, 3, 1, []),
+          createTestConfig({
+            entityType: "lambda",
+            extensionVersion: undefined,
+            nodeLayerVersion: 2,
+            pythonLayerVersion: 3,
+            priority: 1,
+            ruleFilters: [],
+          }),
           "nodejs14.x",
         ),
       ).toBe(false);
@@ -411,8 +488,15 @@ describe("isCorrectlyInstrumented", () => {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Python:5",
             },
           ],
-          testConfig("lambda", undefined, 2, 3, 1, []),
-          "python3.8",
+          createTestConfig({
+            entityType: "lambda",
+            extensionVersion: undefined,
+            nodeLayerVersion: 2,
+            pythonLayerVersion: 3,
+            priority: 1,
+            ruleFilters: [],
+          }),
+          "nodejs14.x",
         ),
       ).toBe(false);
     });
@@ -420,8 +504,15 @@ describe("isCorrectlyInstrumented", () => {
       expect(
         isCorrectlyInstrumented(
           [],
-          testConfig("lambda", undefined, 2, 3, 1, []),
-          "python3.8",
+          createTestConfig({
+            entityType: "lambda",
+            extensionVersion: undefined,
+            nodeLayerVersion: 2,
+            pythonLayerVersion: 3,
+            priority: 1,
+            ruleFilters: [],
+          }),
+          "nodejs14.x",
         ),
       ).toBe(false);
     });
@@ -435,7 +526,14 @@ describe("isCorrectlyInstrumented", () => {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Extension:1",
             },
           ],
-          testConfig("lambda", 1, undefined, undefined, 1, []),
+          createTestConfig({
+            entityType: "lambda",
+            extensionVersion: 1,
+            nodeLayerVersion: undefined,
+            pythonLayerVersion: undefined,
+            priority: 1,
+            ruleFilters: [],
+          }),
           "nodejs14.x",
         ),
       ).toBe(true);
@@ -451,7 +549,15 @@ describe("isCorrectlyInstrumented", () => {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Node:2",
             },
           ],
-          testConfig("lambda", 1, undefined, undefined, 1, []),
+          createTestConfig({
+            entityType: "lambda",
+            extensionVersion: 1,
+            nodeLayerVersion: undefined,
+            pythonLayerVersion: undefined,
+            priority: 1,
+            ruleFilters: [],
+          }),
+
           "nodejs14.x",
         ),
       ).toBe(false);
@@ -467,7 +573,15 @@ describe("isCorrectlyInstrumented", () => {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Python:2",
             },
           ],
-          testConfig("lambda", 1, undefined, undefined, 1, []),
+          createTestConfig({
+            entityType: "lambda",
+            extensionVersion: 1,
+            nodeLayerVersion: undefined,
+            pythonLayerVersion: undefined,
+            priority: 1,
+            ruleFilters: [],
+          }),
+
           "python3.8",
         ),
       ).toBe(false);
@@ -480,7 +594,15 @@ describe("isCorrectlyInstrumented", () => {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Extension:3",
             },
           ],
-          testConfig("lambda", 1, undefined, undefined, 1, []),
+          createTestConfig({
+            entityType: "lambda",
+            extensionVersion: 1,
+            nodeLayerVersion: undefined,
+            pythonLayerVersion: undefined,
+            priority: 1,
+            ruleFilters: [],
+          }),
+
           "nodejs14.x",
         ),
       ).toBe(false);
@@ -489,7 +611,15 @@ describe("isCorrectlyInstrumented", () => {
       expect(
         isCorrectlyInstrumented(
           [],
-          testConfig("lambda", 1, undefined, undefined, 1, []),
+          createTestConfig({
+            entityType: "lambda",
+            extensionVersion: 1,
+            nodeLayerVersion: undefined,
+            pythonLayerVersion: undefined,
+            priority: 1,
+            ruleFilters: [],
+          }),
+
           "nodejs14.x",
         ),
       ).toBe(false);
@@ -500,7 +630,14 @@ describe("isCorrectlyInstrumented", () => {
       expect(
         isCorrectlyInstrumented(
           [],
-          testConfig("lambda", undefined, undefined, undefined, 1, []),
+          createTestConfig({
+            entityType: "lambda",
+            extensionVersion: undefined,
+            nodeLayerVersion: undefined,
+            pythonLayerVersion: undefined,
+            priority: 1,
+            ruleFilters: [],
+          }),
           "nodejs14.x",
         ),
       ).toBe(true);
@@ -513,7 +650,14 @@ describe("isCorrectlyInstrumented", () => {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Node:2",
             },
           ],
-          testConfig("lambda", undefined, undefined, undefined, 1, []),
+          createTestConfig({
+            entityType: "lambda",
+            extensionVersion: undefined,
+            nodeLayerVersion: undefined,
+            pythonLayerVersion: undefined,
+            priority: 1,
+            ruleFilters: [],
+          }),
           "nodejs14.x",
         ),
       ).toBe(false);
@@ -526,7 +670,14 @@ describe("isCorrectlyInstrumented", () => {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Python:2",
             },
           ],
-          testConfig("lambda", undefined, undefined, undefined, 1, []),
+          createTestConfig({
+            entityType: "lambda",
+            extensionVersion: undefined,
+            nodeLayerVersion: undefined,
+            pythonLayerVersion: undefined,
+            priority: 1,
+            ruleFilters: [],
+          }),
           "python3.8",
         ),
       ).toBe(false);
@@ -539,7 +690,14 @@ describe("isCorrectlyInstrumented", () => {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Extension:1",
             },
           ],
-          testConfig("lambda", undefined, undefined, undefined, 1, []),
+          createTestConfig({
+            entityType: "lambda",
+            extensionVersion: undefined,
+            nodeLayerVersion: undefined,
+            pythonLayerVersion: undefined,
+            priority: 1,
+            ruleFilters: [],
+          }),
           "nodejs14.x",
         ),
       ).toBe(false);
@@ -554,15 +712,22 @@ describe("needsInstrumentationUpdate", () => {
   };
   describe("When targeting rules are not satisfied", () => {
     test("not instrumented function should not be changed", () => {
-      const lambdaFunc = testLambdaFunction(
-        "functionA",
-        "arn:aws:lambda:us-east-1:123456789012:function:functionA",
-        512,
-        "nodejs14.x",
-        new Set(),
-        [],
-      );
-      const config = testConfig("lambda", 1, 1, 1, 1, []);
+      const lambdaFunc = createTestLambdaFunction({
+        functionName: "functionA",
+        functionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionA",
+        memorySize: 512,
+        runtime: "nodejs14.x",
+        tags: new Set(),
+        layers: [],
+      });
+      const config = createTestConfig({
+        entityType: "lambda",
+        extensionVersion: 1,
+        nodeLayerVersion: 1,
+        pythonLayerVersion: 1,
+        priority: 1,
+        ruleFilters: [],
+      });
       const { instrument, uninstrument, tag, untag } =
         needsInstrumentationUpdate(lambdaFunc, config, instrumentOutcome);
       expect(instrument).toBe(false);
@@ -571,15 +736,23 @@ describe("needsInstrumentationUpdate", () => {
       expect(untag).toBe(false);
     });
     test("instrumented function should be uninstrumented and untagged", () => {
-      const lambdaFunc = testLambdaFunction(
-        "functionA",
-        "arn:aws:lambda:us-east-1:123456789012:function:functionA",
-        512,
-        "nodejs14.x",
-        new Set([DD_SLS_REMOTE_INSTRUMENTER_VERSION + ":" + VERSION]),
-        [],
-      );
-      const config = testConfig("lambda", 1, 1, 1, 1, []);
+      const lambdaFunc = createTestLambdaFunction({
+        functionName: "functionA",
+        functionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionA",
+        memorySize: 512,
+        runtime: "nodejs14.x",
+        tags: new Set([DD_SLS_REMOTE_INSTRUMENTER_VERSION + ":" + VERSION]),
+        layers: [],
+      });
+      const config = createTestConfig({
+        entityType: "lambda",
+        extensionVersion: 1,
+        nodeLayerVersion: 1,
+        pythonLayerVersion: 1,
+        priority: 1,
+        ruleFilters: [],
+      });
+
       const { instrument, uninstrument, tag, untag } =
         needsInstrumentationUpdate(lambdaFunc, config, instrumentOutcome);
       expect(instrument).toBe(false);
@@ -590,14 +763,15 @@ describe("needsInstrumentationUpdate", () => {
   });
   describe("When it's the remote instrumenter lambda", () => {
     test("function should not be changed", () => {
-      const lambdaFunc = testLambdaFunction(
-        "datadog-remote-instrumenter",
-        "arn:aws:lambda:us-east-1:123456789012:function:datadog-remote-instrumenter",
-        512,
-        "nodejs14.x",
-        new Set(["foo:bar"]),
-        [],
-      );
+      const lambdaFunc = createTestLambdaFunction({
+        functionName: "datadog-remote-instrumenter",
+        functionArn:
+          "arn:aws:lambda:us-east-1:123456789012:function:datadog-remote-instrumenter",
+        memorySize: 512,
+        runtime: "nodejs14.x",
+        tags: new Set(["foo:bar"]),
+        layers: [],
+      });
       const ruleFilters = [
         {
           key: "foo",
@@ -606,7 +780,14 @@ describe("needsInstrumentationUpdate", () => {
           filterType: "tag",
         },
       ];
-      const config = testConfig("lambda", 1, 1, 1, 1, ruleFilters);
+      const config = createTestConfig({
+        entityType: "lambda",
+        extensionVersion: 1,
+        nodeLayerVersion: 1,
+        pythonLayerVersion: 1,
+        priority: 1,
+        ruleFilters: ruleFilters,
+      });
       const { instrument, uninstrument, tag, untag } =
         needsInstrumentationUpdate(lambdaFunc, config, instrumentOutcome);
       expect(instrument).toBe(false);
@@ -617,14 +798,14 @@ describe("needsInstrumentationUpdate", () => {
   });
   describe("When the memory size is below the minimum", () => {
     test("function should not be changed", () => {
-      const lambdaFunc = testLambdaFunction(
-        "functionA",
-        "arn:aws:lambda:us-east-1:123456789012:function:functionA",
-        128,
-        "nodejs14.x",
-        new Set(["foo:bar"]),
-        [],
-      );
+      const lambdaFunc = createTestLambdaFunction({
+        functionName: "functionA",
+        functionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionA",
+        memorySize: 128,
+        runtime: "nodejs14.x",
+        tags: new Set(["foo:bar"]),
+        layers: [],
+      });
       const ruleFilters = [
         {
           key: "foo",
@@ -633,7 +814,14 @@ describe("needsInstrumentationUpdate", () => {
           filterType: "tag",
         },
       ];
-      const config = testConfig("lambda", 1, 1, 1, 1, ruleFilters);
+      const config = createTestConfig({
+        entityType: "lambda",
+        extensionVersion: 1,
+        nodeLayerVersion: 1,
+        pythonLayerVersion: 1,
+        priority: 1,
+        ruleFilters: ruleFilters,
+      });
       const { instrument, uninstrument, tag, untag } =
         needsInstrumentationUpdate(lambdaFunc, config, instrumentOutcome);
       expect(instrument).toBe(false);
@@ -644,14 +832,14 @@ describe("needsInstrumentationUpdate", () => {
   });
   describe("When the function has an unsupported runtime", () => {
     test("function should not be changed", () => {
-      const lambdaFunc = testLambdaFunction(
-        "functionA",
-        "arn:aws:lambda:us-east-1:123456789012:function:functionA",
-        512,
-        "go1.x",
-        new Set(["foo:bar"]),
-        [],
-      );
+      const lambdaFunc = createTestLambdaFunction({
+        functionName: "functionA",
+        functionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionA",
+        memorySize: 512,
+        runtime: "go1.x",
+        tags: new Set(["foo:bar"]),
+        layers: [],
+      });
       const ruleFilters = [
         {
           key: "foo",
@@ -660,7 +848,14 @@ describe("needsInstrumentationUpdate", () => {
           filterType: "tag",
         },
       ];
-      const config = testConfig("lambda", 1, 1, 1, 1, ruleFilters);
+      const config = createTestConfig({
+        entityType: "lambda",
+        extensionVersion: 1,
+        nodeLayerVersion: 1,
+        pythonLayerVersion: 1,
+        priority: 1,
+        ruleFilters: ruleFilters,
+      });
       const { instrument, uninstrument, tag, untag } =
         needsInstrumentationUpdate(lambdaFunc, config, instrumentOutcome);
       expect(instrument).toBe(false);
@@ -679,14 +874,14 @@ describe("needsInstrumentationUpdate", () => {
           Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Extension:1",
         },
       ];
-      const lambdaFunc = testLambdaFunction(
-        "functionA",
-        "arn:aws:lambda:us-east-1:123456789012:function:functionA",
-        512,
-        "nodejs14.x",
-        new Set(["foo:bar"]),
-        layers,
-      );
+      const lambdaFunc = createTestLambdaFunction({
+        functionName: "functionA",
+        functionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionA",
+        memorySize: 512,
+        runtime: "nodejs14.x",
+        tags: new Set(["foo:bar"]),
+        layers: layers,
+      });
       const ruleFilters = [
         {
           key: "foo",
@@ -695,7 +890,14 @@ describe("needsInstrumentationUpdate", () => {
           filterType: "tag",
         },
       ];
-      const config = testConfig("lambda", 1, 1, 1, 1, ruleFilters);
+      const config = createTestConfig({
+        entityType: "lambda",
+        extensionVersion: 1,
+        nodeLayerVersion: 1,
+        pythonLayerVersion: 1,
+        priority: 1,
+        ruleFilters: ruleFilters,
+      });
       const { instrument, uninstrument, tag, untag } =
         needsInstrumentationUpdate(lambdaFunc, config, instrumentOutcome);
       expect(instrument).toBe(false);
@@ -712,17 +914,17 @@ describe("needsInstrumentationUpdate", () => {
           Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Extension:1",
         },
       ];
-      const lambdaFunc = testLambdaFunction(
-        "functionA",
-        "arn:aws:lambda:us-east-1:123456789012:function:functionA",
-        512,
-        "nodejs14.x",
-        new Set([
+      const lambdaFunc = createTestLambdaFunction({
+        functionName: "functionA",
+        functionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionA",
+        memorySize: 512,
+        runtime: "nodejs14.x",
+        tags: new Set([
           "foo:bar",
           DD_SLS_REMOTE_INSTRUMENTER_VERSION + ":" + VERSION,
         ]),
-        layers,
-      );
+        layers: layers,
+      });
       const ruleFilters = [
         {
           key: "foo",
@@ -731,7 +933,14 @@ describe("needsInstrumentationUpdate", () => {
           filterType: "tag",
         },
       ];
-      const config = testConfig("lambda", 1, 1, 1, 1, ruleFilters);
+      const config = createTestConfig({
+        entityType: "lambda",
+        extensionVersion: 1,
+        nodeLayerVersion: 1,
+        pythonLayerVersion: 1,
+        priority: 1,
+        ruleFilters: ruleFilters,
+      });
       const { instrument, uninstrument, tag, untag } =
         needsInstrumentationUpdate(lambdaFunc, config, instrumentOutcome);
       expect(instrument).toBe(false);
@@ -750,14 +959,14 @@ describe("needsInstrumentationUpdate", () => {
           Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Extension:3",
         },
       ];
-      const lambdaFunc = testLambdaFunction(
-        "functionA",
-        "arn:aws:lambda:us-east-1:123456789012:function:functionA",
-        512,
-        "nodejs14.x",
-        new Set(["foo:bar"]),
-        layers,
-      );
+      const lambdaFunc = createTestLambdaFunction({
+        functionName: "functionA",
+        functionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionA",
+        memorySize: 512,
+        runtime: "nodejs14.x",
+        tags: new Set(["foo:bar"]),
+        layers: layers,
+      });
       const ruleFilters = [
         {
           key: "foo",
@@ -766,7 +975,14 @@ describe("needsInstrumentationUpdate", () => {
           filterType: "tag",
         },
       ];
-      const config = testConfig("lambda", 1, 1, 1, 1, ruleFilters);
+      const config = createTestConfig({
+        entityType: "lambda",
+        extensionVersion: 1,
+        nodeLayerVersion: 1,
+        pythonLayerVersion: 1,
+        priority: 1,
+        ruleFilters: ruleFilters,
+      });
       const { instrument, uninstrument, tag, untag } =
         needsInstrumentationUpdate(lambdaFunc, config, instrumentOutcome);
       expect(instrument).toBe(true);
@@ -781,35 +997,38 @@ describe("filterFunctionsToChangeInstrumentation", () => {
   test("should return functions to instrument, uninstrument, tag, and untag", () => {
     const functionsToCheck = [
       // Function A should be instrumented and tagged
-      testLambdaFunction(
-        "functionA",
-        "arn:aws:lambda:us-east-1:123456789012:function:functionA",
-        512,
-        "nodejs14.x",
-        new Set(["foo:bar"]),
-        [],
-      ),
+      createTestLambdaFunction({
+        functionName: "functionA",
+        functionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionA",
+        memorySize: 512,
+        runtime: "nodejs14.x",
+        tags: new Set(["foo:bar"]),
+        layers: [],
+      }),
       // Function B should be uninstrumented and untagged
-      testLambdaFunction(
-        "functionB",
-        "arn:aws:lambda:us-east-1:123456789012:function:functionB",
-        512,
-        "nodejs14.x",
-        new Set([
+      createTestLambdaFunction({
+        functionName: "functionB",
+        functionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionB",
+        memorySize: 512,
+        runtime: "nodejs14.x",
+        tags: new Set([
           "foo:baz",
           DD_SLS_REMOTE_INSTRUMENTER_VERSION + ":" + VERSION,
         ]),
-        [],
-      ),
+        layers: [],
+      }),
     ];
-    const config = testConfig("lambda", 1, 1, 1, 1, [
-      {
-        key: "foo",
-        values: ["bar"],
-        allow: true,
-        filterType: "tag",
-      },
-    ]);
+
+    const config = createTestConfig({
+      entityType: "lambda",
+      extensionVersion: 1,
+      nodeLayerVersion: 1,
+      pythonLayerVersion: 1,
+      priority: 1,
+      ruleFilters: [
+        { key: "foo", values: ["bar"], allow: true, filterType: "tag" },
+      ],
+    });
     const instrumentOutcome = {
       instrument: { succeeded: {}, failed: {}, skipped: {} },
       uninstrument: { succeeded: {}, failed: {}, skipped: {} },
