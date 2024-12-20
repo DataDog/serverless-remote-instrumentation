@@ -73,7 +73,7 @@ function shouldSkipEvent(event) {
   if (
     event.detail.requestParameters?.functionName === instrumenterFunctionName
   ) {
-    console.log(
+    logger.log(
       `Skipping Lambda event for remote instrumenter '${instrumenterFunctionName}'`,
     );
     return true;
@@ -105,7 +105,7 @@ exports.shouldSkipEvent = shouldSkipEvent;
 async function getFunctionFromLambdaEvent(lambdaClient, event) {
   // If it's not a supported event type, skip it
   if (shouldSkipEvent(event)) {
-    console.log(
+    logger.log(
       `Skipping event '${event.detail.eventName}' because it is not supported.`,
     );
     return;
@@ -127,7 +127,7 @@ async function getFunctionFromLambdaEvent(lambdaClient, event) {
     tagKeys.delete(DD_SLS_REMOTE_INSTRUMENTER_VERSION);
     tagKeys.delete(DD_SLS_REMOTE_INSTRUMENTER_CHECK);
     if (tagKeys.size === 0) {
-      console.log(
+      logger.log(
         `Skipping event '${event.detail.eventName}' because the modified tags are caused by the remote instrumenter.`,
       );
       return;

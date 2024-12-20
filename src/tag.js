@@ -3,8 +3,10 @@ const {
   UntagResourcesCommand,
 } = require("@aws-sdk/client-resource-groups-tagging-api");
 const { DD_SLS_REMOTE_INSTRUMENTER_VERSION, VERSION } = require("./consts");
+const { logger } = require("./logger");
+
 async function tagResourcesWithSlsTag(client, functionArns) {
-  console.log(
+  logger.log(
     `Tagging function ARNs '${functionArns}' with tag '${DD_SLS_REMOTE_INSTRUMENTER_VERSION}'`,
   );
   if (functionArns.length === 0) {
@@ -24,7 +26,7 @@ async function tagResourcesWithSlsTag(client, functionArns) {
 exports.tagResourcesWithSlsTag = tagResourcesWithSlsTag;
 
 async function untagResourcesOfSlsTag(client, functionArns) {
-  console.log(
+  logger.log(
     `Removing tag '${DD_SLS_REMOTE_INSTRUMENTER_VERSION}' from function ARNs '${functionArns}'`,
   );
   if (functionArns.length === 0) {

@@ -35,7 +35,7 @@ async function instrumentWithDatadogCi(
   operatedFunctionArns,
   instrumentOutcome,
 ) {
-  console.log(
+  logger.log(
     `instrumentWithDatadogCi, functionArns: ${operatedFunctionArns} , instrument: ${instrument}`,
   );
 
@@ -71,7 +71,7 @@ async function instrumentWithDatadogCi(
     runtime,
   );
 
-  console.log(`Sending datadog-ci command: ${JSON.stringify(command)}`);
+  logger.log(`Sending datadog-ci command: ${JSON.stringify(command)}`);
 
   const commandExitCode = await cli.run(command);
   const outcome = commandExitCode === 0 ? SUCCEEDED : FAILED;
@@ -91,7 +91,7 @@ async function instrumentWithDatadogCi(
   }
   if (commandExitCode === 0) {
     operatedFunctionArns.push(functionArn);
-    console.log(
+    logger.log(
       `${operationName}ed function ARNs '${JSON.stringify(operatedFunctionArns)}'`,
     );
   }
@@ -115,16 +115,16 @@ async function instrumentFunctions(
       config,
       instrumentOutcome,
     );
-    console.log(
+    logger.log(
       `Functions to instrument: ${functionsToInstrument.map((f) => f.FunctionName)}`,
     );
-    console.log(
+    logger.log(
       `Functions to uninstrument: ${functionsToUninstrument.map((f) => f.FunctionName)}`,
     );
-    console.log(
+    logger.log(
       `Functions to tag: ${functionsToTag.map((f) => f.FunctionName)}`,
     );
-    console.log(
+    logger.log(
       `Functions to untag: ${functionsToUntag.map((f) => f.FunctionName)}`,
     );
 
