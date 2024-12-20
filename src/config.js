@@ -1,12 +1,17 @@
 const axios = require("axios");
+const { logger } = require("./logger");
+const {
+  GetObjectCommand,
+  PutObjectCommand,
+  NoSuchKey,
+  S3ServiceException,
+} = require("@aws-sdk/client-s3");
+const crypto = require("crypto");
+const { ENTITY_TYPES, FILTER_TYPES } = require("./consts");
 
 const REMOTE_CONFIG_PRODUCT = "SERVERLESS_REMOTE_INSTRUMENTATION";
 const REMOTE_CONFIG_URL = "http://localhost:8126/v0.7/config";
 
-const ENTITY_TYPES = new Set(["lambda"]);
-const FILTER_TYPES = new Set(["function_name", "tag"]);
-
-// RcConfig represents a serverless remote instrumentation configuration file
 class RcConfig {
   constructor(configJSON) {
     this.setConfigVersion(configJSON.config_version);
@@ -25,7 +30,8 @@ class RcConfig {
   }
 
   configurationError(message) {
-    return Error("Received invalid configuration: " + message);
+    console.error(message);
+    return Error(`Received invalid configuration: ${message}`);
   }
 
   setConfigVersion(configVersion) {
@@ -126,8 +132,8 @@ class RcConfig {
 }
 exports.RcConfig = RcConfig;
 
-exports.getConfigsFromRC = async function getConfigsFromRC(accountID, region) {
-  payload = {
+async function getConfigsFromRC(accountID, region) {
+  const payload = {
     client: {
       state: {
         root_version: 1,
@@ -162,7 +168,7 @@ exports.getConfigsFromRC = async function getConfigsFromRC(accountID, region) {
       throw new Error("Failed to retrieve configs");
     });
   return configs;
-};
+}
 
 function getConfigsFromResponse(response) {
   if (!response.data) {
@@ -170,66 +176,102 @@ function getConfigsFromResponse(response) {
   }
   const targetFiles = response.data.target_files ?? [];
   let parsedConfigFiles = [];
-  for (config of targetFiles) {
-    if (!config.raw) {
+  for (const targetFile of targetFiles) {
+    if (!targetFile.raw) {
+      throw new Error("Error retrieving raw data from configs");
+    }
+    try {
+      const rcConfig = new RcConfig(JSON.parse(atob(targetFile.raw)));
+      parsedConfigFiles.push(rcConfig);
+    } catch (e) {
       throw new Error("Error parsing configs");
     }
-
-    const rcConfig = new RcConfig(JSON.parse(atob(config.raw)));
-    parsedConfigFiles.push(rcConfig);
   }
   return parsedConfigFiles;
 }
+exports.getConfigsFromResponse = getConfigsFromResponse;
 
-// Adapt rule filters into the format currently used by the extension. This will be removed once the instrumenter
-// targeting logic is updated.
-exports.adaptToOldRuleFormat = function adaptToOldRuleFormat(rcConfigs) {
-  let legacyConfig = {
-    allowList: [],
-    denyList: [],
-    tagRule: [],
-    extensionVersion: undefined,
-    pythonLayerVersion: undefined,
-    nodeLayerVersion: undefined,
-  };
-  let rcConfig;
-  if (rcConfigs?.length) {
-    rcConfig = rcConfigs[0];
-  } else {
-    return legacyConfig;
+async function getConfigs(context) {
+  const awsAccountId = context.invokedFunctionArn.split(":")[4];
+  const awsRegion = process.env.AWS_REGION;
+  const instrumenterFunctionName = process.env.DD_INSTRUMENTER_FUNCTION_NAME;
+  const minimumMemorySize = process.env.DD_MinimumMemorySize;
+  const configsFromRC = await getConfigsFromRC(awsAccountId, awsRegion);
+  for (const config of configsFromRC) {
+    config.awsAccountId = awsAccountId;
+    config.awsRegion = awsRegion;
+    config.instrumenterFunctionName = instrumenterFunctionName;
+    config.minimumMemorySize = minimumMemorySize;
   }
-  legacyConfig.extensionVersion = rcConfig.extensionVersion;
-  legacyConfig.pythonLayerVersion = rcConfig.pythonLayerVersion;
-  legacyConfig.nodeLayerVersion = rcConfig.nodeLayerVersion;
+  logger.logObject({ ...configsFromRC, ...{ eventName: "getConfigs" } });
+  return configsFromRC;
+}
+exports.getConfigs = getConfigs;
 
-  const filters = rcConfig.ruleFilters ?? [];
-  for (filter of filters) {
-    if (filter.filterType === "function_name") {
-      if (filter.allow) {
-        for (value of filter.values) {
-          legacyConfig.allowList.push(value);
-        }
-      } else {
-        for (value of filter.values) {
-          legacyConfig.denyList.push(value);
-        }
-      }
-    } else if (filter.filterType === "tag") {
-      if (filter.allow) {
-        for (value of filter.values) {
-          legacyConfig.tagRule.push(filter.key + ":" + value);
-        }
-      }
+async function configHasChanged(client, configs) {
+  const newConfigHash = crypto
+    .createHash("sha256", "datadog-remote-instrumenter")
+    .update(JSON.stringify(configs))
+    .digest("hex");
+  const bucketName = process.env.DD_S3_BUCKET;
+  const key = "config.txt";
+  try {
+    const response = await client.send(
+      new GetObjectCommand({
+        Bucket: bucketName,
+        Key: key,
+      }),
+    );
+    const oldConfigHash = await response.Body.transformToString();
+    const configChanged = oldConfigHash !== newConfigHash;
+    console.log(
+      `Instrumentation configuration ${configChanged ? "has" : "has not"} changed since last scheduled invocation.`,
+    );
+    return configChanged;
+  } catch (caught) {
+    if (caught instanceof NoSuchKey) {
+      console.error(
+        `Error from S3 while getting object "${key}" from "${bucketName}". No such key exists.`,
+      );
+      return true;
+    } else if (caught instanceof S3ServiceException) {
+      console.error(
+        `Error from S3 while getting object from ${bucketName}.  ${caught.name}: ${caught.message}`,
+      );
+      return false;
+    } else {
+      console.error(caught.message);
+      throw caught;
     }
   }
+}
+exports.configHasChanged = configHasChanged;
 
-  if (
-    legacyConfig.tagRule.length === 0 &&
-    legacyConfig.allowList.length === 0 &&
-    legacyConfig.denyList.length === 0
-  ) {
-    legacyConfig.denyList = "*";
+async function updateConfigHash(client, configs) {
+  const newConfigHash = crypto
+    .createHash("sha256", "datadog-remote-instrumenter")
+    .update(JSON.stringify(configs))
+    .digest("hex");
+  const bucketName = process.env.DD_S3_BUCKET;
+  const key = "config.txt";
+  const command = new PutObjectCommand({
+    Bucket: bucketName,
+    Key: key,
+    Body: newConfigHash,
+  });
+
+  try {
+    await client.send(command);
+    console.log(`Updated config hash with new instrumentation config.`);
+  } catch (caught) {
+    if (caught instanceof S3ServiceException) {
+      console.error(
+        `Error from S3 while uploading object to ${bucketName}.  ${caught.name}: ${caught.message}`,
+      );
+    } else {
+      console.error(caught.message);
+      throw caught;
+    }
   }
-
-  return legacyConfig;
-};
+}
+exports.updateConfigHash = updateConfigHash;

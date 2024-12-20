@@ -116,6 +116,7 @@ Resources:
           DD_AWS_ACCOUNT_NUMBER: !Sub '${AWS::AccountId}'
           DD_MinimumMemorySize: !Ref MinimumMemorySize
           DD_INSTRUMENTER_FUNCTION_NAME: !Ref InstrumenterFunctionName
+          DD_S3_BUCKET: !Ref S3Bucket
           DD_REMOTE_CONFIGURATION_ENABLED: true
           DD_APM_ENABLED: true
       Tags:
@@ -171,9 +172,17 @@ Resources:
             Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*
           - Effect: Allow
             Action:
+              - s3:ListBucket
+              - s3:GetObject
+              - s3:PutObject
+            Resource:
+              - !Join ["", [!GetAtt S3Bucket.Arn, '*']]
+          - Effect: Allow
+            Action:
               - tag:GetResources
               - tag:TagResources
               - tag:UntagResources
+              - lambda:ListFunctions
             Resource: '*'
             Condition:
               ArnEquals:

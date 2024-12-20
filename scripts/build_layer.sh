@@ -9,7 +9,7 @@
 
 rm -rf node_modules
 rm -rf scripts/.layers
-yarn install
+yarn install --production
 mkdir -p scripts/.layers
 
 # nodejs is the designated directory specified in Lambda documentation
