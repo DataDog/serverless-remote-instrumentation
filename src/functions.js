@@ -182,7 +182,7 @@ function isRemoteInstrumenter(functionName, instrumenterName) {
 exports.isRemoteInstrumenter = isRemoteInstrumenter;
 
 function isBelowMinimumMemorySize(currentMemorySize, minimumMemorySize) {
-  return currentMemorySize < parseInt(minimumMemorySize);
+  return currentMemorySize < parseInt(minimumMemorySize, 10);
 }
 exports.isBelowMinimumMemorySize = isBelowMinimumMemorySize;
 
@@ -237,7 +237,10 @@ function isCorrectlyInstrumented(layers, config, targetLambdaRuntime) {
   let targetLambdaExtensionLayerVersion = -1;
   for (const layer of layers) {
     if (layer?.Arn?.includes("464622532012:layer:Datadog-Extension")) {
-      targetLambdaExtensionLayerVersion = parseInt(layer.Arn.split(":").at(-1));
+      targetLambdaExtensionLayerVersion = parseInt(
+        layer.Arn.split(":").at(-1),
+        10,
+      );
       break;
     }
   }
@@ -267,7 +270,7 @@ function isCorrectlyInstrumented(layers, config, targetLambdaRuntime) {
   for (const layer of layers) {
     logger.log(`Checking runtime layer: ${JSON.stringify(layer)}`);
     if (layer?.Arn?.includes(`464622532012:layer:${expectedLayerName}`)) {
-      return parseInt(layer.Arn.split(":").at(-1)) === expectedLayerVersion;
+      return parseInt(layer.Arn.split(":").at(-1), 10) === expectedLayerVersion;
     }
   }
 
