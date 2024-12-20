@@ -167,10 +167,8 @@ function satisfiesTargetingRules(functionName, functionTags, ruleFilters) {
         if (!ruleFilterFunctionNames.has(functionName)) {
           return false;
         }
-      } else {
-        if (ruleFilterFunctionNames.has(functionName)) {
-          return false;
-        }
+      } else if (ruleFilterFunctionNames.has(functionName)) {
+        return false;
       }
     }
   }

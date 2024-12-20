@@ -160,10 +160,10 @@ async function getConfigsFromRC(accountID, region) {
   let configs = [];
   await axios
     .post(REMOTE_CONFIG_URL, payload)
-    .then(function (response) {
+    .then(function handleResponse(response) {
       configs = getConfigsFromResponse(response);
     })
-    .catch(function (error) {
+    .catch(function handleError(error) {
       logger.log(error);
       throw new Error("Failed to retrieve configs");
     });
