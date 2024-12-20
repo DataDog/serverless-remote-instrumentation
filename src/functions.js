@@ -197,7 +197,7 @@ function filterFunctionsToChangeInstrumentation(
   const functionsToUninstrument = [];
   const functionsToTag = [];
   const functionsToUntag = [];
-  const emitProcessingLogs = functions.length == 1;
+  const emitProcessingLogs = functions.length === 1;
   for (const lambdaFunc of functions) {
     const { instrument, uninstrument, tag, untag } = needsInstrumentationUpdate(
       lambdaFunc,
