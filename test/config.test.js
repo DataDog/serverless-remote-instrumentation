@@ -2,7 +2,7 @@ const { RcConfig, getConfigsFromResponse } = require("../src/config");
 const { FILTER_TYPES } = require("../src/consts");
 
 describe("Config constructor", () => {
-  function constructTestJSON(
+  function constructTestJSON({
     configVersion,
     entityType,
     extensionVersion,
@@ -10,7 +10,7 @@ describe("Config constructor", () => {
     pythonLayerVersion,
     priority,
     ruleFilters,
-  ) {
+  }) {
     return {
       config_version: configVersion,
       entity_type: entityType,
@@ -25,20 +25,28 @@ describe("Config constructor", () => {
   }
 
   it("creates an RcConfig object out of well-formed JSON", () => {
-    const testJSON = constructTestJSON(1, "lambda", 10, 20, 30, 1, [
-      {
-        key: "env",
-        values: ["prod"],
-        allow: true,
-        filter_type: "tag",
-      },
-      {
-        key: "functionname",
-        values: ["hello-world"],
-        allow: false,
-        filter_type: "function_name",
-      },
-    ]);
+    const testJSON = constructTestJSON({
+      configVersion: 1,
+      entityType: "lambda",
+      extensionVersion: 10,
+      nodeLayerVersion: 20,
+      pythonLayerVersion: 30,
+      priority: 1,
+      ruleFilters: [
+        {
+          key: "env",
+          values: ["prod"],
+          allow: true,
+          filter_type: "tag",
+        },
+        {
+          key: "functionname",
+          values: ["hello-world"],
+          allow: false,
+          filter_type: "function_name",
+        },
+      ],
+    });
     const rcConfig = new RcConfig(testJSON);
     expect(rcConfig.configVersion).toBe(1);
     expect(rcConfig.entityType).toBe("lambda");
@@ -50,15 +58,15 @@ describe("Config constructor", () => {
   });
 
   it("creates an RcConfig object out of well-formed JSON with undefined versions", () => {
-    const testJSON = constructTestJSON(
-      1,
-      "lambda",
-      undefined,
-      undefined,
-      undefined,
-      1,
-      [],
-    );
+    const testJSON = constructTestJSON({
+      configVersion: 1,
+      entityType: "lambda",
+      extensionVersion: undefined,
+      nodeLayerVersion: undefined,
+      pythonLayerVersion: undefined,
+      priority: 1,
+      ruleFilters: [],
+    });
     const rcConfig = new RcConfig(testJSON);
     expect(rcConfig.configVersion).toBe(1);
     expect(rcConfig.entityType).toBe("lambda");
@@ -70,77 +78,149 @@ describe("Config constructor", () => {
   });
 
   it("rejects invalid config version", () => {
-    const testJSON = constructTestJSON("invalid", "lambda", 10, 20, 30, 1, []);
+    const testJSON = constructTestJSON({
+      configVersion: "invalid",
+      entityType: "lambda",
+      extensionVersion: 10,
+      nodeLayerVersion: 20,
+      pythonLayerVersion: 30,
+      priority: 1,
+      ruleFilters: [],
+    });
     expect(() => new RcConfig(testJSON)).toThrow(
       "Received invalid configuration: config version must be a number",
     );
   });
 
   it("rejects invalid entity type", () => {
-    const testJSON = constructTestJSON(1, "invalid", 10, 20, 30, 1, []);
+    const testJSON = constructTestJSON({
+      configVersion: 1,
+      entityType: "invalid",
+      extensionVersion: 10,
+      nodeLayerVersion: 20,
+      pythonLayerVersion: 30,
+      priority: 1,
+      ruleFilters: [],
+    });
     expect(() => new RcConfig(testJSON)).toThrow(
       "Received invalid configuration: entity type must be one of 'lambda'",
     );
   });
 
   it("rejects invalid extension version", () => {
-    const testJSON = constructTestJSON(1, "lambda", "invalid", 20, 30, 1, []);
+    const testJSON = constructTestJSON({
+      configVersion: 1,
+      entityType: "lambda",
+      extensionVersion: "invalid",
+      nodeLayerVersion: 20,
+      pythonLayerVersion: 30,
+      priority: 1,
+      ruleFilters: [],
+    });
     expect(() => new RcConfig(testJSON)).toThrow(
       "Received invalid configuration: extension version must be a number",
     );
   });
 
   it("rejects invalid python layer version", () => {
-    const testJSON = constructTestJSON(1, "lambda", 10, 20, "invalid", 1, []);
+    const testJSON = constructTestJSON({
+      configVersion: 1,
+      entityType: "lambda",
+      extensionVersion: 10,
+      nodeLayerVersion: 20,
+      pythonLayerVersion: "invalid",
+      priority: 1,
+      ruleFilters: [],
+    });
     expect(() => new RcConfig(testJSON)).toThrow(
       "Received invalid configuration: python layer version must be a number",
     );
   });
 
   it("rejects invalid node layer version", () => {
-    const testJSON = constructTestJSON(1, "lambda", 10, "invalid", 30, 1, []);
+    const testJSON = constructTestJSON({
+      configVersion: 1,
+      entityType: "lambda",
+      extensionVersion: 10,
+      nodeLayerVersion: "invalid",
+      pythonLayerVersion: 30,
+      priority: 1,
+      ruleFilters: [],
+    });
     expect(() => new RcConfig(testJSON)).toThrow(
       "Received invalid configuration: node layer version must be a number",
     );
   });
 
   it("rejects invalid priority", () => {
-    const testJSON = constructTestJSON(1, "lambda", 10, 20, 30, "invalid", []);
+    const testJSON = constructTestJSON({
+      configVersion: 1,
+      entityType: "lambda",
+      extensionVersion: 10,
+      nodeLayerVersion: 20,
+      pythonLayerVersion: 30,
+      priority: "invalid",
+      ruleFilters: [],
+    });
     expect(() => new RcConfig(testJSON)).toThrow(
       "Received invalid configuration: priority must be a number",
     );
   });
 
   it("rejects non-array rule filters", () => {
-    const testJSON = constructTestJSON(1, "lambda", 10, 20, 30, 1, "invalid");
+    const testJSON = constructTestJSON({
+      configVersion: 1,
+      entityType: "lambda",
+      extensionVersion: 10,
+      nodeLayerVersion: 20,
+      pythonLayerVersion: 30,
+      priority: 1,
+      ruleFilters: "invalid",
+    });
     expect(() => new RcConfig(testJSON)).toThrow(
       "Received invalid configuration: rule filters must be an array",
     );
   });
 
   it("rejects rule filters of invalid types", () => {
-    const testJSON = constructTestJSON(1, "lambda", 10, 20, 30, 1, [
-      {
-        key: "functionname",
-        values: ["hello-world"],
-        allow: false,
-        filter_type: "invalid",
-      },
-    ]);
+    const testJSON = constructTestJSON({
+      configVersion: 1,
+      entityType: "lambda",
+      extensionVersion: 10,
+      nodeLayerVersion: 20,
+      pythonLayerVersion: 30,
+      priority: 1,
+      ruleFilters: [
+        {
+          key: "functionname",
+          values: ["hello-world"],
+          allow: false,
+          filter_type: "invalid",
+        },
+      ],
+    });
     expect(() => new RcConfig(testJSON)).toThrow(
       `Received invalid configuration: filterType field must be one of '${Array.from(FILTER_TYPES).join(", ")}', but received 'invalid'`,
     );
   });
 
   it("rejects rule filters with no values", () => {
-    const testJSON = constructTestJSON(1, "lambda", 10, 20, 30, 1, [
-      {
-        key: "functionname",
-        values: [],
-        allow: false,
-        filter_type: "function_name",
-      },
-    ]);
+    const testJSON = constructTestJSON({
+      configVersion: 1,
+      entityType: "lambda",
+      extensionVersion: 10,
+      nodeLayerVersion: 20,
+      pythonLayerVersion: 30,
+      priority: 1,
+      ruleFilters: [
+        {
+          key: "functionname",
+          values: [],
+          allow: false,
+          filter_type: "function_name",
+        },
+      ],
+    });
     expect(() => new RcConfig(testJSON)).toThrow(
       "Received invalid configuration: rule filter values field must be a non-empty array",
     );

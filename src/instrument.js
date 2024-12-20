@@ -32,13 +32,8 @@ async function instrumentWithDatadogCi(
   functionToInstrument,
   instrument,
   config,
-  operatedFunctionArns,
   instrumentOutcome,
 ) {
-  logger.log(
-    `instrumentWithDatadogCi, functionArns: ${operatedFunctionArns} , instrument: ${instrument}`,
-  );
-
   const functionName = functionToInstrument.FunctionName;
   const functionArn = functionToInstrument.FunctionArn;
   const runtime = functionToInstrument.Runtime;
@@ -62,38 +57,31 @@ async function instrumentWithDatadogCi(
     command.push("-r", config.awsRegion);
   }
 
-  logger.logInstrumentOutcome(
-    operationName,
-    IN_PROGRESS,
-    functionName,
-    functionArn,
-    layerVersionObj.extensionVersion.toString(),
+  logger.logInstrumentOutcome({
+    ddSlsEventName: operationName,
+    outcome: IN_PROGRESS,
+    targetFunctionName: functionName,
+    targetFunctionArn: functionArn,
+    expectedExtensionVersion: layerVersionObj.extensionVersion.toString(),
     runtime,
-  );
-
+  });
   logger.log(`Sending datadog-ci command: ${JSON.stringify(command)}`);
 
   const commandExitCode = await cli.run(command);
   const outcome = commandExitCode === 0 ? SUCCEEDED : FAILED;
 
-  logger.logInstrumentOutcome(
-    operationName,
-    outcome,
-    functionName,
-    functionArn,
-    layerVersionObj.extensionVersion,
-    runtime,
-  );
+  logger.logInstrumentOutcome({
+    ddSlsEventName: operationName,
+    outcome: outcome,
+    targetFunctionName: functionName,
+    targetFunctionArn: functionArn,
+    expectedExtensionVersion: layerVersionObj.extensionVersion.toString(),
+    runtime: runtime,
+  });
   if (instrument) {
     instrumentOutcome.instrument[outcome][functionName] = { functionArn };
   } else {
     instrumentOutcome.uninstrument[outcome][functionName] = { functionArn };
-  }
-  if (commandExitCode === 0) {
-    operatedFunctionArns.push(functionArn);
-    logger.log(
-      `${operationName}ed function ARNs '${JSON.stringify(operatedFunctionArns)}'`,
-    );
   }
 }
 exports.instrumentWithDatadogCi = instrumentWithDatadogCi;
@@ -134,13 +122,16 @@ async function instrumentFunctions(
         functionToInstrument,
         true,
         config,
-        [],
         instrumentOutcome,
       );
     }
     await tagResourcesWithSlsTag(
       taggingClient,
-      functionsToTag.map((f) => f.FunctionArn),
+      functionsToTag.flatMap((f) =>
+        !(f.FunctionName in instrumentOutcome.instrument[FAILED])
+          ? f.FunctionArn
+          : [],
+      ),
     );
 
     // Uninstrument and untag the functions that need to be uninstrumented
@@ -149,13 +140,16 @@ async function instrumentFunctions(
         functionToUninstrument,
         false,
         config,
-        [],
         instrumentOutcome,
       );
     }
     await untagResourcesOfSlsTag(
       taggingClient,
-      functionsToUntag.map((f) => f.FunctionArn),
+      functionsToTag.flatMap((f) =>
+        !(f.FunctionName in instrumentOutcome.uninstrument[FAILED])
+          ? f.FunctionArn
+          : [],
+      ),
     );
   }
 }
