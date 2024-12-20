@@ -164,7 +164,7 @@ async function getConfigsFromRC(accountID, region) {
       configs = getConfigsFromResponse(response);
     })
     .catch(function (error) {
-      console.log(error);
+      logger.log(error);
       throw new Error("Failed to retrieve configs");
     });
   return configs;
@@ -224,7 +224,7 @@ async function configHasChanged(client, configs) {
     );
     const oldConfigHash = await response.Body.transformToString();
     const configChanged = oldConfigHash !== newConfigHash;
-    console.log(
+    logger.log(
       `Instrumentation configuration ${configChanged ? "has" : "has not"} changed since last scheduled invocation.`,
     );
     return configChanged;
@@ -262,7 +262,7 @@ async function updateConfigHash(client, configs) {
 
   try {
     await client.send(command);
-    console.log(`Updated config hash with new instrumentation config.`);
+    logger.log(`Updated config hash with new instrumentation config.`);
   } catch (caught) {
     if (caught instanceof S3ServiceException) {
       console.error(

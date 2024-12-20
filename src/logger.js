@@ -54,5 +54,9 @@ class Logger {
   logObject(event) {
     console.log(JSON.stringify(event));
   }
+
+  log(message) {
+    console.log("[Datadog Remote Instrumenter]" + message);
+  }
 }
 exports.logger = new Logger();

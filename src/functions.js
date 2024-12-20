@@ -48,7 +48,7 @@ async function getRemotelyInstrumentedFunctionArns(client) {
   for (const resourceTagMapping of getResourcesCommandOutput.ResourceTagMappingList) {
     functionArns.push(resourceTagMapping.ResourceARN);
   }
-  console.log(`Found remotely instrumented function ARNs: '${functionArns}'`);
+  logger.log(`Found remotely instrumented function ARNs: '${functionArns}'`);
   return functionArns;
 }
 exports.getRemotelyInstrumentedFunctionArns =
@@ -73,11 +73,11 @@ async function getAllFunctions(client) {
       allFunctions.push(...listFunctionsCommandOutput.Functions);
       nextMarker = listFunctionsCommandOutput.NextMarker;
     } catch (error) {
-      console.log(`Error retrieving functions: ${error}`);
+      logger.log(`Error retrieving functions: ${error}`);
       throw error;
     }
   }
-  console.log(
+  logger.log(
     `Retrieved all lambda functions in the account: ${JSON.stringify(allFunctions)}`,
   );
   return allFunctions;
@@ -129,7 +129,7 @@ async function enrichFunctionsWithTags(client, functions) {
     lambdaFunc.Tags = functionTagsSet;
     enrichedFunctions.push(lambdaFunc);
   }
-  console.log(
+  logger.log(
     `Enriched the following functions with tags: '${JSON.stringify(enrichedFunctions)}'`,
   );
   return enrichedFunctions;
@@ -267,7 +267,7 @@ function isCorrectlyInstrumented(layers, config, targetLambdaRuntime) {
     expectedLayerVersion = config.nodeLayerVersion;
   }
   for (const layer of layers) {
-    console.log(`Checking runtime layer: ${JSON.stringify(layer)}`);
+    logger.log(`Checking runtime layer: ${JSON.stringify(layer)}`);
     if (layer?.Arn?.includes(`464622532012:layer:${expectedLayerName}`)) {
       return parseInt(layer.Arn.split(":").at(-1)) === expectedLayerVersion;
     }

@@ -38,13 +38,13 @@ exports.handler = async (event, context) => {
 
   // If it's a stack event, send a response to CloudFormation for custom resource management
   if (isStackDeletedEvent(event) || isStackCreatedEvent(event)) {
-    console.log(`Received a CloudFormation '${event.RequestType}' event.`);
+    logger.log(`Received a CloudFormation '${event.RequestType}' event.`);
     await cfnResponse.send(event, context, "SUCCESS");
   }
 
   // Else if it's a Lambda Management event, validate the event and instrument the function
   else if (isLambdaManagementEvent(event)) {
-    console.log(`Received a Lambda Management event.`);
+    logger.log(`Received a Lambda Management event.`);
     const functionFromEvent = await getFunctionFromLambdaEvent(
       lambdaClient,
       event,
@@ -83,7 +83,7 @@ exports.handler = async (event, context) => {
 
   // Else if it's a scheduled event, check if the config has changed and instrument all functions
   else if (isScheduledInvocationEvent(event)) {
-    console.log("Received an invocation from the scheduler.");
+    logger.log("Received an invocation from the scheduler.");
     const configs = await getConfigs(context);
     const s3Client = new S3Client({ region: awsRegion });
     const configChanged = await configHasChanged(s3Client, configs);
@@ -119,7 +119,7 @@ exports.handler = async (event, context) => {
       );
       // TODO: [Followup] Check if any functions failed to instrument or uninstrument and add them to a retry list in s3
     } else {
-      console.log("Configuration has not changed. Skipping instrumentation.");
+      logger.log("Configuration has not changed. Skipping instrumentation.");
     }
   }
 
