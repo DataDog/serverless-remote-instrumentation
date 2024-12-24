@@ -226,7 +226,7 @@ async function configHasChanged(client, configs) {
     .update(JSON.stringify(configs))
     .digest("hex");
   const bucketName = process.env.DD_S3_BUCKET;
-  const key = "config.txt";
+  const key = "datadog_remote_instrumentation_config.txt";
   try {
     const response = await client.send(
       new GetObjectCommand({
