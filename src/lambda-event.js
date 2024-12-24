@@ -98,16 +98,19 @@ function shouldSkipEvent(event) {
     TAG_RESOURCE_EVENT_NAME,
     UNTAG_RESOURCE_EVENT_NAME,
   ]);
-  return !expectedEventNameSet.has(event.detail.eventName);
+  if (!expectedEventNameSet.has(event.detail.eventName)) {
+    logger.log(
+      `Skipping event '${event.detail.eventName}' because it is not supported.`,
+    );
+    return true;
+  }
+  return false;
 }
 exports.shouldSkipEvent = shouldSkipEvent;
 
 async function getFunctionFromLambdaEvent(lambdaClient, event) {
   // If it's not a supported event type, skip it
   if (shouldSkipEvent(event)) {
-    logger.log(
-      `Skipping event '${event.detail.eventName}' because it is not supported.`,
-    );
     return;
   }
 
