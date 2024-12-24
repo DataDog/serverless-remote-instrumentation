@@ -58,5 +58,9 @@ class Logger {
   log(message) {
     console.log("[Datadog Remote Instrumenter]" + message);
   }
+
+  error(message) {
+    console.error("[Datadog Remote Instrumenter]" + message);
+  }
 }
 exports.logger = new Logger();
