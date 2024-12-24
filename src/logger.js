@@ -33,7 +33,7 @@ class Logger {
         ddSlsEventName,
         triggeredBy,
         outcome: instrumentOutcome,
-        config: JSON.stringify(configs),
+        config: configs,
       }),
     );
   }
