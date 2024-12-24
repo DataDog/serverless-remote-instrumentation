@@ -30,7 +30,7 @@ class RcConfig {
   }
 
   configurationError(message) {
-    console.error(message);
+    logger.error(message);
     return Error(`Received invalid configuration: ${message}`);
   }
 
@@ -242,17 +242,17 @@ async function configHasChanged(client, configs) {
     return configChanged;
   } catch (caught) {
     if (caught instanceof NoSuchKey) {
-      console.error(
+      logger.error(
         `Error from S3 while getting object "${key}" from "${bucketName}". No such key exists.`,
       );
       return true;
     } else if (caught instanceof S3ServiceException) {
-      console.error(
+      logger.error(
         `Error from S3 while getting object from ${bucketName}.  ${caught.name}: ${caught.message}`,
       );
       return false;
     } else {
-      console.error(caught.message);
+      logger.error(caught.message);
       throw caught;
     }
   }
@@ -277,11 +277,11 @@ async function updateConfigHash(client, configs) {
     logger.log(`Updated config hash with new instrumentation config.`);
   } catch (caught) {
     if (caught instanceof S3ServiceException) {
-      console.error(
+      logger.error(
         `Error from S3 while uploading object to ${bucketName}.  ${caught.name}: ${caught.message}`,
       );
     } else {
-      console.error(caught.message);
+      logger.error(caught.message);
       throw caught;
     }
   }
