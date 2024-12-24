@@ -20,7 +20,7 @@ async function tagResourcesWithSlsTag(client, functionArns) {
   try {
     await client.send(tagResourcesCommand);
   } catch (error) {
-    console.error("Error when tagging resources:", error);
+    logger.error("Error when tagging resources:", error);
   }
 }
 exports.tagResourcesWithSlsTag = tagResourcesWithSlsTag;
@@ -40,7 +40,7 @@ async function untagResourcesOfSlsTag(client, functionArns) {
   try {
     await client.send(untagResourcesCommand);
   } catch (error) {
-    console.error("Error untagging resources:", error);
+    logger.error("Error untagging resources:", error);
   }
 }
 exports.untagResourcesOfSlsTag = untagResourcesOfSlsTag;
