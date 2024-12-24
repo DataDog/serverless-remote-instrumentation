@@ -90,7 +90,6 @@ exports.handler = async (event, context) => {
     const configChanged = await configHasChanged(s3Client, configs);
     let functionsToCheck = [];
     if (configChanged) {
-      await updateConfigHash(s3Client, configs);
       // If the config has changed, check all functions for instrumentation
       // Get all functions in the customer's account
       const allFunctions = await getAllFunctions(lambdaClient);
@@ -118,6 +117,8 @@ exports.handler = async (event, context) => {
         instrumentOutcome,
         configs,
       );
+
+      await updateConfigHash(s3Client, configs);
       // TODO: [Followup] Check if any functions failed to instrument or uninstrument and add them to a retry list in s3
     } else {
       logger.log("Configuration has not changed. Skipping instrumentation.");
