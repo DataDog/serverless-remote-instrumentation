@@ -40,6 +40,11 @@ exports.handler = async (event, context) => {
 
   // If it's a stack event, send a response to CloudFormation for custom resource management
   if (isStackDeletedEvent(event) || isStackCreatedEvent(event)) {
+    /**
+     * TODO: [Followup] Do one of two things:
+     * 1. On Stack Created, check all functions for instrumentation like we do for the scheduled event
+     * 2. Remove the lambda custom resource from the template and handler code
+     */
     logger.log(`Received a CloudFormation '${event.RequestType}' event.`);
     await cfnResponse.send(event, context, "SUCCESS");
   }
