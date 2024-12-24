@@ -14,18 +14,9 @@ Metadata:
           default: Remote Instrumenter Configuration
         Parameters:
           - DdRemoteInstrumentLayerVersion
-          - DdTagRule
-          - DdAllowList
-          - DdDenyList
           - DdApiKey
           - EnableCodeSigningConfigurations
           - DdInstrumenterFunctionEnv
-      - Label:
-          default: Layer Versions
-        Parameters:
-          - DdExtensionLayerVersion
-          - DdPythonLayerVersion
-          - DdNodeLayerVersion
       - Label:
           default: Additional Configs
         Parameters:
@@ -76,22 +67,6 @@ Parameters:
   TrailName:
     Type: String
     Default: datadog-serverless-instrumentation-trail
-  DdAllowList:
-    Type: String
-  DdTagRule:
-    Type: String
-    Default: DD_REMOTE_INSTRUMENT_ENABLED:true
-  DdDenyList:
-    Type: String
-  DdExtensionLayerVersion:
-    Type: String
-    Default: '58'
-  DdPythonLayerVersion:
-    Type: String
-    Default: '96'
-  DdNodeLayerVersion:
-    Type: String
-    Default: '112'
   MinimumMemorySize:
     Type: String
     Default: '512'
@@ -125,14 +100,12 @@ Resources:
       Timeout: 900
       MemorySize: 512
       Role: !GetAtt LambdaExecutionRole.Arn
-      Handler: /opt/nodejs/node_modules/datadog-lambda-js/handler.handler
+      Handler: /opt/nodejs/node_modules/datadog-remote-instrument/handler.handler
       Layers:
         - !Sub 'arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Extension-ARM:50'
-        - !Sub 'arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Node20-x:99'
         - !Sub 'arn:aws:lambda:${AWS::Region}:${DdRemoteInstrumentLayerAwsAccount}:layer:Datadog-Serverless-Remote-Instrumentation-ARM:${DdRemoteInstrumentLayerVersion}'
       Environment:
         Variables:
-          DD_LAMBDA_HANDLER: /opt/nodejs/node_modules/datadog-remote-instrument/handler.handler
           DD_TRACE_ENABLED: true
           DD_API_KEY: !Ref DdApiKey
           DD_LOG_LEVEL: DEBUG
@@ -141,14 +114,11 @@ Resources:
           DD_ENV: !Ref DdInstrumenterFunctionEnv
           DD_SITE: !Ref DdSite
           DD_AWS_ACCOUNT_NUMBER: !Sub '${AWS::AccountId}'
-          DD_ALLOW_LIST: !Ref DdAllowList
-          DD_TAG_RULE: !Ref DdTagRule
-          DD_DENY_LIST: !Ref DdDenyList
-          DD_EXTENSION_LAYER_VERSION: !Ref DdExtensionLayerVersion
-          DD_PYTHON_LAYER_VERSION: !Ref DdPythonLayerVersion
-          DD_NODE_LAYER_VERSION: !Ref DdNodeLayerVersion
           DD_MinimumMemorySize: !Ref MinimumMemorySize
           DD_INSTRUMENTER_FUNCTION_NAME: !Ref InstrumenterFunctionName
+          DD_S3_BUCKET: !Ref S3Bucket
+          DD_REMOTE_CONFIGURATION_ENABLED: true
+          DD_APM_ENABLED: true
       Tags:
         - Key: "dd_serverless_service"
           Value: "remote_instrumenter"
@@ -202,9 +172,17 @@ Resources:
             Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*
           - Effect: Allow
             Action:
+              - s3:ListBucket
+              - s3:GetObject
+              - s3:PutObject
+            Resource:
+              - !Join ["", [!GetAtt S3Bucket.Arn, '*']]
+          - Effect: Allow
+            Action:
               - tag:GetResources
               - tag:TagResources
               - tag:UntagResources
+              - lambda:ListFunctions
             Resource: '*'
             Condition:
               ArnEquals:
