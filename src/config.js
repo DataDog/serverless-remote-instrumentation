@@ -38,7 +38,9 @@ class RcConfig {
     if (typeof configVersion === "number") {
       this.configVersion = configVersion;
     } else {
-      throw this.configurationError("config version must be a number");
+      throw this.configurationError(
+        `config version must be a number, but received ${configVersion}`,
+      );
     }
   }
 
@@ -59,7 +61,9 @@ class RcConfig {
     ) {
       this.extensionVersion = extensionVersion;
     } else {
-      throw this.configurationError("extension version must be a number");
+      throw this.configurationError(
+        `extension version must be a number, but received ${extensionVersion}`,
+      );
     }
   }
 
@@ -70,7 +74,9 @@ class RcConfig {
     ) {
       this.nodeLayerVersion = nodeLayerVersion;
     } else {
-      throw this.configurationError("node layer version must be a number");
+      throw this.configurationError(
+        `node layer version must be a number, but received ${nodeLayerVersion}`,
+      );
     }
   }
 
@@ -81,7 +87,9 @@ class RcConfig {
     ) {
       this.pythonLayerVersion = pythonLayerVersion;
     } else {
-      throw this.configurationError("python layer version must be a number");
+      throw this.configurationError(
+        `python layer version must be a number, but received ${pythonLayerVersion}`,
+      );
     }
   }
 
@@ -89,7 +97,9 @@ class RcConfig {
     if (typeof priority === "number") {
       this.priority = priority;
     } else {
-      throw this.configurationError("priority must be a number");
+      throw this.configurationError(
+        `priority must be a number, but received ${priority}`,
+      );
     }
   }
 
@@ -104,17 +114,17 @@ class RcConfig {
       for (const filter of processedFilters) {
         if (typeof filter.key !== "string") {
           throw this.configurationError(
-            "rule filter key field must be a string",
+            `rule filter key field must be a string, but received ${filter.key}`,
           );
         }
         if (!Array.isArray(filter.values) || filter.values.length === 0) {
           throw this.configurationError(
-            "rule filter values field must be a non-empty array",
+            `rule filter values field must be a non-empty array, but received ${filter.values}`,
           );
         }
         if (typeof filter.allow !== "boolean") {
           throw this.configurationError(
-            "rule filter allow field must be a boolean",
+            `rule filter allow field must be a boolean, but received ${filter.allow}`,
           );
         }
         const filterType = filter.filterType;
@@ -126,7 +136,9 @@ class RcConfig {
       }
       this.ruleFilters = processedFilters;
     } else {
-      throw this.configurationError("rule filters must be an array");
+      throw this.configurationError(
+        `rule filters must be an array, but received ${ruleFilters}`,
+      );
     }
   }
 }
