@@ -40,7 +40,7 @@ async function getRemotelyInstrumentedFunctionArns(client) {
   try {
     getResourcesCommandOutput = await client.send(getResourcesCommand);
   } catch (error) {
-    console.error(`Error retrieving remotely instrumented functions: ${error}`);
+    logger.error(`Error retrieving remotely instrumented functions: ${error}`);
     return [];
   }
 
