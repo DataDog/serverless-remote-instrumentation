@@ -22,19 +22,21 @@ const {
   SCHEDULED_INVOCATION_EVENT,
 } = require("./consts");
 
+const awsRegion = process.env.AWS_REGION;
+const lambdaClient = new LambdaClient({
+  region: awsRegion,
+});
+const taggingClient = new ResourceGroupsTaggingAPIClient({
+  region: awsRegion,
+});
+const s3Client = new S3Client({ region: awsRegion });
+
 exports.handler = async (event, context) => {
   logger.logObject(event);
-  const awsRegion = process.env.AWS_REGION;
   const instrumentOutcome = {
     instrument: { succeeded: {}, failed: {}, skipped: {} },
     uninstrument: { succeeded: {}, failed: {}, skipped: {} },
   };
-  const lambdaClient = new LambdaClient({
-    region: awsRegion,
-  });
-  const taggingClient = new ResourceGroupsTaggingAPIClient({
-    region: awsRegion,
-  });
 
   // If it's a stack event, send a response to CloudFormation for custom resource management
   if (isStackDeletedEvent(event) || isStackCreatedEvent(event)) {
@@ -85,7 +87,6 @@ exports.handler = async (event, context) => {
   else if (isScheduledInvocationEvent(event)) {
     logger.log("Received an invocation from the scheduler.");
     const configs = await getConfigs(context);
-    const s3Client = new S3Client({ region: awsRegion });
     const configChanged = await configHasChanged(s3Client, configs);
     let functionsToCheck = [];
     if (configChanged) {
