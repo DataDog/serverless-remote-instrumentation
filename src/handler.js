@@ -8,6 +8,7 @@ const {
   isScheduledInvocationEvent,
   getFunctionFromLambdaEvent,
 } = require("./lambda-event");
+const { putError } = require("./error-storage")
 const { LambdaClient } = require("@aws-sdk/client-lambda");
 const {
   ResourceGroupsTaggingAPIClient,
@@ -64,8 +65,16 @@ exports.handler = async (event, context) => {
       functionFromEvent,
     ]);
 
-    // TODO: [Followup] Handle error retrieving config by writing the function name to s3 and reinstrumenting on scheduled invocation
-    const configs = await getConfigs(context);
+    let configs;
+    try {
+      configs = await getConfigs(context);
+    } catch (error) {
+      // This pulls the reason from the error, just stringifying it does not return the message
+      const errorDetails = JSON.parse(JSON.stringify(error, Object.getOwnPropertyNames(error)))
+      await putError(s3Client, functionFromEvent.FunctionName, errorDetails);
+      throw error;
+    }
+
     logger.emitFrontEndEvent(
       REMOTE_INSTRUMENTATION_STARTED,
       LAMBDA_EVENT,
