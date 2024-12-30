@@ -4,6 +4,7 @@ const config = require("../src/config");
 const lambdaEvent = require("../src/lambda-event");
 const instrument = require("../src/instrument");
 const errorStorage = require("../src/error-storage");
+const { LAMBDA_EVENT } = require("../src/consts");
 
 jest.mock("../src/lambda-event");
 jest.mock("../src/config");
@@ -39,7 +40,7 @@ describe("handler lambda management events", () => {
     expect(lambdaEvent.getFunctionFromLambdaEvent).toHaveBeenCalledWith(expect.anything(), event);
     expect(functions.enrichFunctionsWithTags).toHaveBeenCalledWith(expect.anything(), [lambdaFunction]);
     expect(config.getConfigs).toHaveBeenCalledWith(context);
-    expect(instrument.instrumentFunctions).toHaveBeenCalledWith(configsResult, enrichedFunction, expect.anything(), expect.anything());
+    expect(instrument.instrumentFunctions).toHaveBeenCalledWith(configsResult, enrichedFunction, expect.anything(), expect.anything(), LAMBDA_EVENT);
     expect(errorStorage.putError).not.toHaveBeenCalled();
   });
 
