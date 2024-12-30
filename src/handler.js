@@ -8,13 +8,13 @@ const {
   isScheduledInvocationEvent,
   getFunctionFromLambdaEvent,
 } = require("./lambda-event");
-const { putError } = require("./error-storage")
+const { putError, listErrors } = require("./error-storage")
 const { LambdaClient } = require("@aws-sdk/client-lambda");
 const {
   ResourceGroupsTaggingAPIClient,
 } = require("@aws-sdk/client-resource-groups-tagging-api");
 const { S3Client } = require("@aws-sdk/client-s3");
-const { getAllFunctions, enrichFunctionsWithTags } = require("./functions");
+const { getLambdaFunction, getAllFunctions, enrichFunctionsWithTags } = require("./functions");
 const { instrumentFunctions } = require("./instrument");
 const {
   LAMBDA_EVENT,
@@ -85,6 +85,7 @@ exports.handler = async (event, context) => {
   // Else if it's a scheduled event, check if the config has changed and instrument all functions
   else if (isScheduledInvocationEvent(event)) {
     logger.log("Received an invocation from the scheduler.");
+    const errors = await listErrors(s3Client);
     const configs = await getConfigs(context);
     const configChanged = await configHasChanged(s3Client, configs);
     let functionsToCheck = [];
@@ -106,7 +107,22 @@ exports.handler = async (event, context) => {
       );
 
       await updateConfigHash(s3Client, configs);
-      // TODO: [Followup] Check if any functions failed to instrument or uninstrument and add them to a retry list in s3
+    } else if (errors.length) {
+      logger.log(`Found previous errors in ${errors.length} functions.  ${JSON.stringify(errors)}`);
+      const functionsToCheck = await Promise.all(errors.map(async (lambdaFunctionName) => {
+        const lambdaFunction = await getLambdaFunction(lambdaClient, lambdaFunctionName)
+        return {
+          ...lambdaFunction.Configuration,
+          Tags: lambdaFunction.Tags,
+        };
+      }));
+      const enrichedFunctions = await enrichFunctionsWithTags(lambdaClient, functionsToCheck);
+      await instrumentFunctions(
+        configs,
+        enrichedFunctions,
+        instrumentOutcome,
+        taggingClient,
+      );
     } else {
       logger.log("Configuration has not changed. Skipping instrumentation.");
     }

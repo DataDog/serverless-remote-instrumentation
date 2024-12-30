@@ -71,3 +71,38 @@ describe("handler lambda management events", () => {
     expect(errorStorage.putError).toHaveBeenCalledWith(expect.anything(), 'TestFunction', expect.anything());
   });
 });
+
+describe("scheduled invocation events", () => {
+  beforeEach(() => {
+    jest.resetAllMocks();
+  });
+
+  test("Loads errors from s3", async () => {
+    const event = {
+      "event-type": "Scheduled Instrumenter Invocation",
+    };
+    const context = 'context';
+    const configsResult = ['a'];
+
+    lambdaEvent.isScheduledInvocationEvent.mockReturnValue(true);   
+    config.getConfigs.mockReturnValue(configsResult);
+    config.configHasChanged.mockReturnValue(false)
+    errorStorage.listErrors.mockReturnValue(['function1', 'function2']);
+    instrument.instrumentFunctions.mockReturnValue(true);
+    functions.getLambdaFunction.mockReturnValue({
+      Configuration: { key: 'configuration' },
+      Tags: 'tags',
+    });
+    functions.enrichFunctionsWithTags.mockReturnValue('A');
+
+    await handler.handler(event, context);
+
+    expect(errorStorage.listErrors).toHaveBeenCalledTimes(1);
+    expect(functions.getLambdaFunction).toHaveBeenCalledTimes(2);
+    expect(functions.getLambdaFunction).toHaveBeenCalledWith(expect.anything(), 'function1');
+    expect(functions.getLambdaFunction).toHaveBeenCalledWith(expect.anything(), 'function2');
+    expect(functions.enrichFunctionsWithTags).toHaveBeenCalledTimes(1);
+    expect(instrument.instrumentFunctions).toHaveBeenCalledTimes(1);
+    expect(instrument.instrumentFunctions).toHaveBeenCalledWith(configsResult, 'A', expect.anything(), expect.anything());
+  });
+});
