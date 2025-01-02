@@ -11,6 +11,10 @@ const {
 const { logger } = require("./logger");
 const { filterFunctionsToChangeInstrumentation } = require("./functions");
 const { tagResourcesWithSlsTag, untagResourcesOfSlsTag } = require("./tag");
+const {
+  REMOTE_INSTRUMENTATION_STARTED,
+  REMOTE_INSTRUMENTATION_ENDED,
+} = require("./consts");
 
 function getExtensionAndRuntimeLayerVersion(runtime, config) {
   const result = {
@@ -91,7 +95,14 @@ async function instrumentFunctions(
   functionsToCheck,
   instrumentOutcome,
   taggingClient,
+  triggeredBy,
 ) {
+  logger.emitFrontEndEvent(
+    REMOTE_INSTRUMENTATION_STARTED,
+    triggeredBy,
+    null,
+    configs,
+  );
   for (const config of configs) {
     let {
       functionsToInstrument,
@@ -152,5 +163,11 @@ async function instrumentFunctions(
       ),
     );
   }
+  logger.emitFrontEndEvent(
+    REMOTE_INSTRUMENTATION_ENDED,
+    triggeredBy,
+    instrumentOutcome,
+    configs,
+  );
 }
 exports.instrumentFunctions = instrumentFunctions;

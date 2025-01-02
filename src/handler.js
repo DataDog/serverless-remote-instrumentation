@@ -18,8 +18,6 @@ const { getAllFunctions, enrichFunctionsWithTags } = require("./functions");
 const { instrumentFunctions } = require("./instrument");
 const {
   LAMBDA_EVENT,
-  REMOTE_INSTRUMENTATION_STARTED,
-  REMOTE_INSTRUMENTATION_ENDED,
   SCHEDULED_INVOCATION_EVENT,
 } = require("./consts");
 
@@ -75,25 +73,12 @@ exports.handler = async (event, context) => {
       throw error;
     }
 
-    logger.emitFrontEndEvent(
-      REMOTE_INSTRUMENTATION_STARTED,
-      LAMBDA_EVENT,
-      null,
-      configs,
-    );
-
     await instrumentFunctions(
       configs,
       functionsToCheck,
       instrumentOutcome,
       taggingClient,
-    );
-
-    logger.emitFrontEndEvent(
-      REMOTE_INSTRUMENTATION_ENDED,
       LAMBDA_EVENT,
-      instrumentOutcome,
-      configs,
     );
   }
 
@@ -112,24 +97,12 @@ exports.handler = async (event, context) => {
         allFunctions,
       );
 
-      logger.emitFrontEndEvent(
-        REMOTE_INSTRUMENTATION_STARTED,
-        SCHEDULED_INVOCATION_EVENT,
-        null,
-        configs,
-      );
       await instrumentFunctions(
         configs,
         functionsToCheck,
         instrumentOutcome,
         taggingClient,
-      );
-
-      logger.emitFrontEndEvent(
-        REMOTE_INSTRUMENTATION_ENDED,
         SCHEDULED_INVOCATION_EVENT,
-        instrumentOutcome,
-        configs,
       );
 
       await updateConfigHash(s3Client, configs);
