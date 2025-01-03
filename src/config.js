@@ -11,6 +11,7 @@ const { ENTITY_TYPES, FILTER_TYPES } = require("./consts");
 
 const REMOTE_CONFIG_PRODUCT = "SERVERLESS_REMOTE_INSTRUMENTATION";
 const REMOTE_CONFIG_URL = "http://localhost:8126/v0.7/config";
+const KEY = "datadog_remote_instrumentation_config.txt";
 
 class RcConfig {
   constructor(configJSON) {
@@ -226,12 +227,11 @@ async function configHasChanged(client, configs) {
     .update(JSON.stringify(configs))
     .digest("hex");
   const bucketName = process.env.DD_S3_BUCKET;
-  const key = "datadog_remote_instrumentation_config.txt";
   try {
     const response = await client.send(
       new GetObjectCommand({
         Bucket: bucketName,
-        Key: key,
+        Key: KEY,
       }),
     );
     const oldConfigHash = await response.Body.transformToString();
@@ -243,7 +243,7 @@ async function configHasChanged(client, configs) {
   } catch (caught) {
     if (caught instanceof NoSuchKey) {
       logger.error(
-        `Error from S3 while getting object "${key}" from "${bucketName}". No such key exists.`,
+        `Error from S3 while getting object "${KEY}" from "${bucketName}". No such key exists.`,
       );
       return true;
     } else if (caught instanceof S3ServiceException) {
@@ -265,10 +265,9 @@ async function updateConfigHash(client, configs) {
     .update(JSON.stringify(configs))
     .digest("hex");
   const bucketName = process.env.DD_S3_BUCKET;
-  const key = "config.txt";
   const command = new PutObjectCommand({
     Bucket: bucketName,
-    Key: key,
+    Key: KEY,
     Body: newConfigHash,
   });
 
