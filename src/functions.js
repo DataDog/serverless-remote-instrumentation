@@ -63,7 +63,7 @@ async function getAllFunctions(client) {
   allFunctions.push(...listFunctionsCommandOutput.Functions);
 
   let nextMarker = listFunctionsCommandOutput.NextMarker;
-  while (nextMarker !== null) {
+  while (nextMarker) {
     const listFunctionsCommand = new ListFunctionsCommand({
       Marker: nextMarker,
     });
