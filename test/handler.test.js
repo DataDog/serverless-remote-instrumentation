@@ -88,12 +88,18 @@ describe("scheduled invocation events", () => {
     config.getConfigs.mockReturnValue(configsResult);
     config.configHasChanged.mockReturnValue(false)
     errorStorage.listErrors.mockReturnValue(['function1', 'function2']);
+    errorStorage.putError.mockReturnValue(true);
+    errorStorage.deleteError.mockReturnValue(true);
     instrument.instrumentFunctions.mockReturnValue(true);
     functions.getLambdaFunction.mockReturnValue({
       Configuration: { key: 'configuration' },
       Tags: 'tags',
     });
     functions.enrichFunctionsWithTags.mockReturnValue('A');
+    errorStorage.identifyNewErrorsAndResolvedErrors.mockReturnValue({
+      newErrors: [{ functionName: 'name', reason: 'reason'}],
+      resolvedErrors: ['error!'],
+    });
 
     await handler.handler(event, context);
 
@@ -104,5 +110,9 @@ describe("scheduled invocation events", () => {
     expect(functions.enrichFunctionsWithTags).toHaveBeenCalledTimes(1);
     expect(instrument.instrumentFunctions).toHaveBeenCalledTimes(1);
     expect(instrument.instrumentFunctions).toHaveBeenCalledWith(configsResult, 'A', expect.anything(), expect.anything());
+    expect(errorStorage.putError).toHaveBeenCalledTimes(1);
+    expect(errorStorage.putError).toHaveBeenCalledWith(expect.anything(), 'name', 'reason');
+    expect(errorStorage.deleteError).toHaveBeenCalledTimes(1);
+    expect(errorStorage.deleteError).toHaveBeenCalledWith(expect.anything(), 'error!');
   });
 });
