@@ -8,18 +8,24 @@ const {
   isScheduledInvocationEvent,
   getFunctionFromLambdaEvent,
 } = require("./lambda-event");
-const { deleteError, identifyNewErrorsAndResolvedErrors, putError, listErrors } = require("./error-storage")
+const {
+  deleteError,
+  identifyNewErrorsAndResolvedErrors,
+  putError,
+  listErrors,
+} = require("./error-storage");
 const { LambdaClient } = require("@aws-sdk/client-lambda");
 const {
   ResourceGroupsTaggingAPIClient,
 } = require("@aws-sdk/client-resource-groups-tagging-api");
 const { S3Client } = require("@aws-sdk/client-s3");
-const { getLambdaFunction, getAllFunctions, enrichFunctionsWithTags } = require("./functions");
-const { instrumentFunctions } = require("./instrument");
 const {
-  LAMBDA_EVENT,
-  SCHEDULED_INVOCATION_EVENT,
-} = require("./consts");
+  getLambdaFunction,
+  getAllFunctions,
+  enrichFunctionsWithTags,
+} = require("./functions");
+const { instrumentFunctions } = require("./instrument");
+const { LAMBDA_EVENT, SCHEDULED_INVOCATION_EVENT } = require("./consts");
 
 const awsRegion = process.env.AWS_REGION;
 const lambdaClient = new LambdaClient({
@@ -68,7 +74,9 @@ exports.handler = async (event, context) => {
       configs = await getConfigs(context);
     } catch (error) {
       // This pulls the reason from the error, just stringifying it does not return the message
-      const errorDetails = JSON.parse(JSON.stringify(error, Object.getOwnPropertyNames(error)))
+      const errorDetails = JSON.parse(
+        JSON.stringify(error, Object.getOwnPropertyNames(error)),
+      );
       await putError(s3Client, functionFromEvent.FunctionName, errorDetails);
       throw error;
     }
@@ -108,15 +116,25 @@ exports.handler = async (event, context) => {
 
       await updateConfigHash(s3Client, configs);
     } else if (errors.length) {
-      logger.log(`Found previous errors in ${errors.length} functions.  ${JSON.stringify(errors)}`);
-      const functionsToCheck = await Promise.all(errors.map(async (lambdaFunctionName) => {
-        const lambdaFunction = await getLambdaFunction(lambdaClient, lambdaFunctionName)
-        return {
-          ...lambdaFunction.Configuration,
-          Tags: lambdaFunction.Tags,
-        };
-      }));
-      const enrichedFunctions = await enrichFunctionsWithTags(lambdaClient, functionsToCheck);
+      logger.log(
+        `Found previous errors in ${errors.length} functions.  ${JSON.stringify(errors)}`,
+      );
+      const functionsToCheck = await Promise.all(
+        errors.map(async (lambdaFunctionName) => {
+          const lambdaFunction = await getLambdaFunction(
+            lambdaClient,
+            lambdaFunctionName,
+          );
+          return {
+            ...lambdaFunction.Configuration,
+            Tags: lambdaFunction.Tags,
+          };
+        }),
+      );
+      const enrichedFunctions = await enrichFunctionsWithTags(
+        lambdaClient,
+        functionsToCheck,
+      );
       await instrumentFunctions(
         configs,
         enrichedFunctions,
@@ -128,11 +146,20 @@ exports.handler = async (event, context) => {
     }
 
     if (errors.length) {
-      const { newErrors, resolvedErrors } = identifyNewErrorsAndResolvedErrors(instrumentOutcome, errors);
-      await Promise.all([
-        newErrors.map(async ({functionName, reason}) => putError(s3Client, functionName, reason)),
-        resolvedErrors.map(async (functionName) => deleteError(s3Client, functionName)),
-      ].flat());
+      const { newErrors, resolvedErrors } = identifyNewErrorsAndResolvedErrors(
+        instrumentOutcome,
+        errors,
+      );
+      await Promise.all(
+        [
+          newErrors.map(async ({ functionName, reason }) =>
+            putError(s3Client, functionName, reason),
+          ),
+          resolvedErrors.map(async (functionName) =>
+            deleteError(s3Client, functionName),
+          ),
+        ].flat(),
+      );
     }
   }
 
