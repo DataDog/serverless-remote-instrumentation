@@ -8,7 +8,7 @@ const {
   isScheduledInvocationEvent,
   getFunctionFromLambdaEvent,
 } = require("./lambda-event");
-const { putError, listErrors } = require("./error-storage")
+const { deleteError, identifyNewErrorsAndResolvedErrors, putError, listErrors } = require("./error-storage")
 const { LambdaClient } = require("@aws-sdk/client-lambda");
 const {
   ResourceGroupsTaggingAPIClient,
@@ -125,6 +125,14 @@ exports.handler = async (event, context) => {
       );
     } else {
       logger.log("Configuration has not changed. Skipping instrumentation.");
+    }
+
+    if (errors.length) {
+      const { newErrors, resolvedErrors } = identifyNewErrorsAndResolvedErrors(instrumentOutcome, errors);
+      await Promise.all([
+        newErrors.map(async ({functionName, reason}) => putError(s3Client, functionName, reason)),
+        resolvedErrors.map(async (functionName) => deleteError(s3Client, functionName)),
+      ].flat());
     }
   }
 
