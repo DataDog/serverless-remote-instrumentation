@@ -23,6 +23,7 @@
   },
   "scripts": {
     "format": "eslint --fix . self-monitoring-app/modifier_handler.js",
+    "lint": "eslint -c eslint.config.mjs . ",
     "test": "jest"
   }
 }
