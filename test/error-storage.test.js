@@ -1,4 +1,7 @@
-const { identifyNewErrorsAndResolvedErrors, listErrors } = require("../src/error-storage");
+const {
+  identifyNewErrorsAndResolvedErrors,
+  listErrors,
+} = require("../src/error-storage");
 const { FAILED, SKIPPED, SUCCEEDED } = require("../src/consts");
 
 const mockS3 = {
@@ -13,59 +16,73 @@ describe("listErrors test suite", () => {
   test("handles one page of results", async () => {
     const mockResult = {
       IsTruncated: false,
-      Contents: [{
-        Key: 'errors/key1.json',
-      }, {
-        Key: 'errors/key2.json',
-      }]
+      Contents: [
+        {
+          Key: "errors/key1.json",
+        },
+        {
+          Key: "errors/key2.json",
+        },
+      ],
     };
     mockS3.send.mockReturnValue(mockResult);
     const result = await listErrors(mockS3);
 
-    expect(result).toStrictEqual(['key1', 'key2']);
+    expect(result).toStrictEqual(["key1", "key2"]);
     expect(mockS3.send).toHaveBeenCalledTimes(1);
   });
 
   test("handles when errors/ is a folder object and should be filtered in the result", async () => {
     const mockResult = {
       IsTruncated: false,
-      Contents: [{
-        Key: 'errors/',
-      }, {
-        Key: 'errors/key.json',
-      }]
+      Contents: [
+        {
+          Key: "errors/",
+        },
+        {
+          Key: "errors/key.json",
+        },
+      ],
     };
     mockS3.send.mockReturnValue(mockResult);
     const result = await listErrors(mockS3);
 
-    expect(result).toStrictEqual(['key']);
+    expect(result).toStrictEqual(["key"]);
     expect(mockS3.send).toHaveBeenCalledTimes(1);
   });
 
   test("handles multiple pages of results", async () => {
     const mockResult1 = {
       IsTruncated: true,
-      Contents: [{
-        Key: 'errors/key1.json',
-      }, {
-        Key: 'errors/key2.json',
-      }],
-      NextContinuationToken: 'A',
+      Contents: [
+        {
+          Key: "errors/key1.json",
+        },
+        {
+          Key: "errors/key2.json",
+        },
+      ],
+      NextContinuationToken: "A",
     };
     const mockResult2 = {
       IsTruncated: true,
-      Contents: [{
-        Key: 'errors/key3.json',
-      }, {
-        Key: 'errors/key4.json',
-      }],
-      NextContinuationToken: 'B',
+      Contents: [
+        {
+          Key: "errors/key3.json",
+        },
+        {
+          Key: "errors/key4.json",
+        },
+      ],
+      NextContinuationToken: "B",
     };
     const mockResult3 = {
       IsTruncated: false,
-      Contents: [{
-        Key: 'errors/key5.json',
-      }],
+      Contents: [
+        {
+          Key: "errors/key5.json",
+        },
+      ],
     };
     mockS3.send.mockReturnValueOnce(mockResult1);
     mockS3.send.mockReturnValueOnce(mockResult2);
@@ -73,14 +90,14 @@ describe("listErrors test suite", () => {
 
     const result = await listErrors(mockS3);
 
-    expect(result).toStrictEqual(['key1', 'key2', 'key3', 'key4', 'key5']);
+    expect(result).toStrictEqual(["key1", "key2", "key3", "key4", "key5"]);
     expect(mockS3.send).toHaveBeenCalledTimes(3);
   });
 
   test("handles no results", async () => {
     const mockResult = {
       IsTruncated: false,
-      Contents: []
+      Contents: [],
     };
     mockS3.send.mockReturnValue(mockResult);
     const result = await listErrors(mockS3);
@@ -109,7 +126,7 @@ describe("identifyErrorsAndResolvedErrors test suite", () => {
       [],
       {
         newErrors: [],
-        resolvedErrors: []
+        resolvedErrors: [],
       },
     ],
     [
@@ -129,7 +146,7 @@ describe("identifyErrorsAndResolvedErrors test suite", () => {
       ["I'm not here!"],
       {
         newErrors: [],
-        resolvedErrors: []
+        resolvedErrors: [],
       },
     ],
     [
@@ -138,10 +155,10 @@ describe("identifyErrorsAndResolvedErrors test suite", () => {
         instrument: {
           [FAILED]: {},
           [SKIPPED]: {
-            function1: {}
+            function1: {},
           },
           [SUCCEEDED]: {
-            function2: {}
+            function2: {},
           },
         },
         uninstrument: {
@@ -157,7 +174,7 @@ describe("identifyErrorsAndResolvedErrors test suite", () => {
       [],
       {
         newErrors: [],
-        resolvedErrors: []
+        resolvedErrors: [],
       },
     ],
     [
@@ -166,7 +183,7 @@ describe("identifyErrorsAndResolvedErrors test suite", () => {
         instrument: {
           [FAILED]: {
             failure1: {
-              reason: 'failure1 - reason',
+              reason: "failure1 - reason",
             },
           },
           [SKIPPED]: {
@@ -179,7 +196,7 @@ describe("identifyErrorsAndResolvedErrors test suite", () => {
         uninstrument: {
           [FAILED]: {
             failure2: {
-              reason: 'failure2 - reason',
+              reason: "failure2 - reason",
             },
           },
           [SKIPPED]: {
@@ -192,13 +209,16 @@ describe("identifyErrorsAndResolvedErrors test suite", () => {
       },
       [],
       {
-        newErrors: [{
-          functionName: 'failure1',
-          reason: 'failure1 - reason',
-        }, {
-          functionName: 'failure2',
-          reason: 'failure2 - reason',
-        },],
+        newErrors: [
+          {
+            functionName: "failure1",
+            reason: "failure1 - reason",
+          },
+          {
+            functionName: "failure2",
+            reason: "failure2 - reason",
+          },
+        ],
         resolvedErrors: [],
       },
     ],
@@ -224,10 +244,10 @@ describe("identifyErrorsAndResolvedErrors test suite", () => {
           },
         },
       },
-      ['function1', 'function4'],
+      ["function1", "function4"],
       {
         newErrors: [],
-        resolvedErrors: ['function1', 'function4'],
+        resolvedErrors: ["function1", "function4"],
       },
     ],
     [
@@ -236,10 +256,10 @@ describe("identifyErrorsAndResolvedErrors test suite", () => {
         instrument: {
           [FAILED]: {
             failure1: {
-              reason: 'failure1 - reason',
+              reason: "failure1 - reason",
             },
             failure1a: {
-              reason: 'failure1a - reason',
+              reason: "failure1a - reason",
             },
           },
           [SKIPPED]: {
@@ -253,10 +273,10 @@ describe("identifyErrorsAndResolvedErrors test suite", () => {
         uninstrument: {
           [FAILED]: {
             failure2: {
-              reason: 'failure2 - reason',
+              reason: "failure2 - reason",
             },
             failure2a: {
-              reason: 'failure2a - reason',
+              reason: "failure2a - reason",
             },
           },
           [SKIPPED]: {
@@ -268,24 +288,30 @@ describe("identifyErrorsAndResolvedErrors test suite", () => {
           },
         },
       },
-      ['function1', 'function1a', 'failure1a', 'function4', 'I do not exist!'],
+      ["function1", "function1a", "failure1a", "function4", "I do not exist!"],
       {
-        newErrors: [{
-          functionName: 'failure1',
-          reason: 'failure1 - reason',
-        }, {
-          functionName: 'failure2',
-          reason: 'failure2 - reason',
-        }, {
-          functionName: 'failure2a',
-          reason: 'failure2a - reason',
-        }],
-        resolvedErrors: ['function1', 'function1a', 'function4'],
+        newErrors: [
+          {
+            functionName: "failure1",
+            reason: "failure1 - reason",
+          },
+          {
+            functionName: "failure2",
+            reason: "failure2 - reason",
+          },
+          {
+            functionName: "failure2a",
+            reason: "failure2a - reason",
+          },
+        ],
+        resolvedErrors: ["function1", "function1a", "function4"],
       },
     ],
   ])("%s", (_, instrumentOutcome, previousErrors, expected) => {
-    const result = identifyNewErrorsAndResolvedErrors(instrumentOutcome, previousErrors);
+    const result = identifyNewErrorsAndResolvedErrors(
+      instrumentOutcome,
+      previousErrors,
+    );
     expect(result).toStrictEqual(expected);
   });
 });
-
