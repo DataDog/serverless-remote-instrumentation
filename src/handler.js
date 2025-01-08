@@ -167,4 +167,6 @@ exports.handler = async (event, context) => {
   else {
     console.error("Received unexpected event type");
   }
+
+  return instrumentOutcome;
 };
