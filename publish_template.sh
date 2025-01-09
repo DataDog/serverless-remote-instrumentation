@@ -50,7 +50,7 @@ function aws-login() {
     if [ "$ACCOUNT" = "prod" ] ; then
         aws-vault exec sso-prod-engineering --  ${cfg[@]}
     else
-        aws-vault exec sso-serverless-sandbox-account-admin-8h --  ${cfg[@]}
+        aws-vault exec sso-serverless-sandbox-account-admin --  ${cfg[@]}
     fi
 }
 
