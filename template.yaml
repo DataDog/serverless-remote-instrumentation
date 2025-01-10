@@ -23,11 +23,13 @@ Metadata:
           - DdSite
           - MinimumMemorySize
           - BucketPrefix
+          - BucketName
           - InstrumenterFunctionName
           - TrailName
 
 Conditions:
   CreateCodeSigningConfig: !Equals [ !Ref EnableCodeSigningConfigurations, "true" ]
+  HasBucketName: !Not [!Equals [ !Ref BucketName, ""]]
 
 Parameters:
   EnableCodeSigningConfigurations:
@@ -64,6 +66,11 @@ Parameters:
     Default: datadog-remote-instrument
     Description: >-
       Since S3 buckets are globally unique across AWS regions, please update the name of the bucket that is used to store CloudTrail management event. And the bucket name should not contain upper case.
+  BucketName:
+    Type: String
+    Default: ""
+    Description: >-
+      S3 buckets are globally unique across AWS regions, provide either a BucketName to specifiy a name to use or a BucketPrefix and the name will be generated based on the prefix
   TrailName:
     Type: String
     Default: datadog-serverless-instrumentation-trail
@@ -232,7 +239,7 @@ Resources:
     Type: 'AWS::S3::Bucket'
     DeletionPolicy: Delete
     Properties:
-      BucketName: !Join
+      BucketName: !If [HasBucketName, !Ref BucketName, !Join
         - '-'
         - - !Ref BucketPrefix
           - 'bucket'
@@ -244,7 +251,7 @@ Resources:
                 - 2
                 - !Split
                   - /
-                  - !Ref AWS::StackId
+                  - !Ref AWS::StackId]
 
   S3BucketPolicy:
     Type: AWS::S3::BucketPolicy
@@ -365,7 +372,6 @@ Resources:
       Description: "Schedule for invoking the instrumenter lambda function"
       FlexibleTimeWindow:
         Mode: "OFF"
-      Name: "datadog-remote-instrument-scheduler"
       ScheduleExpression: rate(5 minutes)
       State: ENABLED
       Target:
