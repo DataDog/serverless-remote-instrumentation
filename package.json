@@ -24,6 +24,7 @@
   "scripts": {
     "format": "eslint --fix . self-monitoring-app/modifier_handler.js",
     "lint": "eslint -c eslint.config.mjs . ",
-    "test": "jest"
+    "test": "jest --config test/jest.config.js",
+    "integ": "jest --config integration-tests/jest.config.js"
   }
 }
