@@ -102,7 +102,7 @@ Resources:
       Role: !GetAtt LambdaExecutionRole.Arn
       Handler: /opt/nodejs/node_modules/datadog-remote-instrument/handler.handler
       Layers:
-        - !Sub 'arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Extension-ARM:50'
+        - !Sub 'arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Extension-ARM:68'
         - !Sub 'arn:aws:lambda:${AWS::Region}:${DdRemoteInstrumentLayerAwsAccount}:layer:Datadog-Serverless-Remote-Instrumentation-ARM:${DdRemoteInstrumentLayerVersion}'
       Environment:
         Variables:
@@ -119,6 +119,7 @@ Resources:
           DD_S3_BUCKET: !Ref S3Bucket
           DD_REMOTE_CONFIGURATION_ENABLED: true
           DD_APM_ENABLED: true
+          DD_EXTENSION_VERSION: compatibility
       Tags:
         - Key: "dd_serverless_service"
           Value: "remote_instrumenter"
