@@ -12,6 +12,14 @@ rm -rf scripts/.layers
 yarn install --production
 mkdir -p scripts/.layers
 
+if [ ! -d "node_modules" ]; then
+  yarn workspaces focus --production
+  if [ ! -d "node_modules" ]; then
+    echo "Failed to install node modules"
+    exit 1
+  fi
+fi
+
 # nodejs is the designated directory specified in Lambda documentation
 mkdir -p nodejs
 cp -r node_modules nodejs/
