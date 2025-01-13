@@ -239,9 +239,12 @@ Resources:
     Type: 'AWS::S3::Bucket'
     DeletionPolicy: Delete
     Properties:
-      BucketName: !If [HasBucketName, !Ref BucketName, !Join
-        - '-'
-        - - !Ref BucketPrefix
+      BucketName: !If 
+        - HasBucketName 
+        - !Ref BucketName 
+        - !Join
+          - '-'
+          - - !Ref BucketPrefix
           - 'bucket'
           - !Select
             - 0
