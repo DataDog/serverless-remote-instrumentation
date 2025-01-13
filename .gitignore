@@ -2,6 +2,7 @@
 .layers
 .idea
 .vscode
+cdk.out
 
 dist/*
 existing_layers
