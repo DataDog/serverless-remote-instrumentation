@@ -254,7 +254,7 @@ Resources:
                 - 2
                 - !Split
                   - /
-                  - !Ref AWS::StackId]
+                  - !Ref AWS::StackId
 
   S3BucketPolicy:
     Type: AWS::S3::BucketPolicy
