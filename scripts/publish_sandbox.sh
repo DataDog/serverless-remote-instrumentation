@@ -32,13 +32,22 @@ REGION=$REGION
 if [ -z $VERSION ]; then
     echo "No version specified, automatically incrementing version number"
 
-    LAST_LAYER_VERSION=$(
-        aws-vault exec sso-serverless-sandbox-account-admin -- \
-        aws lambda list-layer-versions \
-            --layer-name $LAYER_NAME \
-            --region $REGION \
-        | jq -r ".LayerVersions | .[0] |  .Version" \
-    )
+    if [ $RUNNING_IN_GITHUB_ACTION ]; then
+        LAST_LAYER_VERSION=$(
+            aws lambda list-layer-versions \
+                --layer-name $LAYER_NAME \
+                --region $REGION \
+            | jq -r ".LayerVersions | .[0] |  .Version" \
+        )
+    else
+        LAST_LAYER_VERSION=$(
+            aws-vault exec sso-serverless-sandbox-account-admin -- \
+            aws lambda list-layer-versions \
+                --layer-name $LAYER_NAME \
+                --region $REGION \
+            | jq -r ".LayerVersions | .[0] |  .Version" \
+        )
+    fi
     if [ "$LAST_LAYER_VERSION" == "null" ]; then
         echo "Error auto-detecting the last layer version"
         exit 1
@@ -55,4 +64,8 @@ cd $SCRIPTS_DIR/..
 VERSION=$VERSION ARCHITECTURE=$ARCHITECTURE ./scripts/build_layer.sh
 
 echo "Publishing layers to sandbox"
-VERSION=$VERSION ARCHITECTURE=$ARCHITECTURE REGIONS=$REGION aws-vault exec sso-serverless-sandbox-account-admin -- ./scripts/publish_layers.sh
+if [ $RUNNING_IN_GITHUB_ACTION ]; then
+    VERSION=$VERSION ARCHITECTURE=$ARCHITECTURE REGIONS=$REGION ./scripts/publish_layers.sh
+else
+    VERSION=$VERSION ARCHITECTURE=$ARCHITECTURE REGIONS=$REGION aws-vault exec sso-serverless-sandbox-account-admin -- ./scripts/publish_layers.sh
+fi
