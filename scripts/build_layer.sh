@@ -27,5 +27,5 @@ mkdir -p nodejs/node_modules/datadog-remote-instrument
 
 # put src/* into node_modules/package-name/ as a package without copy src directory itself
 cp -a src/. nodejs/node_modules/datadog-remote-instrument/
-zip -r scripts/.layers/datadog_serverless_remote_instrumentation_arm64.zip nodejs
+zip -r -q scripts/.layers/datadog_serverless_remote_instrumentation_arm64.zip nodejs
 rm -rf nodejs
