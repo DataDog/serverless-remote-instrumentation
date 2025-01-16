@@ -4,6 +4,8 @@
 .vscode
 cdk.out
 
+integration-tests/config.json
+
 dist/*
 existing_layers
 nodejs/*
