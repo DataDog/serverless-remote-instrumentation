@@ -3,14 +3,12 @@ const { existsSync, readFileSync, writeFileSync } = require("fs");
 
 const generateTestConfig = () => {
   const configPath = "integration-tests/config.json";
-  let stackName;
   let config;
 
   if (existsSync(configPath)) {
     config = JSON.parse(
       readFileSync(configPath, { encoding: "utf8", flag: "r" }).trim(),
     );
-    stackName = config.stackName;
   } else {
     let namingSeed = "";
     if (process.env.USER) {
@@ -21,11 +19,10 @@ const generateTestConfig = () => {
     // Remove any non alphanumeric characters to fit stack name constraints
     namingSeed = namingSeed.replace(/[\W_]+/g, "");
 
-    stackName = `RemoteInstrumenterTestStack${namingSeed}`;
     config = {
       region: "ca-central-1",
       account: "425362996713",
-      stackName,
+      stackName: `RemoteInstrumenterTestStack${namingSeed}`,
       functionName: `remote-instrumenter-testing-${namingSeed}`,
       bucketName: `remote-instrumenter-testing-bucket-${namingSeed}`,
       roleName: `remote-instrumenter-testing-${namingSeed}`,
