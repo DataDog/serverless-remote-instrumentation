@@ -7,6 +7,7 @@ const {
   doesErrorObjectExist,
   putErrorObject,
 } = require("./utilities/s3-error-object");
+const { SecretsManagerClient } = require("@aws-sdk/client-secrets-manager");
 const {
   invokeLambdaWithScheduledEvent,
 } = require("./utilities/remote-instrumenter-invocations");
@@ -24,6 +25,11 @@ const arn = `arn:aws:iam::${account}:role/${roleName}`;
 
 const credentials = getCredentials(arn);
 const s3 = new S3Client({
+  credentials,
+  region,
+});
+
+const secretsManager = new SecretsManagerClient({
   credentials,
   region,
 });
@@ -67,6 +73,7 @@ describe("Error handling tests", () => {
 
     // Because the function is instrumented
     const isInstrumented = await isFunctionInstrumented(
+      secretsManager,
       lambdaClient,
       testFunction,
     );
