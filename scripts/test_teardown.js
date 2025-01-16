@@ -1,5 +1,7 @@
-const { bucketName, stackName } = require("../integration-tests/config.json");
+const { generateTestConfig } = require("./test_setup");
 const { execSync } = require("child_process");
+
+const { bucketName, stackName } = generateTestConfig();
 
 // This will fail because the bucket will have contents, but start the deletion
 // so that more things don't end up in the bucket while we try to delete
