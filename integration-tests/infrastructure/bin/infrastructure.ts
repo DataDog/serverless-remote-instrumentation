@@ -29,6 +29,11 @@ class TestingStack extends Stack {
       resources: [ '*' ],
     }));
 
+    assumedRole.addToPolicy(new PolicyStatement({
+      actions: ['secretsmanager:GetSecretValue'],
+      resources: [ `arn:aws:secretsmanager:${region}:${account}:secret:Remote_Instrumenter*` ],
+    }));
+
     const version = readFileSync('scripts/.layers/version', { encoding: 'utf8', flag: 'r' }).trim()
 
     new CfnInclude(this, 'ImportedRemoteInstrumenterTemplate', { 
