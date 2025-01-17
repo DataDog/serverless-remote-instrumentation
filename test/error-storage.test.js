@@ -105,6 +105,17 @@ describe("listErrors test suite", () => {
     expect(result).toStrictEqual([]);
     expect(mockS3.send).toHaveBeenCalledTimes(1);
   });
+
+  test("handles no results with undefined contents", async () => {
+    const mockResult = {
+      IsTruncated: false,
+    };
+    mockS3.send.mockReturnValue(mockResult);
+    const result = await listErrors(mockS3);
+
+    expect(result).toStrictEqual([]);
+    expect(mockS3.send).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("identifyErrorsAndResolvedErrors test suite", () => {

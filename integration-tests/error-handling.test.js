@@ -78,5 +78,8 @@ describe("Error handling tests", () => {
       testFunction,
     );
     expect(isInstrumented).toStrictEqual(true);
+
+    // The function can run a second time with no errors
+    await invokeLambdaWithScheduledEvent(lambdaClient, functionName);
   });
 });
