@@ -19,12 +19,14 @@ const generateTestConfig = () => {
     // Remove any non alphanumeric characters to fit stack name constraints
     namingSeed = namingSeed.replace(/[\W_]+/g, "");
 
+    const region = "ca-central-1";
+
     config = {
-      region: "ca-central-1",
+      region,
       account: "425362996713",
       stackName: `RemoteInstrumenterTestStack${namingSeed}`,
       functionName: `remote-instrumenter-testing-${namingSeed}`,
-      bucketName: `remote-instrumenter-testing-bucket-${namingSeed}`,
+      bucketName: `remote-instrumenter-testing-bucket-${region}-${namingSeed}`,
       roleName: `remote-instrumenter-testing-${namingSeed}`,
       trailName: `datadog-serverless-instrumentation-trail-testing-${namingSeed}`,
     };
@@ -35,19 +37,21 @@ const generateTestConfig = () => {
 
 exports.generateTestConfig = generateTestConfig;
 
-const config = generateTestConfig();
+if (require.main === module) {
+  const config = generateTestConfig();
 
-console.log(`Using config\n${JSON.stringify(config)}`);
+  console.log(`Using config\n${JSON.stringify(config)}`);
 
-const { stackName } = config;
+  const { stackName } = config;
 
-// Need to yarn install since the publish script removes node modules
-execSync(`yarn install`, {
-  encoding: "utf-8",
-  stdio: "inherit",
-});
+  // Need to yarn install since the publish script removes node modules
+  execSync(`yarn install`, {
+    encoding: "utf-8",
+    stdio: "inherit",
+  });
 
-execSync(`cdk synth && cdk deploy --require-approval never ${stackName}`, {
-  encoding: "utf-8",
-  stdio: "inherit",
-});
+  execSync(`cdk synth && cdk deploy --require-approval never ${stackName}`, {
+    encoding: "utf-8",
+    stdio: "inherit",
+  });
+}
