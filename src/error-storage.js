@@ -38,7 +38,9 @@ const listErrors = async (s3) => {
     const response = await s3.send(command);
     const { Contents, NextContinuationToken } = response;
     isTruncated = response.IsTruncated;
-    results.push(...Contents);
+    if (Contents) {
+      results.push(...Contents);
+    }
     params.ContinuationToken = NextContinuationToken;
   }
   // Return just the LAMBDA_FUNCTION_NAME from `errors/LAMBDA_FUNCTION_NAME.json`
