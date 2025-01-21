@@ -2,6 +2,24 @@ const { RcConfig, getConfigsFromResponse } = require("../src/config");
 const { FILTER_TYPES } = require("../src/consts");
 
 describe("Config constructor", () => {
+  const rcConfigID = "datadog/2/abc-123-def";
+  const rcMetadata = {
+    custom: {
+      c: ["abc-def-ghi"],
+      "tracer-predicates": {
+        tracer_predicates_v1: [
+          {
+            clientID: "jkl-mno-pqr",
+          },
+        ],
+      },
+      v: 3,
+    },
+    hashes: {
+      sha256: "stu-vwx-yza",
+    },
+    length: 500,
+  };
   function constructTestJSON({
     configVersion,
     entityType,
@@ -47,7 +65,7 @@ describe("Config constructor", () => {
         },
       ],
     });
-    const rcConfig = new RcConfig(testJSON);
+    const rcConfig = new RcConfig(rcConfigID, testJSON, rcMetadata);
     expect(rcConfig.configVersion).toBe(1);
     expect(rcConfig.entityType).toBe("lambda");
     expect(rcConfig.extensionVersion).toBe(10);
@@ -55,6 +73,8 @@ describe("Config constructor", () => {
     expect(rcConfig.pythonLayerVersion).toBe(30);
     expect(rcConfig.priority).toBe(1);
     expect(rcConfig.ruleFilters.length).toBe(2);
+    expect(rcConfig.rcConfigVersion).toBe(3);
+    expect(rcConfig.configID).toBe(rcConfigID);
   });
 
   it("creates an RcConfig object out of well-formed JSON with undefined versions", () => {
@@ -67,7 +87,7 @@ describe("Config constructor", () => {
       priority: 1,
       ruleFilters: [],
     });
-    const rcConfig = new RcConfig(testJSON);
+    const rcConfig = new RcConfig(rcConfigID, testJSON, rcMetadata);
     expect(rcConfig.configVersion).toBe(1);
     expect(rcConfig.entityType).toBe("lambda");
     expect(rcConfig.extensionVersion).toBe(undefined);
@@ -87,7 +107,7 @@ describe("Config constructor", () => {
       priority: 1,
       ruleFilters: [],
     });
-    expect(() => new RcConfig(testJSON)).toThrow(
+    expect(() => new RcConfig(rcConfigID, testJSON, rcMetadata)).toThrow(
       "Received invalid configuration: config version must be a number",
     );
   });
@@ -102,7 +122,7 @@ describe("Config constructor", () => {
       priority: 1,
       ruleFilters: [],
     });
-    expect(() => new RcConfig(testJSON)).toThrow(
+    expect(() => new RcConfig(rcConfigID, testJSON, rcMetadata)).toThrow(
       "Received invalid configuration: entity type must be one of 'lambda'",
     );
   });
@@ -117,7 +137,7 @@ describe("Config constructor", () => {
       priority: 1,
       ruleFilters: [],
     });
-    expect(() => new RcConfig(testJSON)).toThrow(
+    expect(() => new RcConfig(rcConfigID, testJSON, rcMetadata)).toThrow(
       "Received invalid configuration: extension version must be a number",
     );
   });
@@ -132,7 +152,7 @@ describe("Config constructor", () => {
       priority: 1,
       ruleFilters: [],
     });
-    expect(() => new RcConfig(testJSON)).toThrow(
+    expect(() => new RcConfig(rcConfigID, testJSON, rcMetadata)).toThrow(
       "Received invalid configuration: python layer version must be a number",
     );
   });
@@ -147,7 +167,7 @@ describe("Config constructor", () => {
       priority: 1,
       ruleFilters: [],
     });
-    expect(() => new RcConfig(testJSON)).toThrow(
+    expect(() => new RcConfig(rcConfigID, testJSON, rcMetadata)).toThrow(
       "Received invalid configuration: node layer version must be a number",
     );
   });
@@ -162,7 +182,7 @@ describe("Config constructor", () => {
       priority: "invalid",
       ruleFilters: [],
     });
-    expect(() => new RcConfig(testJSON)).toThrow(
+    expect(() => new RcConfig(rcConfigID, testJSON, rcMetadata)).toThrow(
       "Received invalid configuration: priority must be a number",
     );
   });
@@ -177,7 +197,7 @@ describe("Config constructor", () => {
       priority: 1,
       ruleFilters: "invalid",
     });
-    expect(() => new RcConfig(testJSON)).toThrow(
+    expect(() => new RcConfig(rcConfigID, testJSON, rcMetadata)).toThrow(
       "Received invalid configuration: rule filters must be an array",
     );
   });
@@ -199,7 +219,7 @@ describe("Config constructor", () => {
         },
       ],
     });
-    expect(() => new RcConfig(testJSON)).toThrow(
+    expect(() => new RcConfig(rcConfigID, testJSON, rcMetadata)).toThrow(
       `Received invalid configuration: filterType field must be one of '${Array.from(FILTER_TYPES).join(", ")}', but received 'invalid'`,
     );
   });
@@ -221,22 +241,119 @@ describe("Config constructor", () => {
         },
       ],
     });
-    expect(() => new RcConfig(testJSON)).toThrow(
+    expect(() => new RcConfig(rcConfigID, testJSON, rcMetadata)).toThrow(
       "Received invalid configuration: rule filter values field must be a non-empty array",
     );
   });
 });
 
 describe("getConfigsFromResponse", () => {
+  const rcConfigPath =
+    "datadog/2/SERVERLESS_REMOTE_INSTRUMENTATION/abc-123-def";
   test("should error when there is no data", () => {
     expect(() => getConfigsFromResponse({})).toThrow(
       "Failed to retrieve configs",
     );
   });
-  test("should error when target files have no raw data", () => {
+  test("should error when target file is not found", () => {
     expect(() =>
-      getConfigsFromResponse({ data: { target_files: [{}] } }),
-    ).toThrow("Error retrieving raw data from configs");
+      getConfigsFromResponse({
+        data: {
+          target_files: [
+            {
+              path: "datadog/2/SERVERLESS_REMOTE_INSTRUMENTATION/xyz-456-uvw",
+              raw: btoa(
+                JSON.stringify({
+                  config_version: 1,
+                  entity_type: "lambda",
+                  instrumentation_settings: {
+                    extension_version: 10,
+                  },
+                  priority: 1,
+                  rule_filters: [],
+                }),
+              ),
+            },
+          ],
+          client_configs: [rcConfigPath],
+        },
+      }),
+    ).toThrow(
+      `Error parsing configs: target file not found for config path '${rcConfigPath}'`,
+    );
+  });
+  test("should error when targets not found", () => {
+    expect(() =>
+      getConfigsFromResponse({
+        data: {
+          target_files: [
+            {
+              path: rcConfigPath,
+              raw: btoa(
+                JSON.stringify({
+                  config_version: 1,
+                  entity_type: "lambda",
+                  instrumentation_settings: {
+                    extension_version: 10,
+                  },
+                  priority: 1,
+                  rule_filters: [],
+                }),
+              ),
+            },
+          ],
+          client_configs: [rcConfigPath],
+        },
+      }),
+    ).toThrow("Error parsing configs: targets not found");
+  });
+  test("should error when signed target data not found for config path", () => {
+    expect(() =>
+      getConfigsFromResponse({
+        data: {
+          target_files: [
+            {
+              path: rcConfigPath,
+              raw: btoa(
+                JSON.stringify({
+                  config_version: 1,
+                  entity_type: "lambda",
+                  instrumentation_settings: {
+                    extension_version: 10,
+                  },
+                  priority: 1,
+                  rule_filters: [],
+                }),
+              ),
+            },
+          ],
+          client_configs: [rcConfigPath],
+          targets: btoa(
+            JSON.stringify({
+              signatures: [
+                {
+                  keyid: "4a52c9a5-8037-4567-bf4d-f5aba2d25d5d",
+                  sig: "4a52c9a5-8037-4567-bf4d-f5aba2d25d5d",
+                },
+              ],
+              signed: {
+                _type: "targets",
+                custom: {
+                  agent_refresh_interval: 50,
+                  opaque_backend_state: "4a52c9a5-8037-4567-bf4d-f5aba2d25d5d",
+                },
+                expires: "2027-010-21T14:49:33Z",
+                spec_version: "1.0.0",
+                targets: {},
+                version: 100000000,
+              },
+            }),
+          ),
+        },
+      }),
+    ).toThrow(
+      `Error parsing configs: signed target data not found for config path '${rcConfigPath}'`,
+    );
   });
   test("should error on invalid config", () => {
     expect(() =>
@@ -244,22 +361,70 @@ describe("getConfigsFromResponse", () => {
         data: {
           target_files: [
             {
-              raw: "invalid",
+              path: rcConfigPath,
+              raw: btoa(
+                JSON.stringify({
+                  config_version: 1,
+                  entity_type: "lambda",
+                }),
+              ),
             },
           ],
+          client_configs: [rcConfigPath],
+          targets: btoa(
+            JSON.stringify({
+              signatures: [
+                {
+                  keyid: "4a52c9a5-8037-4567-bf4d-f5aba2d25d5d",
+                  sig: "4a52c9a5-8037-4567-bf4d-f5aba2d25d5d",
+                },
+              ],
+              signed: {
+                _type: "targets",
+                custom: {
+                  agent_refresh_interval: 50,
+                  opaque_backend_state: "4a52c9a5-8037-4567-bf4d-f5aba2d25d5d",
+                },
+                expires: "2027-010-21T14:49:33Z",
+                spec_version: "1.0.0",
+                targets: {
+                  [rcConfigPath]: {
+                    custom: {
+                      c: ["4a52c9a5-8037-4567-bf4d-f5aba2d25d5d"],
+                      "tracer-predicates": {
+                        tracer_predicates_v1: [
+                          {
+                            clientID: "4a52c9a5-8037-4567-bf4d-f5aba2d25d5d",
+                          },
+                        ],
+                      },
+                      v: 3,
+                    },
+                    hashes: {
+                      sha256: "4a52c9a5-8037-4567-bf4d-f5aba2d25d5d",
+                    },
+                    length: 500,
+                  },
+                },
+                version: 100000000,
+              },
+            }),
+          ),
         },
       }),
-    ).toThrow("Error parsing config");
+    ).toThrow(
+      "Error parsing configs: Received invalid configuration: priority must be a number, but received 'undefined'",
+    );
   });
   test("should return empty list when there are no configs", () => {
     expect(getConfigsFromResponse({ data: { target_files: [] } })).toEqual([]);
   });
-
   test("should deserialize configs into objects", () => {
     const configs = getConfigsFromResponse({
       data: {
         target_files: [
           {
+            path: rcConfigPath,
             raw: btoa(
               JSON.stringify({
                 config_version: 1,
@@ -288,6 +453,46 @@ describe("getConfigsFromResponse", () => {
             ),
           },
         ],
+        client_configs: [rcConfigPath],
+        targets: btoa(
+          JSON.stringify({
+            signatures: [
+              {
+                keyid: "4a52c9a5-8037-4567-bf4d-f5aba2d25d5d",
+                sig: "4a52c9a5-8037-4567-bf4d-f5aba2d25d5d",
+              },
+            ],
+            signed: {
+              _type: "targets",
+              custom: {
+                agent_refresh_interval: 50,
+                opaque_backend_state: "4a52c9a5-8037-4567-bf4d-f5aba2d25d5d",
+              },
+              expires: "2027-010-21T14:49:33Z",
+              spec_version: "1.0.0",
+              targets: {
+                [rcConfigPath]: {
+                  custom: {
+                    c: ["4a52c9a5-8037-4567-bf4d-f5aba2d25d5d"],
+                    "tracer-predicates": {
+                      tracer_predicates_v1: [
+                        {
+                          clientID: "4a52c9a5-8037-4567-bf4d-f5aba2d25d5d",
+                        },
+                      ],
+                    },
+                    v: 3,
+                  },
+                  hashes: {
+                    sha256: "4a52c9a5-8037-4567-bf4d-f5aba2d25d5d",
+                  },
+                  length: 500,
+                },
+              },
+              version: 100000000,
+            },
+          }),
+        ),
       },
     });
     expect(configs.length).toBe(1);
