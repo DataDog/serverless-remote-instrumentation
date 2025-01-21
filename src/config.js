@@ -7,14 +7,15 @@ const {
   S3ServiceException,
 } = require("@aws-sdk/client-s3");
 const crypto = require("crypto");
-const { ENTITY_TYPES, FILTER_TYPES } = require("./consts");
+const { ENTITY_TYPES, FILTER_TYPES, RC_PRODUCT } = require("./consts");
 
-const REMOTE_CONFIG_PRODUCT = "SERVERLESS_REMOTE_INSTRUMENTATION";
 const REMOTE_CONFIG_URL = "http://localhost:8126/v0.7/config";
 const KEY = "datadog_remote_instrumentation_config.txt";
 
 class RcConfig {
-  constructor(configJSON) {
+  constructor(configID, configJSON, configMeta) {
+    this.setConfigID(configID);
+    this.setRcConfigVersion(configMeta.custom?.v);
     this.setConfigVersion(configJSON.config_version);
     this.setEntityType(configJSON.entity_type);
     this.setExtensionVersion(
@@ -35,12 +36,32 @@ class RcConfig {
     return Error(`Received invalid configuration: ${message}`);
   }
 
+  setConfigID(configID) {
+    if (typeof configID === "string") {
+      this.configID = configID;
+    } else {
+      throw this.configurationError(
+        `config ID must be a string, but received '${configID}'`,
+      );
+    }
+  }
+
+  setRcConfigVersion(rcConfigVersion) {
+    if (typeof rcConfigVersion === "number") {
+      this.rcConfigVersion = rcConfigVersion;
+    } else {
+      throw this.configurationError(
+        `rc config version must be a number, but received '${rcConfigVersion}'`,
+      );
+    }
+  }
+
   setConfigVersion(configVersion) {
     if (typeof configVersion === "number") {
       this.configVersion = configVersion;
     } else {
       throw this.configurationError(
-        `config version must be a number, but received ${configVersion}`,
+        `config version must be a number, but received '${configVersion}'`,
       );
     }
   }
@@ -63,7 +84,7 @@ class RcConfig {
       this.extensionVersion = extensionVersion;
     } else {
       throw this.configurationError(
-        `extension version must be a number, but received ${extensionVersion}`,
+        `extension version must be a number, but received '${extensionVersion}'`,
       );
     }
   }
@@ -76,7 +97,7 @@ class RcConfig {
       this.nodeLayerVersion = nodeLayerVersion;
     } else {
       throw this.configurationError(
-        `node layer version must be a number, but received ${nodeLayerVersion}`,
+        `node layer version must be a number, but received '${nodeLayerVersion}'`,
       );
     }
   }
@@ -89,7 +110,7 @@ class RcConfig {
       this.pythonLayerVersion = pythonLayerVersion;
     } else {
       throw this.configurationError(
-        `python layer version must be a number, but received ${pythonLayerVersion}`,
+        `python layer version must be a number, but received '${pythonLayerVersion}'`,
       );
     }
   }
@@ -99,7 +120,7 @@ class RcConfig {
       this.priority = priority;
     } else {
       throw this.configurationError(
-        `priority must be a number, but received ${priority}`,
+        `priority must be a number, but received '${priority}'`,
       );
     }
   }
@@ -115,17 +136,17 @@ class RcConfig {
       for (const filter of processedFilters) {
         if (typeof filter.key !== "string") {
           throw this.configurationError(
-            `rule filter key field must be a string, but received ${filter.key}`,
+            `rule filter key field must be a string, but received '${filter.key}'`,
           );
         }
         if (!Array.isArray(filter.values) || filter.values.length === 0) {
           throw this.configurationError(
-            `rule filter values field must be a non-empty array, but received ${filter.values}`,
+            `rule filter values field must be a non-empty array, but received '${filter.values}'`,
           );
         }
         if (typeof filter.allow !== "boolean") {
           throw this.configurationError(
-            `rule filter allow field must be a boolean, but received ${filter.allow}`,
+            `rule filter allow field must be a boolean, but received '${filter.allow}'`,
           );
         }
         const filterType = filter.filterType;
@@ -138,7 +159,7 @@ class RcConfig {
       this.ruleFilters = processedFilters;
     } else {
       throw this.configurationError(
-        `rule filters must be an array, but received ${ruleFilters}`,
+        `rule filters must be an array, but received '${ruleFilters}'`,
       );
     }
   }
@@ -153,7 +174,7 @@ async function getConfigsFromRC(accountID, region) {
         targets_version: 0,
       },
       id: crypto.randomUUID(),
-      products: [REMOTE_CONFIG_PRODUCT],
+      products: [RC_PRODUCT],
       is_tracer: true,
       client_tracer: {
         runtime_id: "",
@@ -187,17 +208,48 @@ function getConfigsFromResponse(response) {
   if (!response.data) {
     throw new Error("Failed to retrieve configs");
   }
+  // Map path to config for each target file
   const targetFiles = response.data.target_files ?? [];
+  const targetFileMapping = targetFiles.reduce(
+    (acc, targetFile) => ({
+      ...acc,
+      [targetFile.path]: targetFile.raw ?? undefined,
+    }),
+    {},
+  );
+  const configPaths = response.data.client_configs ?? [];
   let parsedConfigFiles = [];
-  for (const targetFile of targetFiles) {
-    if (!targetFile.raw) {
-      throw new Error("Error retrieving raw data from configs");
+  // For each config path, find the config data and signed target metadata
+  for (const configPath of configPaths) {
+    // Find the target file or error if not found
+    if (!(configPath in targetFileMapping)) {
+      throw new Error(
+        `Error parsing configs: target file not found for config path '${configPath}'`,
+      );
     }
+    const targetFile = targetFileMapping[configPath];
+    // Find the metadata or error if not found
+    if (!response.data.targets) {
+      throw new Error("Error parsing configs: targets not found");
+    }
+    const signedTargets = JSON.parse(atob(response.data.targets)).signed
+      ?.targets;
+    if (!(configPath in signedTargets)) {
+      throw new Error(
+        `Error parsing configs: signed target data not found for config path '${configPath}'`,
+      );
+    }
+    const configMeta = signedTargets[configPath];
+
     try {
-      const rcConfig = new RcConfig(JSON.parse(atob(targetFile.raw)));
+      const rcConfig = new RcConfig(
+        configPath.split("/")[3],
+        JSON.parse(atob(targetFile)),
+        configMeta,
+      );
       parsedConfigFiles.push(rcConfig);
     } catch (e) {
-      throw new Error("Error parsing configs");
+      throw new Error("Error parsing configs: " + e.message);
     }
   }
   return parsedConfigFiles;
