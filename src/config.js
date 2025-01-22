@@ -14,6 +14,7 @@ const {
   REMOTE_CONFIG_URL,
   CONFIG_HASH_KEY,
 } = require("./consts");
+const { getApplyState } = require("./apply-state");
 
 class RcConfig {
   constructor(configID, configJSON, configMeta) {
@@ -169,12 +170,14 @@ class RcConfig {
 }
 exports.RcConfig = RcConfig;
 
-async function getConfigsFromRC(accountID, region) {
+async function getConfigsFromRC(s3Client, accountID, region) {
+  const applyState = await getApplyState(s3Client);
   const payload = {
     client: {
       state: {
         root_version: 1,
         targets_version: 0,
+        config_states: applyState,
       },
       id: crypto.randomUUID(),
       products: [RC_PRODUCT],
@@ -259,12 +262,16 @@ function getConfigsFromResponse(response) {
 }
 exports.getConfigsFromResponse = getConfigsFromResponse;
 
-async function getConfigs(context) {
+async function getConfigs(s3Client, context) {
   const awsAccountId = context.invokedFunctionArn.split(":")[4];
   const awsRegion = process.env.AWS_REGION;
   const instrumenterFunctionName = process.env.DD_INSTRUMENTER_FUNCTION_NAME;
   const minimumMemorySize = process.env.DD_MinimumMemorySize;
-  const configsFromRC = await getConfigsFromRC(awsAccountId, awsRegion);
+  const configsFromRC = await getConfigsFromRC(
+    s3Client,
+    awsAccountId,
+    awsRegion,
+  );
   for (const config of configsFromRC) {
     config.awsAccountId = awsAccountId;
     config.awsRegion = awsRegion;

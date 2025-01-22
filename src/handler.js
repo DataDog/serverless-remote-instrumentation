@@ -71,7 +71,7 @@ exports.handler = async (event, context) => {
 
     let configs;
     try {
-      configs = await getConfigs(context);
+      configs = await getConfigs(s3Client, context);
     } catch (error) {
       // This pulls the reason from the error, just stringifying it does not return the message
       const errorDetails = JSON.parse(
@@ -95,7 +95,7 @@ exports.handler = async (event, context) => {
   else if (isScheduledInvocationEvent(event)) {
     logger.log("Received an invocation from the scheduler.");
     const errors = await listErrors(s3Client);
-    const configs = await getConfigs(context);
+    const configs = await getConfigs(s3Client, context);
     const configChanged = await configHasChanged(s3Client, configs);
     let functionsToCheck = [];
     if (configChanged) {
