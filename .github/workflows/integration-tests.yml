@@ -29,15 +29,12 @@ jobs:
       - name: Install dependencies
         run: yarn install
 
-      - name: Publish layer
-        run: yarn integ-test-publish
+      - name: Setup Infrastructure
+        run: yarn integ-test-setup
 
       - name: Copy layer version for teardown
         id: publish
         run: echo version="$(cat scripts/.layers/version)" >> "$GITHUB_OUTPUT"
-
-      - name: Setup Infrastructure
-        run: yarn integ-test-setup
       
       - name: Run Integration Tests
         run: yarn integ
