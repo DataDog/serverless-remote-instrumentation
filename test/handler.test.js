@@ -47,6 +47,7 @@ describe("handler lambda management events", () => {
     );
     expect(config.getConfigs).toHaveBeenCalledWith(context);
     expect(instrument.instrumentFunctions).toHaveBeenCalledWith(
+      expect.anything(),
       configsResult,
       enrichedFunction,
       expect.anything(),
@@ -140,6 +141,7 @@ describe("scheduled invocation events", () => {
     expect(functions.enrichFunctionsWithTags).toHaveBeenCalledTimes(1);
     expect(instrument.instrumentFunctions).toHaveBeenCalledTimes(1);
     expect(instrument.instrumentFunctions).toHaveBeenCalledWith(
+      expect.anything(),
       configsResult,
       "A",
       expect.anything(),

@@ -15,6 +15,7 @@ const {
   REMOTE_INSTRUMENTATION_STARTED,
   REMOTE_INSTRUMENTATION_ENDED,
 } = require("./consts");
+const { putApplyState, createApplyStateObject } = require("./apply-state");
 
 function getExtensionAndRuntimeLayerVersion(runtime, config) {
   const result = {
@@ -91,6 +92,7 @@ async function instrumentWithDatadogCi(
 exports.instrumentWithDatadogCi = instrumentWithDatadogCi;
 
 async function instrumentFunctions(
+  s3Client,
   configs,
   functionsToCheck,
   instrumentOutcome,
@@ -103,6 +105,7 @@ async function instrumentFunctions(
     null,
     configs,
   );
+  const configApplyStates = [];
   for (const config of configs) {
     let {
       functionsToInstrument,
@@ -156,13 +159,17 @@ async function instrumentFunctions(
     }
     await untagResourcesOfSlsTag(
       taggingClient,
-      functionsToTag.flatMap((f) =>
+      functionsToUntag.flatMap((f) =>
         !(f.FunctionName in instrumentOutcome.uninstrument[FAILED])
           ? f.FunctionArn
           : [],
       ),
     );
+    // Add the config apply state to the list
+    configApplyStates.push(createApplyStateObject(instrumentOutcome, config));
   }
+  // Write the config apply states to S3
+  await putApplyState(s3Client, configApplyStates);
   logger.emitFrontEndEvent(
     REMOTE_INSTRUMENTATION_ENDED,
     triggeredBy,
