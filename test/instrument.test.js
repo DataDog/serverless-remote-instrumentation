@@ -1,4 +1,20 @@
-const { getExtensionAndRuntimeLayerVersion } = require("../src/instrument");
+const instrument = require("../src/instrument");
+const applyState = require("../src/apply-state");
+const tag = require("../src/tag");
+const { RcConfig } = require("../src/config");
+const datadogCi = require("@datadog/datadog-ci/dist/cli.js");
+const {
+  sampleRcConfigID,
+  sampleRcTestJSON,
+  sampleRcMetadata,
+  baseInstrumentOutcome,
+} = require("./test-utils");
+const {
+  DD_SLS_REMOTE_INSTRUMENTER_VERSION,
+  VERSION,
+  RC_PRODUCT,
+  RC_ACKNOWLEDGED,
+} = require("../src/consts");
 
 describe("getExtensionAndRuntimeLayerVersion", () => {
   it("should return the layer and runtime version for node", () => {
@@ -12,7 +28,10 @@ describe("getExtensionAndRuntimeLayerVersion", () => {
       runtimeLayerVersion: 2,
       extensionVersion: 1,
     };
-    const actual = getExtensionAndRuntimeLayerVersion(runtime, config);
+    const actual = instrument.getExtensionAndRuntimeLayerVersion(
+      runtime,
+      config,
+    );
     expect(actual).toEqual(expected);
   });
   it("should return the layer and runtime version for python", () => {
@@ -26,7 +45,10 @@ describe("getExtensionAndRuntimeLayerVersion", () => {
       runtimeLayerVersion: 3,
       extensionVersion: 1,
     };
-    const actual = getExtensionAndRuntimeLayerVersion(runtime, config);
+    const actual = instrument.getExtensionAndRuntimeLayerVersion(
+      runtime,
+      config,
+    );
     expect(actual).toEqual(expected);
   });
   it("should return an undefined runtime layer version for an unsupported runtime", () => {
@@ -40,7 +62,123 @@ describe("getExtensionAndRuntimeLayerVersion", () => {
       runtimeLayerVersion: undefined,
       extensionVersion: 1,
     };
-    const actual = getExtensionAndRuntimeLayerVersion(runtime, config);
+    const actual = instrument.getExtensionAndRuntimeLayerVersion(
+      runtime,
+      config,
+    );
     expect(actual).toEqual(expected);
+  });
+});
+jest.mock("../src/tag");
+jest.mock("../src/apply-state");
+jest.mock("@datadog/datadog-ci/dist/cli.js");
+describe("instrumentFunctions", () => {
+  // Sample functions to (un)instrument
+  const functionFoo = {
+    FunctionName: "foo",
+    FunctionArn: "arn:aws:lambda:us-east-2:123456789:function:foo",
+    Runtime: "nodejs18.x",
+    Tags: new Set(["env:prod"]),
+    MemorySize: 512,
+  };
+  const functionBar = {
+    FunctionName: "bar",
+    FunctionArn: "arn:aws:lambda:us-east-2:123456789:function:bar",
+    Runtime: "nodejs18.x",
+    Tags: new Set([
+      "foo:bar",
+      `${DD_SLS_REMOTE_INSTRUMENTER_VERSION}:${VERSION}`,
+    ]),
+    MemorySize: 512,
+  };
+
+  // Sample config object
+  const rcConfig = new RcConfig(
+    sampleRcConfigID,
+    sampleRcTestJSON,
+    sampleRcMetadata,
+  );
+  rcConfig.awsRegion = "us-east-2";
+
+  // Mock client
+  const mockClient = {
+    send: jest.fn(),
+  };
+
+  // Mock datadog-ci command
+  datadogCi.cli.run.mockReturnValue(0);
+
+  // Mock creating apply state object
+  const applyStateObject = {
+    id: sampleRcConfigID,
+    product: RC_PRODUCT,
+    version: rcConfig.rcConfigVersion,
+    apply_state: RC_ACKNOWLEDGED,
+    apply_error: "",
+  };
+  applyState.createApplyStateObject.mockReturnValue(applyStateObject);
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test("should instrument and tag functions that need it", async () => {
+    await instrument.instrumentFunctions(
+      mockClient,
+      [rcConfig],
+      [functionFoo],
+      baseInstrumentOutcome,
+      mockClient,
+    );
+    expect(datadogCi.cli.run).toHaveBeenCalledTimes(1);
+    expect(datadogCi.cli.run).toHaveBeenCalledWith([
+      "lambda",
+      "instrument",
+      "-f",
+      functionFoo.FunctionArn,
+      "-v",
+      "20",
+      "-e",
+      "10",
+    ]);
+    expect(tag.tagResourcesWithSlsTag).toHaveBeenCalledTimes(1);
+    expect(tag.tagResourcesWithSlsTag).toHaveBeenCalledWith(mockClient, [
+      functionFoo.FunctionArn,
+    ]);
+  });
+  test("should uninstrument and untag functions that need it", async () => {
+    await instrument.instrumentFunctions(
+      mockClient,
+      [rcConfig],
+      [functionBar],
+      baseInstrumentOutcome,
+      mockClient,
+    );
+    expect(datadogCi.cli.run).toHaveBeenCalledTimes(1);
+    expect(datadogCi.cli.run).toHaveBeenCalledWith([
+      "lambda",
+      "uninstrument",
+      "-f",
+      functionBar.FunctionArn,
+      "-r",
+      "us-east-2",
+    ]);
+    expect(tag.untagResourcesOfSlsTag).toHaveBeenCalledTimes(1);
+    expect(tag.untagResourcesOfSlsTag).toHaveBeenCalledWith(mockClient, [
+      functionBar.FunctionArn,
+    ]);
+  });
+  test("should write apply state to s3", async () => {
+    await instrument.instrumentFunctions(
+      mockClient,
+      [rcConfig],
+      [functionFoo, functionBar],
+      baseInstrumentOutcome,
+      mockClient,
+    );
+    expect(applyState.putApplyState).toHaveBeenCalledTimes(1);
+    expect(applyState.putApplyState).toHaveBeenCalledWith(expect.anything(), [
+      applyStateObject,
+    ]);
   });
 });
