@@ -72,7 +72,6 @@ ARCHITECTURE_MESSAGE="arm64 only"
 #else
 #    ARCHITECTURE_MESSAGE="both architectures"
 #fi
-echo $VERSION &> ".layers/version"
 if [ "$APPROVE" != "y" ]; then
   read -p "Ready to publish Remote Instrumentation version $VERSION (for $ARCHITECTURE_MESSAGE) to regions ${REGIONS[*]} (y/n)?" CONT
 
@@ -81,6 +80,8 @@ if [ "$APPROVE" != "y" ]; then
       exit 1
   fi
 fi
+
+echo $VERSION &> ".layers/version"
 
 index_of_layer() {
     layer_name=$1

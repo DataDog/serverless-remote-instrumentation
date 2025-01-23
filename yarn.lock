@@ -9811,6 +9811,7 @@ __metadata:
     eslint-plugin-yml: "npm:^1.16.0"
     globals: "npm:^15.1.0"
     jest: "npm:^29.7.0"
+    jszip: "npm:^3.10.1"
     prettier: "npm:^3.1.0"
     prettier-eslint: "npm:^16.1.2"
     typescript: "npm:^5.7.3"

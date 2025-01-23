@@ -1,21 +1,12 @@
 const axios = require("axios");
-const { GetSecretValueCommand } = require("@aws-sdk/client-secrets-manager");
 const { account, region } = require("../config.json");
+const { getApiKey, getAppKey } = require("./datadog-keys");
 
 const getRemoteConfig = async (secretsClient) => {
-  const requests = [
-    "Remote_Instrumenter_Test_API_Key",
-    "Remote_Instrumenter_Test_APPLICATION_Key",
-  ].map(async (name) => {
-    const response = await secretsClient.send(
-      new GetSecretValueCommand({
-        SecretId: name,
-      }),
-    );
-    return response.SecretString;
-  });
-
-  const [apiKey, appKey] = await Promise.all(requests);
+  const [apiKey, appKey] = await Promise.all([
+    getApiKey(secretsClient),
+    getAppKey(secretsClient),
+  ]);
 
   const url =
     "https://datad0g.com/api/unstable/remote_config/products/serverless_remote_instrumentation/config?filter%5Baws_account_id%5D={AWS_ACCOUNT_SLOT}&filter%5Bregion%5D={REGION_SLOT}"
@@ -32,3 +23,81 @@ const getRemoteConfig = async (secretsClient) => {
 };
 
 exports.getRemoteConfig = getRemoteConfig;
+
+const setRemoteConfig = async (secretsClient) => {
+  const [apiKey, appKey] = await Promise.all([
+    getApiKey(secretsClient),
+    getAppKey(secretsClient),
+  ]);
+
+  const rc = {
+    data: {
+      type: "instrumentation_config",
+      attributes: {
+        entity_type: "lambda",
+        instrumentation_settings: {
+          extension_version: 67,
+          python_layer_version: 99,
+          node_layer_version: 112,
+        },
+        priority: 1,
+        rule_filters: [
+          {
+            key: "foo",
+            values: ["bar"],
+            filter_type: "tag",
+            allow: true,
+          },
+        ],
+      },
+      meta: {
+        scopes: [
+          {
+            aws_account_id: account,
+            regions: [region],
+          },
+        ],
+      },
+    },
+  };
+
+  const url =
+    "https://datad0g.com/api/unstable/remote_config/products/serverless_remote_instrumentation/config";
+
+  const remoteConfig = await axios.post(url, rc, {
+    headers: {
+      "dd-api-key": apiKey,
+      "dd-application-key": appKey,
+    },
+  });
+  return remoteConfig;
+};
+
+exports.setRemoteConfig = setRemoteConfig;
+
+const deleteRemoteConfig = async (secretsClient, id) => {
+  const [apiKey, appKey] = await Promise.all([
+    getApiKey(secretsClient),
+    getAppKey(secretsClient),
+  ]);
+
+  const url = `https://datad0g.com/api/unstable/remote_config/products/serverless_remote_instrumentation/config/${id}`;
+
+  return axios.delete(url, {
+    headers: {
+      "dd-api-key": apiKey,
+      "dd-application-key": appKey,
+    },
+  });
+};
+
+exports.deleteRemoteConfig = deleteRemoteConfig;
+
+const clearRemoteConfigs = async (secretsClient) => {
+  const rcs = await getRemoteConfig(secretsClient);
+  const ids = rcs.data.map((item) => item.id);
+  const results = ids.map((id) => deleteRemoteConfig(secretsClient, id));
+  await Promise.all(results);
+};
+
+exports.clearRemoteConfigs = clearRemoteConfigs;
