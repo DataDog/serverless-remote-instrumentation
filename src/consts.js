@@ -45,7 +45,6 @@ exports.DD_SLS_REMOTE_INSTRUMENTER_VERSION =
 
 // Remote config constants
 exports.RC_PRODUCT = "SERVERLESS_REMOTE_INSTRUMENTATION";
-exports.RC_UNACKNOWLEDGED = 1;
 exports.RC_ACKNOWLEDGED = 2;
 exports.RC_ERROR = 3;
 exports.REMOTE_CONFIG_URL = "http://localhost:8126/v0.7/config";
