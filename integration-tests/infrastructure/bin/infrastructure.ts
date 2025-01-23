@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-import { App, SecretValue, Stack } from 'aws-cdk-lib';
-import { AccountRootPrincipal, Role, PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { App, SecretValue, Stack, Tags } from 'aws-cdk-lib';
+import { AccountRootPrincipal, Role, ServicePrincipal, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { CfnInclude } from 'aws-cdk-lib/cloudformation-include';
 import { Construct } from 'constructs';
-import { region, account, roleName, stackName, functionName, trailName, bucketName } from '../../config.json';
+import { region, account, roleName, stackName, functionName, trailName, bucketName, testLambdaRole } from '../../config.json';
 import { readFileSync } from 'fs'
 
 class TestingStack extends Stack {
@@ -25,7 +25,7 @@ class TestingStack extends Stack {
     }));
 
     assumedRole.addToPolicy(new PolicyStatement({
-      actions: ['lambda:GetFunctionConfiguration'],
+      actions: ['lambda:GetFunctionConfiguration', 'lambda:CreateFunction', 'lambda:DeleteFunction', 'lambda:TagResource'],
       resources: [ '*' ],
     }));
 
@@ -33,6 +33,16 @@ class TestingStack extends Stack {
       actions: ['secretsmanager:GetSecretValue'],
       resources: [ `arn:aws:secretsmanager:${region}:${account}:secret:Remote_Instrumenter*` ],
     }));
+
+    assumedRole.addToPolicy(new PolicyStatement({
+      actions: ['iam:PassRole'],
+      resources: [ `arn:aws:iam::${account}:role/${testLambdaRole}` ],
+    }));
+
+    new Role(this, 'TestLambdaExecutionRole', {
+      assumedBy: new ServicePrincipal("lambda.amazonaws.com"),
+      roleName: testLambdaRole,
+    });
 
     const version = readFileSync('scripts/.layers/version', { encoding: 'utf8', flag: 'r' }).trim()
 
@@ -53,7 +63,10 @@ class TestingStack extends Stack {
 }
 
 const app = new App();
-new TestingStack(app, stackName, {
+const stack = new TestingStack(app, stackName, {
   env: { account, region },
 });
+
+Tags.of(stack).add('DD_PRESERVE_STACK', 'true');
+
 app.synth();

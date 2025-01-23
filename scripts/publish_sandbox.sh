@@ -45,7 +45,7 @@ if [ -z $VERSION ]; then
             aws lambda list-layer-versions \
                 --layer-name $LAYER_NAME \
                 --region $REGION \
-            | jq -r ".LayerVersions | .[0] |  .Version" \
+            | jq 'if .LayerVersions | length == 0 then 0 else .LayerVersions |.[0] | .Version  end'
         )
     fi
     if [ "$LAST_LAYER_VERSION" == "null" ]; then

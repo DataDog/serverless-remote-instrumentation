@@ -11,23 +11,25 @@ const generateTestConfig = () => {
     );
   } else {
     let namingSeed = "";
+    let region = "eu-north-1";
+
     if (process.env.USER) {
       namingSeed = process.env.USER;
     } else if (process.env.RUNNING_IN_GITHUB_ACTION) {
       namingSeed = process.env.PR_TITLE;
+      region = "eu-south-1";
     }
     // Remove any non alphanumeric characters to fit stack name constraints
     namingSeed = namingSeed.replace(/[\W_]+/g, "");
-
-    const region = "ca-central-1";
 
     config = {
       region,
       account: "425362996713",
       stackName: `RemoteInstrumenterTestStack${namingSeed}`,
+      testLambdaRole: `test-lambda-execution-${region}-${namingSeed}`,
       functionName: `remote-instrumenter-testing-${namingSeed}`,
       bucketName: `remote-instrumenter-testing-bucket-${region}-${namingSeed}`,
-      roleName: `remote-instrumenter-testing-${namingSeed}`,
+      roleName: `remote-instrumenter-testing-${region}-${namingSeed}`,
       trailName: `datadog-serverless-instrumentation-trail-testing-${namingSeed}`,
     };
     writeFileSync(configPath, JSON.stringify(config, null, 2));
@@ -42,7 +44,12 @@ if (require.main === module) {
 
   console.log(`Using config\n${JSON.stringify(config)}`);
 
-  const { stackName } = config;
+  const { region, stackName } = config;
+
+  execSync(`APPROVE=y REGION=${region} ./scripts/publish_sandbox.sh`, {
+    encoding: "utf-8",
+    stdio: "inherit",
+  });
 
   // Need to yarn install since the publish script removes node modules
   execSync(`yarn install`, {
@@ -50,7 +57,16 @@ if (require.main === module) {
     stdio: "inherit",
   });
 
-  execSync(`cdk synth && cdk deploy --require-approval never ${stackName}`, {
+  execSync("cdk synth", {
+    encoding: "utf-8",
+    stdio: "inherit",
+  });
+
+  const prefix = process.env.RUNNING_IN_GITHUB_ACTION
+    ? ""
+    : "aws-vault exec sso-serverless-sandbox-account-admin -- ";
+
+  execSync(`${prefix}cdk deploy --require-approval never ${stackName}`, {
     encoding: "utf-8",
     stdio: "inherit",
   });

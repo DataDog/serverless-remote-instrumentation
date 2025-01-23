@@ -2,7 +2,7 @@ const { GetFunctionConfigurationCommand } = require("@aws-sdk/client-lambda");
 const { getRemoteConfig } = require("./remote-config");
 
 const hasLayerMatching = (l, matcher, version) =>
-  l.Layers.some(
+  l?.Layers?.some(
     (layer) =>
       layer.Arn.includes(matcher) &&
       Number(layer.Arn.split(":").at(-1)) === version,
