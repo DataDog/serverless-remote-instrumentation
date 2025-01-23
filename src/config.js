@@ -7,10 +7,13 @@ const {
   S3ServiceException,
 } = require("@aws-sdk/client-s3");
 const crypto = require("crypto");
-const { ENTITY_TYPES, FILTER_TYPES, RC_PRODUCT } = require("./consts");
-
-const REMOTE_CONFIG_URL = "http://localhost:8126/v0.7/config";
-const KEY = "datadog_remote_instrumentation_config.txt";
+const {
+  ENTITY_TYPES,
+  FILTER_TYPES,
+  RC_PRODUCT,
+  REMOTE_CONFIG_URL,
+  CONFIG_HASH_KEY,
+} = require("./consts");
 
 class RcConfig {
   constructor(configID, configJSON, configMeta) {
@@ -283,7 +286,7 @@ async function configHasChanged(client, configs) {
     const response = await client.send(
       new GetObjectCommand({
         Bucket: bucketName,
-        Key: KEY,
+        Key: CONFIG_HASH_KEY,
       }),
     );
     const oldConfigHash = await response.Body.transformToString();
@@ -295,7 +298,7 @@ async function configHasChanged(client, configs) {
   } catch (caught) {
     if (caught instanceof NoSuchKey) {
       logger.error(
-        `Error from S3 while getting object "${KEY}" from "${bucketName}". No such key exists.`,
+        `Error from S3 while getting object "${CONFIG_HASH_KEY}" from "${bucketName}". No such key exists.`,
       );
       return true;
     } else if (caught instanceof S3ServiceException) {
@@ -319,7 +322,7 @@ async function updateConfigHash(client, configs) {
   const bucketName = process.env.DD_S3_BUCKET;
   const command = new PutObjectCommand({
     Bucket: bucketName,
-    Key: KEY,
+    Key: CONFIG_HASH_KEY,
     Body: newConfigHash,
   });
 

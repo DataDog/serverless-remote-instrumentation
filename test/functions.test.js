@@ -10,6 +10,7 @@ const {
   DD_SLS_REMOTE_INSTRUMENTER_VERSION,
   VERSION,
 } = require("../src/consts");
+const { baseInstrumentOutcome } = require("./test-utils");
 
 // Creates a test config object
 function createTestConfig({
@@ -706,10 +707,6 @@ describe("isCorrectlyInstrumented", () => {
 });
 
 describe("needsInstrumentationUpdate", () => {
-  const instrumentOutcome = {
-    instrument: { succeeded: {}, failed: {}, skipped: {} },
-    uninstrument: { succeeded: {}, failed: {}, skipped: {} },
-  };
   describe("When targeting rules are not satisfied", () => {
     test("not instrumented function should not be changed", () => {
       const lambdaFunc = createTestLambdaFunction({
@@ -729,7 +726,7 @@ describe("needsInstrumentationUpdate", () => {
         ruleFilters: [],
       });
       const { instrument, uninstrument, tag, untag } =
-        needsInstrumentationUpdate(lambdaFunc, config, instrumentOutcome);
+        needsInstrumentationUpdate(lambdaFunc, config, baseInstrumentOutcome);
       expect(instrument).toBe(false);
       expect(uninstrument).toBe(false);
       expect(tag).toBe(false);
@@ -754,7 +751,7 @@ describe("needsInstrumentationUpdate", () => {
       });
 
       const { instrument, uninstrument, tag, untag } =
-        needsInstrumentationUpdate(lambdaFunc, config, instrumentOutcome);
+        needsInstrumentationUpdate(lambdaFunc, config, baseInstrumentOutcome);
       expect(instrument).toBe(false);
       expect(uninstrument).toBe(true);
       expect(tag).toBe(false);
@@ -789,7 +786,7 @@ describe("needsInstrumentationUpdate", () => {
         ruleFilters: ruleFilters,
       });
       const { instrument, uninstrument, tag, untag } =
-        needsInstrumentationUpdate(lambdaFunc, config, instrumentOutcome);
+        needsInstrumentationUpdate(lambdaFunc, config, baseInstrumentOutcome);
       expect(instrument).toBe(false);
       expect(uninstrument).toBe(false);
       expect(tag).toBe(false);
@@ -823,7 +820,7 @@ describe("needsInstrumentationUpdate", () => {
         ruleFilters: ruleFilters,
       });
       const { instrument, uninstrument, tag, untag } =
-        needsInstrumentationUpdate(lambdaFunc, config, instrumentOutcome);
+        needsInstrumentationUpdate(lambdaFunc, config, baseInstrumentOutcome);
       expect(instrument).toBe(false);
       expect(uninstrument).toBe(false);
       expect(tag).toBe(false);
@@ -857,7 +854,7 @@ describe("needsInstrumentationUpdate", () => {
         ruleFilters: ruleFilters,
       });
       const { instrument, uninstrument, tag, untag } =
-        needsInstrumentationUpdate(lambdaFunc, config, instrumentOutcome);
+        needsInstrumentationUpdate(lambdaFunc, config, baseInstrumentOutcome);
       expect(instrument).toBe(false);
       expect(uninstrument).toBe(false);
       expect(tag).toBe(false);
@@ -899,7 +896,7 @@ describe("needsInstrumentationUpdate", () => {
         ruleFilters: ruleFilters,
       });
       const { instrument, uninstrument, tag, untag } =
-        needsInstrumentationUpdate(lambdaFunc, config, instrumentOutcome);
+        needsInstrumentationUpdate(lambdaFunc, config, baseInstrumentOutcome);
       expect(instrument).toBe(false);
       expect(uninstrument).toBe(false);
       expect(tag).toBe(true);
@@ -942,7 +939,7 @@ describe("needsInstrumentationUpdate", () => {
         ruleFilters: ruleFilters,
       });
       const { instrument, uninstrument, tag, untag } =
-        needsInstrumentationUpdate(lambdaFunc, config, instrumentOutcome);
+        needsInstrumentationUpdate(lambdaFunc, config, baseInstrumentOutcome);
       expect(instrument).toBe(false);
       expect(uninstrument).toBe(false);
       expect(tag).toBe(false);
@@ -984,7 +981,7 @@ describe("needsInstrumentationUpdate", () => {
         ruleFilters: ruleFilters,
       });
       const { instrument, uninstrument, tag, untag } =
-        needsInstrumentationUpdate(lambdaFunc, config, instrumentOutcome);
+        needsInstrumentationUpdate(lambdaFunc, config, baseInstrumentOutcome);
       expect(instrument).toBe(true);
       expect(uninstrument).toBe(false);
       expect(tag).toBe(true);
@@ -1029,10 +1026,6 @@ describe("filterFunctionsToChangeInstrumentation", () => {
         { key: "foo", values: ["bar"], allow: true, filterType: "tag" },
       ],
     });
-    const instrumentOutcome = {
-      instrument: { succeeded: {}, failed: {}, skipped: {} },
-      uninstrument: { succeeded: {}, failed: {}, skipped: {} },
-    };
     const {
       functionsToInstrument,
       functionsToUninstrument,
@@ -1041,7 +1034,7 @@ describe("filterFunctionsToChangeInstrumentation", () => {
     } = filterFunctionsToChangeInstrumentation(
       functionsToCheck,
       config,
-      instrumentOutcome,
+      baseInstrumentOutcome,
     );
     expect(functionsToInstrument.length).toBe(1);
     expect(functionsToInstrument[0].FunctionName).toBe("functionA");
