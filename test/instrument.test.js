@@ -14,6 +14,8 @@ const {
   VERSION,
   RC_PRODUCT,
   RC_ACKNOWLEDGED,
+  SCHEDULED_INVOCATION_EVENT,
+  LAMBDA_EVENT,
 } = require("../src/consts");
 
 describe("getExtensionAndRuntimeLayerVersion", () => {
@@ -168,17 +170,29 @@ describe("instrumentFunctions", () => {
       functionBar.FunctionArn,
     ]);
   });
-  test("should write apply state to s3", async () => {
+  test("should write apply state if triggered by scheduled invocation", async () => {
     await instrument.instrumentFunctions(
       mockClient,
       [rcConfig],
       [functionFoo, functionBar],
       baseInstrumentOutcome,
       mockClient,
+      SCHEDULED_INVOCATION_EVENT,
     );
     expect(applyState.putApplyState).toHaveBeenCalledTimes(1);
     expect(applyState.putApplyState).toHaveBeenCalledWith(expect.anything(), [
       applyStateObject,
     ]);
+  });
+  test("should not write apply state if triggered by lambda management event", async () => {
+    await instrument.instrumentFunctions(
+      mockClient,
+      [rcConfig],
+      [functionFoo, functionBar],
+      baseInstrumentOutcome,
+      mockClient,
+      LAMBDA_EVENT,
+    );
+    expect(applyState.putApplyState).toHaveBeenCalledTimes(0);
   });
 });
