@@ -42,3 +42,6 @@ exports.REMOTE_INSTRUMENTER_FUNCTION = "remote-instrumenter-function";
 exports.VERSION = "1.0.0";
 exports.DD_SLS_REMOTE_INSTRUMENTER_VERSION =
   "dd_sls_remote_instrumenter_version";
+
+// Remote config constants
+exports.RC_PRODUCT = "SERVERLESS_REMOTE_INSTRUMENTATION";
