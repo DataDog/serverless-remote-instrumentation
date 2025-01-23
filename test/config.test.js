@@ -1,71 +1,19 @@
 const { RcConfig, getConfigsFromResponse } = require("../src/config");
 const { FILTER_TYPES } = require("../src/consts");
+const {
+  constructTestJSON,
+  sampleRcConfigID,
+  sampleRcMetadata,
+  sampleRcTestJSON,
+} = require("./test-utils");
 
 describe("Config constructor", () => {
-  const rcConfigID = "datadog/2/abc-123-def";
-  const rcMetadata = {
-    custom: {
-      c: ["abc-def-ghi"],
-      "tracer-predicates": {
-        tracer_predicates_v1: [
-          {
-            clientID: "jkl-mno-pqr",
-          },
-        ],
-      },
-      v: 3,
-    },
-    hashes: {
-      sha256: "stu-vwx-yza",
-    },
-    length: 500,
-  };
-  function constructTestJSON({
-    configVersion,
-    entityType,
-    extensionVersion,
-    nodeLayerVersion,
-    pythonLayerVersion,
-    priority,
-    ruleFilters,
-  }) {
-    return {
-      config_version: configVersion,
-      entity_type: entityType,
-      instrumentation_settings: {
-        extension_version: extensionVersion,
-        node_layer_version: nodeLayerVersion,
-        python_layer_version: pythonLayerVersion,
-      },
-      priority: priority,
-      rule_filters: ruleFilters,
-    };
-  }
-
   it("creates an RcConfig object out of well-formed JSON", () => {
-    const testJSON = constructTestJSON({
-      configVersion: 1,
-      entityType: "lambda",
-      extensionVersion: 10,
-      nodeLayerVersion: 20,
-      pythonLayerVersion: 30,
-      priority: 1,
-      ruleFilters: [
-        {
-          key: "env",
-          values: ["prod"],
-          allow: true,
-          filter_type: "tag",
-        },
-        {
-          key: "functionname",
-          values: ["hello-world"],
-          allow: false,
-          filter_type: "function_name",
-        },
-      ],
-    });
-    const rcConfig = new RcConfig(rcConfigID, testJSON, rcMetadata);
+    const rcConfig = new RcConfig(
+      sampleRcConfigID,
+      sampleRcTestJSON,
+      sampleRcMetadata,
+    );
     expect(rcConfig.configVersion).toBe(1);
     expect(rcConfig.entityType).toBe("lambda");
     expect(rcConfig.extensionVersion).toBe(10);
@@ -74,7 +22,7 @@ describe("Config constructor", () => {
     expect(rcConfig.priority).toBe(1);
     expect(rcConfig.ruleFilters.length).toBe(2);
     expect(rcConfig.rcConfigVersion).toBe(3);
-    expect(rcConfig.configID).toBe(rcConfigID);
+    expect(rcConfig.configID).toBe(sampleRcConfigID);
   });
 
   it("creates an RcConfig object out of well-formed JSON with undefined versions", () => {
@@ -87,7 +35,7 @@ describe("Config constructor", () => {
       priority: 1,
       ruleFilters: [],
     });
-    const rcConfig = new RcConfig(rcConfigID, testJSON, rcMetadata);
+    const rcConfig = new RcConfig(sampleRcConfigID, testJSON, sampleRcMetadata);
     expect(rcConfig.configVersion).toBe(1);
     expect(rcConfig.entityType).toBe("lambda");
     expect(rcConfig.extensionVersion).toBe(undefined);
@@ -107,7 +55,9 @@ describe("Config constructor", () => {
       priority: 1,
       ruleFilters: [],
     });
-    expect(() => new RcConfig(rcConfigID, testJSON, rcMetadata)).toThrow(
+    expect(
+      () => new RcConfig(sampleRcConfigID, testJSON, sampleRcMetadata),
+    ).toThrow(
       "Received invalid configuration: config version must be a number",
     );
   });
@@ -122,7 +72,9 @@ describe("Config constructor", () => {
       priority: 1,
       ruleFilters: [],
     });
-    expect(() => new RcConfig(rcConfigID, testJSON, rcMetadata)).toThrow(
+    expect(
+      () => new RcConfig(sampleRcConfigID, testJSON, sampleRcMetadata),
+    ).toThrow(
       "Received invalid configuration: entity type must be one of 'lambda'",
     );
   });
@@ -137,7 +89,9 @@ describe("Config constructor", () => {
       priority: 1,
       ruleFilters: [],
     });
-    expect(() => new RcConfig(rcConfigID, testJSON, rcMetadata)).toThrow(
+    expect(
+      () => new RcConfig(sampleRcConfigID, testJSON, sampleRcMetadata),
+    ).toThrow(
       "Received invalid configuration: extension version must be a number",
     );
   });
@@ -152,7 +106,9 @@ describe("Config constructor", () => {
       priority: 1,
       ruleFilters: [],
     });
-    expect(() => new RcConfig(rcConfigID, testJSON, rcMetadata)).toThrow(
+    expect(
+      () => new RcConfig(sampleRcConfigID, testJSON, sampleRcMetadata),
+    ).toThrow(
       "Received invalid configuration: python layer version must be a number",
     );
   });
@@ -167,7 +123,9 @@ describe("Config constructor", () => {
       priority: 1,
       ruleFilters: [],
     });
-    expect(() => new RcConfig(rcConfigID, testJSON, rcMetadata)).toThrow(
+    expect(
+      () => new RcConfig(sampleRcConfigID, testJSON, sampleRcMetadata),
+    ).toThrow(
       "Received invalid configuration: node layer version must be a number",
     );
   });
@@ -182,9 +140,9 @@ describe("Config constructor", () => {
       priority: "invalid",
       ruleFilters: [],
     });
-    expect(() => new RcConfig(rcConfigID, testJSON, rcMetadata)).toThrow(
-      "Received invalid configuration: priority must be a number",
-    );
+    expect(
+      () => new RcConfig(sampleRcConfigID, testJSON, sampleRcMetadata),
+    ).toThrow("Received invalid configuration: priority must be a number");
   });
 
   it("rejects non-array rule filters", () => {
@@ -197,9 +155,9 @@ describe("Config constructor", () => {
       priority: 1,
       ruleFilters: "invalid",
     });
-    expect(() => new RcConfig(rcConfigID, testJSON, rcMetadata)).toThrow(
-      "Received invalid configuration: rule filters must be an array",
-    );
+    expect(
+      () => new RcConfig(sampleRcConfigID, testJSON, sampleRcMetadata),
+    ).toThrow("Received invalid configuration: rule filters must be an array");
   });
 
   it("rejects rule filters of invalid types", () => {
@@ -219,7 +177,9 @@ describe("Config constructor", () => {
         },
       ],
     });
-    expect(() => new RcConfig(rcConfigID, testJSON, rcMetadata)).toThrow(
+    expect(
+      () => new RcConfig(sampleRcConfigID, testJSON, sampleRcMetadata),
+    ).toThrow(
       `Received invalid configuration: filterType field must be one of '${Array.from(FILTER_TYPES).join(", ")}', but received 'invalid'`,
     );
   });
@@ -241,7 +201,9 @@ describe("Config constructor", () => {
         },
       ],
     });
-    expect(() => new RcConfig(rcConfigID, testJSON, rcMetadata)).toThrow(
+    expect(
+      () => new RcConfig(sampleRcConfigID, testJSON, sampleRcMetadata),
+    ).toThrow(
       "Received invalid configuration: rule filter values field must be a non-empty array",
     );
   });

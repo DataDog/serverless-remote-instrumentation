@@ -82,6 +82,7 @@ exports.handler = async (event, context) => {
     }
 
     await instrumentFunctions(
+      s3Client,
       configs,
       functionsToCheck,
       instrumentOutcome,
@@ -107,6 +108,7 @@ exports.handler = async (event, context) => {
       );
 
       await instrumentFunctions(
+        s3Client,
         configs,
         functionsToCheck,
         instrumentOutcome,
@@ -136,6 +138,7 @@ exports.handler = async (event, context) => {
         functionsToCheck,
       );
       await instrumentFunctions(
+        s3Client,
         configs,
         enrichedFunctions,
         instrumentOutcome,
