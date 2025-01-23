@@ -7,6 +7,7 @@ const {
   IN_PROGRESS,
   SUCCEEDED,
   FAILED,
+  LAMBDA_EVENT,
 } = require("./consts");
 const { logger } = require("./logger");
 const { filterFunctionsToChangeInstrumentation } = require("./functions");
@@ -168,8 +169,10 @@ async function instrumentFunctions(
     // Add the config apply state to the list
     configApplyStates.push(createApplyStateObject(instrumentOutcome, config));
   }
-  // Write the config apply states to S3
-  await putApplyState(s3Client, configApplyStates);
+  // Write the config apply states to S3 or skip for lambda management events
+  if (triggeredBy !== LAMBDA_EVENT) {
+    await putApplyState(s3Client, configApplyStates);
+  }
   logger.emitFrontEndEvent(
     REMOTE_INSTRUMENTATION_ENDED,
     triggeredBy,
