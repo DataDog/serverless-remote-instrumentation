@@ -24,9 +24,9 @@ function createApplyStateObject(instrumentOutcome, config) {
     ...Object.keys(instrumentOutcome.instrument[FAILED]),
     ...Object.keys(instrumentOutcome.uninstrument[FAILED]),
   ];
-  const apply_state = failedFunctions.length === 0 ? RC_ACKNOWLEDGED : RC_ERROR;
-  const apply_error =
-    failedFunctions.length == 0
+  const applyState = failedFunctions.length === 0 ? RC_ACKNOWLEDGED : RC_ERROR;
+  const applyError =
+    failedFunctions.length === 0
       ? ""
       : "Failed to instrument functions: " + failedFunctions.join(", ");
 
@@ -34,8 +34,8 @@ function createApplyStateObject(instrumentOutcome, config) {
     id: config.configID,
     product: RC_PRODUCT,
     version: config.rcConfigVersion,
-    apply_state: apply_state,
-    apply_error: apply_error,
+    apply_state: applyState,
+    apply_error: applyError,
   };
 }
 exports.createApplyStateObject = createApplyStateObject;
