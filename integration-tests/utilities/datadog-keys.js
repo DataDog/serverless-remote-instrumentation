@@ -1,7 +1,9 @@
 const { GetSecretValueCommand } = require("@aws-sdk/client-secrets-manager");
+const { getSecretsManagerClient } = require("./aws-resources");
 
-const getSecret = async (secretsClient, name) => {
-  const response = await secretsClient.send(
+const getSecret = async (name) => {
+  const secretsManager = await getSecretsManagerClient();
+  const response = await secretsManager.send(
     new GetSecretValueCommand({
       SecretId: name,
     }),
@@ -9,14 +11,14 @@ const getSecret = async (secretsClient, name) => {
   return response.SecretString;
 };
 
-const getApiKey = async (secretsClient) => {
-  return getSecret(secretsClient, "Remote_Instrumenter_Test_API_Key");
+const getApiKey = async () => {
+  return getSecret("Remote_Instrumenter_Test_API_Key");
 };
 
 exports.getApiKey = getApiKey;
 
-const getAppKey = async (secretsClient) => {
-  return getSecret(secretsClient, "Remote_Instrumenter_Test_APPLICATION_Key");
+const getAppKey = async () => {
+  return getSecret("Remote_Instrumenter_Test_APPLICATION_Key");
 };
 
 exports.getAppKey = getAppKey;
