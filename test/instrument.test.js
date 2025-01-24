@@ -71,9 +71,11 @@ describe("getExtensionAndRuntimeLayerVersion", () => {
     expect(actual).toEqual(expected);
   });
 });
+
 jest.mock("../src/tag");
 jest.mock("../src/apply-state");
 jest.mock("@datadog/datadog-ci/dist/cli.js");
+
 describe("instrumentFunctions", () => {
   // Sample functions to (un)instrument
   const functionFoo = {
@@ -170,6 +172,30 @@ describe("instrumentFunctions", () => {
       functionBar.FunctionArn,
     ]);
   });
+  test("should uninstrument the right functions when there are no configs", async () => {
+    process.env.AWS_REGION = "us-east-2";
+    await instrument.instrumentFunctions(
+      mockClient,
+      [],
+      [functionFoo, functionBar],
+      baseInstrumentOutcome,
+      mockClient,
+    );
+    expect(datadogCi.cli.run).toHaveBeenCalledTimes(1);
+    expect(datadogCi.cli.run).toHaveBeenCalledWith([
+      "lambda",
+      "uninstrument",
+      "-f",
+      functionBar.FunctionArn,
+      "-r",
+      "us-east-2",
+    ]);
+    expect(tag.untagResourcesOfSlsTag).toHaveBeenCalledTimes(1);
+    expect(tag.untagResourcesOfSlsTag).toHaveBeenCalledWith(mockClient, [
+      functionBar.FunctionArn,
+    ]);
+    expect(applyState.deleteApplyState).toHaveBeenCalledTimes(1);
+  });
   test("should write apply state if triggered by scheduled invocation", async () => {
     await instrument.instrumentFunctions(
       mockClient,
@@ -194,5 +220,65 @@ describe("instrumentFunctions", () => {
       LAMBDA_EVENT,
     );
     expect(applyState.putApplyState).toHaveBeenCalledTimes(0);
+  });
+});
+
+describe("removeRemoteInstrumentation", () => {
+  const mockClient = {
+    send: jest.fn(),
+  };
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+  test("should uninstrument and untag remotely instrumented functions", async () => {
+    const functionBar = {
+      FunctionName: "bar",
+      FunctionArn: "arn:aws:lambda:us-east-2:123456789:function:bar",
+      Runtime: "nodejs18.x",
+      Tags: new Set([
+        "foo:bar",
+        `${DD_SLS_REMOTE_INSTRUMENTER_VERSION}:${VERSION}`,
+      ]),
+      MemorySize: 512,
+    };
+    process.env.AWS_REGION = "us-east-2";
+    await instrument.removeRemoteInstrumentation(
+      mockClient,
+      [functionBar],
+      baseInstrumentOutcome,
+      mockClient,
+    );
+    expect(datadogCi.cli.run).toHaveBeenCalledTimes(1);
+    expect(datadogCi.cli.run).toHaveBeenCalledWith([
+      "lambda",
+      "uninstrument",
+      "-f",
+      functionBar.FunctionArn,
+      "-r",
+      "us-east-2",
+    ]);
+    expect(tag.untagResourcesOfSlsTag).toHaveBeenCalledTimes(1);
+    expect(tag.untagResourcesOfSlsTag).toHaveBeenCalledWith(mockClient, [
+      functionBar.FunctionArn,
+    ]);
+    expect(applyState.deleteApplyState).toHaveBeenCalledTimes(1);
+  });
+  test("should not uninstrument or untag functions that are not remotely instrumented", async () => {
+    const functionFoo = {
+      FunctionName: "foo",
+      FunctionArn: "arn:aws:lambda:us-east-2:123456789:function:foo",
+      Runtime: "nodejs18.x",
+      Tags: new Set(["env:prod"]),
+      MemorySize: 512,
+    };
+    await instrument.removeRemoteInstrumentation(
+      mockClient,
+      [functionFoo],
+      baseInstrumentOutcome,
+      mockClient,
+    );
+    expect(datadogCi.cli.run).toHaveBeenCalledTimes(0);
+    expect(tag.untagResourcesOfSlsTag).toHaveBeenCalledTimes(0);
+    expect(applyState.deleteApplyState).toHaveBeenCalledTimes(1);
   });
 });

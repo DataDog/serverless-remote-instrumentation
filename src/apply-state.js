@@ -2,6 +2,7 @@ const {
   GetObjectCommand,
   PutObjectCommand,
   NoSuchKey,
+  DeleteObjectCommand,
 } = require("@aws-sdk/client-s3");
 const {
   FAILED,
@@ -44,6 +45,23 @@ async function putApplyState(client, applyStateObjects) {
   );
 }
 exports.putApplyState = putApplyState;
+
+async function deleteApplyState(client) {
+  const bucketName = process.env.DD_S3_BUCKET;
+  try {
+    await client.send(
+      new DeleteObjectCommand({
+        Bucket: bucketName,
+        Key: APPLY_STATE_KEY,
+      }),
+    );
+  } catch (caught) {
+    if (caught instanceof NoSuchKey) {
+      return;
+    }
+  }
+}
+exports.deleteApplyState = deleteApplyState;
 
 function createApplyStateObject(instrumentOutcome, config) {
   const failedFunctions = [

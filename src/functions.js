@@ -231,6 +231,7 @@ function isRemotelyInstrumented(lambdaFunc) {
   );
   return tagKeys.has(DD_SLS_REMOTE_INSTRUMENTER_VERSION);
 }
+exports.isRemotelyInstrumented = isRemotelyInstrumented;
 
 function isCorrectlyInstrumented(layers, config, targetLambdaRuntime) {
   // Check if the extension is correct
