@@ -1,4 +1,8 @@
-const { PutObjectCommand } = require("@aws-sdk/client-s3");
+const {
+  GetObjectCommand,
+  PutObjectCommand,
+  NoSuchKey,
+} = require("@aws-sdk/client-s3");
 const {
   FAILED,
   RC_ACKNOWLEDGED,
@@ -6,6 +10,28 @@ const {
   RC_PRODUCT,
   APPLY_STATE_KEY,
 } = require("./consts");
+const { logger } = require("./logger");
+
+async function getApplyState(client) {
+  const bucketName = process.env.DD_S3_BUCKET;
+  try {
+    const response = await client.send(
+      new GetObjectCommand({
+        Bucket: bucketName,
+        Key: APPLY_STATE_KEY,
+      }),
+    );
+    const applyState = await response.Body.transformToString();
+    logger.log(`Retrieved apply state: ${applyState}`);
+    return JSON.parse(applyState);
+  } catch (caught) {
+    if (caught instanceof NoSuchKey) {
+      logger.log(`No apply state found at key: ${APPLY_STATE_KEY}`);
+      return [];
+    }
+  }
+}
+exports.getApplyState = getApplyState;
 
 async function putApplyState(client, applyStateObjects) {
   const bucketName = process.env.DD_S3_BUCKET;

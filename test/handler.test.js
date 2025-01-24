@@ -45,7 +45,7 @@ describe("handler lambda management events", () => {
       expect.anything(),
       [lambdaFunction],
     );
-    expect(config.getConfigs).toHaveBeenCalledWith(context);
+    expect(config.getConfigs).toHaveBeenCalledWith(expect.anything(), context);
     expect(instrument.instrumentFunctions).toHaveBeenCalledWith(
       expect.anything(),
       configsResult,
@@ -87,7 +87,7 @@ describe("handler lambda management events", () => {
       expect.anything(),
       [lambdaFunction],
     );
-    expect(config.getConfigs).toHaveBeenCalledWith(context);
+    expect(config.getConfigs).toHaveBeenCalledWith(expect.anything(), context);
     expect(instrument.instrumentFunctions).not.toHaveBeenCalled();
     expect(errorStorage.putError).toHaveBeenCalledWith(
       expect.anything(),
