@@ -10,13 +10,20 @@ const {
   LAMBDA_EVENT,
 } = require("./consts");
 const { logger } = require("./logger");
-const { filterFunctionsToChangeInstrumentation } = require("./functions");
+const {
+  filterFunctionsToChangeInstrumentation,
+  isRemotelyInstrumented,
+} = require("./functions");
 const { tagResourcesWithSlsTag, untagResourcesOfSlsTag } = require("./tag");
 const {
   REMOTE_INSTRUMENTATION_STARTED,
   REMOTE_INSTRUMENTATION_ENDED,
 } = require("./consts");
-const { putApplyState, createApplyStateObject } = require("./apply-state");
+const {
+  putApplyState,
+  createApplyStateObject,
+  deleteApplyState,
+} = require("./apply-state");
 
 function getExtensionAndRuntimeLayerVersion(runtime, config) {
   const result = {
@@ -68,7 +75,7 @@ async function instrumentWithDatadogCi(
     outcome: IN_PROGRESS,
     targetFunctionName: functionName,
     targetFunctionArn: functionArn,
-    expectedExtensionVersion: layerVersionObj.extensionVersion.toString(),
+    expectedExtensionVersion: layerVersionObj.extensionVersion?.toString(),
     runtime,
   });
   logger.log(`Sending datadog-ci command: ${JSON.stringify(command)}`);
@@ -81,7 +88,7 @@ async function instrumentWithDatadogCi(
     outcome: outcome,
     targetFunctionName: functionName,
     targetFunctionArn: functionArn,
-    expectedExtensionVersion: layerVersionObj.extensionVersion.toString(),
+    expectedExtensionVersion: layerVersionObj.extensionVersion?.toString(),
     runtime: runtime,
   });
   if (instrument) {
@@ -107,6 +114,17 @@ async function instrumentFunctions(
     configs,
   );
   const configApplyStates = [];
+
+  // If there are no configs, uninstrument anything that is remotely instrumented
+  if (configs.length === 0) {
+    await removeRemoteInstrumentation(
+      s3Client,
+      functionsToCheck,
+      instrumentOutcome,
+      taggingClient,
+    );
+  }
+
   for (const config of configs) {
     let {
       functionsToInstrument,
@@ -181,3 +199,32 @@ async function instrumentFunctions(
   );
 }
 exports.instrumentFunctions = instrumentFunctions;
+
+async function removeRemoteInstrumentation(
+  s3Client,
+  functionsToCheck,
+  instrumentOutcome,
+  taggingClient,
+) {
+  const remotelyInstrumentedFunctions = functionsToCheck.filter((lambdaFunc) =>
+    isRemotelyInstrumented(lambdaFunc),
+  );
+  for (const lambdaFunc of remotelyInstrumentedFunctions) {
+    await instrumentWithDatadogCi(
+      lambdaFunc,
+      false,
+      { awsRegion: process.env.AWS_REGION },
+      instrumentOutcome,
+    );
+    await untagResourcesOfSlsTag(
+      taggingClient,
+      remotelyInstrumentedFunctions.flatMap((f) =>
+        !(f.FunctionName in instrumentOutcome.uninstrument[FAILED])
+          ? f.FunctionArn
+          : [],
+      ),
+    );
+  }
+  await deleteApplyState(s3Client);
+}
+exports.removeRemoteInstrumentation = removeRemoteInstrumentation;
