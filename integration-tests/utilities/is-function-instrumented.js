@@ -1,5 +1,6 @@
 const { GetFunctionConfigurationCommand } = require("@aws-sdk/client-lambda");
 const { getRemoteConfig } = require("./remote-config");
+const { getLambdaClient } = require("./aws-resources");
 
 const hasLayerMatching = (l, matcher, version) =>
   l?.Layers?.some(
@@ -14,13 +15,14 @@ const hasEnvVar = (l, varName) =>
 // 1. If the extension layer is configured, there is a Datadog-Extension with matching version
 // 2. If there is a language layer configured, there should is a matching version of the language layer
 // 3. It has the DD_API_KEY and DD_SITE environment variables
-const isFunctionInstrumented = async (secretsManager, lambda, functionName) => {
-  const funConfig = await lambda.send(
+const isFunctionInstrumented = async (functionName) => {
+  const lambdaClient = await getLambdaClient();
+  const funConfig = await lambdaClient.send(
     new GetFunctionConfigurationCommand({
       FunctionName: functionName,
     }),
   );
-  const rc = await getRemoteConfig(secretsManager);
+  const rc = await getRemoteConfig();
   const { extension_version, node_layer_version, python_layer_version } =
     rc.data[0].attributes.instrumentation_settings;
 
