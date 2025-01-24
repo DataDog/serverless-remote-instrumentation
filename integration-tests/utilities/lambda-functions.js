@@ -6,8 +6,9 @@ const {
   Runtime,
 } = require("@aws-sdk/client-lambda");
 const { account, testLambdaRole } = require("../config.json");
+const { getLambdaClient } = require("./aws-resources");
 
-const createFunction = async (lambdaClient, lambdaProps) => {
+const createFunction = async (lambdaProps) => {
   const zip = new JSZip();
   zip.file(
     "index.js",
@@ -28,14 +29,16 @@ const createFunction = async (lambdaClient, lambdaProps) => {
     ...lambdaProps,
   });
 
+  const lambdaClient = await getLambdaClient();
   await lambdaClient.send(command);
 };
 
 exports.createFunction = createFunction;
 
-const deleteFunction = async (lambdaClient, functionName) => {
+const deleteFunction = async (functionName) => {
   const command = new DeleteFunctionCommand({ FunctionName: functionName });
   try {
+    const lambdaClient = await getLambdaClient();
     await lambdaClient.send(command);
     return true;
   } catch (e) {

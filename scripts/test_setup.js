@@ -15,9 +15,16 @@ const generateTestConfig = () => {
 
     if (process.env.USER) {
       namingSeed = process.env.USER;
-    } else if (process.env.RUNNING_IN_GITHUB_ACTION) {
-      namingSeed = process.env.PR_TITLE;
-      region = "eu-south-1";
+    }
+
+    if (process.env.RUNNING_IN_GITHUB_ACTION) {
+      if (process.env.SELF_MONITORING) {
+        namingSeed = "self-monitoring";
+        region = "ap-south-1";
+      } else {
+        namingSeed = process.env.PR_TITLE;
+        region = "eu-south-1";
+      }
     }
     // Remove any non alphanumeric characters to fit stack name constraints
     namingSeed = namingSeed.replace(/[\W_]+/g, "");
@@ -32,6 +39,12 @@ const generateTestConfig = () => {
       roleName: `remote-instrumenter-testing-${region}-${namingSeed}`,
       trailName: `datadog-serverless-instrumentation-trail-testing-${namingSeed}`,
     };
+
+    // There is a 64 character limit for a lot of resources
+    Object.entries(config).forEach(
+      ([key, val]) => (config[key] = val.slice(0, 63).toLowerCase()),
+    );
+
     writeFileSync(configPath, JSON.stringify(config, null, 2));
   }
   return config;

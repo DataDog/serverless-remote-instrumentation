@@ -2,11 +2,8 @@ const axios = require("axios");
 const { account, region } = require("../config.json");
 const { getApiKey, getAppKey } = require("./datadog-keys");
 
-const getRemoteConfig = async (secretsClient) => {
-  const [apiKey, appKey] = await Promise.all([
-    getApiKey(secretsClient),
-    getAppKey(secretsClient),
-  ]);
+const getRemoteConfig = async () => {
+  const [apiKey, appKey] = await Promise.all([getApiKey(), getAppKey()]);
 
   const url =
     "https://datad0g.com/api/unstable/remote_config/products/serverless_remote_instrumentation/config?filter%5Baws_account_id%5D={AWS_ACCOUNT_SLOT}&filter%5Bregion%5D={REGION_SLOT}"
@@ -24,11 +21,8 @@ const getRemoteConfig = async (secretsClient) => {
 
 exports.getRemoteConfig = getRemoteConfig;
 
-const setRemoteConfig = async (secretsClient) => {
-  const [apiKey, appKey] = await Promise.all([
-    getApiKey(secretsClient),
-    getAppKey(secretsClient),
-  ]);
+const setRemoteConfig = async () => {
+  const [apiKey, appKey] = await Promise.all([getApiKey(), getAppKey()]);
 
   const rc = {
     data: {
@@ -75,11 +69,8 @@ const setRemoteConfig = async (secretsClient) => {
 
 exports.setRemoteConfig = setRemoteConfig;
 
-const deleteRemoteConfig = async (secretsClient, id) => {
-  const [apiKey, appKey] = await Promise.all([
-    getApiKey(secretsClient),
-    getAppKey(secretsClient),
-  ]);
+const deleteRemoteConfig = async (id) => {
+  const [apiKey, appKey] = await Promise.all([getApiKey(), getAppKey()]);
 
   const url = `https://datad0g.com/api/unstable/remote_config/products/serverless_remote_instrumentation/config/${id}`;
 
@@ -93,10 +84,10 @@ const deleteRemoteConfig = async (secretsClient, id) => {
 
 exports.deleteRemoteConfig = deleteRemoteConfig;
 
-const clearRemoteConfigs = async (secretsClient) => {
-  const rcs = await getRemoteConfig(secretsClient);
+const clearRemoteConfigs = async () => {
+  const rcs = await getRemoteConfig();
   const ids = rcs.data.map((item) => item.id);
-  const results = ids.map((id) => deleteRemoteConfig(secretsClient, id));
+  const results = ids.map((id) => deleteRemoteConfig(id));
   await Promise.all(results);
 };
 
