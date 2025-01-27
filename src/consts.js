@@ -36,12 +36,15 @@ exports.ALREADY_CORRECT_EXTENSION_AND_LAYER =
   "already-correct-extension-and-layer";
 exports.UNSUPPORTED_RUNTIME = "unsupported-runtime";
 exports.NOT_SATISFYING_TARGETING_RULES = "not-satisfying-targeting-rules";
+exports.ALREADY_MANUALLY_INSTRUMENTED = "already-manually-instrumented";
 exports.REMOTE_INSTRUMENTER_FUNCTION = "remote-instrumenter-function";
 
 // Remote instrumentation tag values
 exports.VERSION = "1.0.0";
 exports.DD_SLS_REMOTE_INSTRUMENTER_VERSION =
   "dd_sls_remote_instrumenter_version";
+exports.DD_API_KEY = "DD_API_KEY";
+exports.DD_SITE = "DD_SITE";
 
 // Remote config constants
 exports.RC_PRODUCT = "SERVERLESS_REMOTE_INSTRUMENTATION";
