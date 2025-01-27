@@ -8,6 +8,9 @@ const {
 const { logger } = require("./logger");
 const {
   DD_SLS_REMOTE_INSTRUMENTER_VERSION,
+  ALREADY_MANUALLY_INSTRUMENTED,
+  DD_API_KEY,
+  DD_SITE,
   VERSION,
   SUPPORTED_RUNTIMES,
   NODE,
@@ -233,6 +236,14 @@ function isRemotelyInstrumented(lambdaFunc) {
 }
 exports.isRemotelyInstrumented = isRemotelyInstrumented;
 
+function isInstrumented(lambdaFunc) {
+  const envVars = new Set(
+    Object.keys(lambdaFunc?.Environment?.Variables || {}),
+  );
+  return envVars.has(DD_API_KEY) && envVars.has(DD_SITE);
+}
+exports.isInstrumented = isInstrumented;
+
 function isCorrectlyInstrumented(layers, config, targetLambdaRuntime) {
   // Check if the extension is correct
   let targetLambdaExtensionLayerVersion = -1;
@@ -290,6 +301,40 @@ function needsInstrumentationUpdate(
   const functionArn = lambdaFunc.FunctionArn;
   const isCurrentlyRemotelyInstrumented = isRemotelyInstrumented(lambdaFunc);
   const runtime = lambdaFunc.Runtime;
+  const isCurrentlyInstrumented = isInstrumented(lambdaFunc);
+
+  // If it is instrumented but not by the remote instrumenter
+  if (isCurrentlyInstrumented && !isCurrentlyRemotelyInstrumented) {
+    if (emitProcessingLogs) {
+      logger.frontendLambdaEvents(
+        PROCESSING,
+        functionName,
+        `Skipping function '${functionName}' because it is manually instrumented.`,
+      );
+    }
+    const reason = `Function '${functionName}' is manually instrumented.`;
+    const reasonCode = ALREADY_MANUALLY_INSTRUMENTED;
+    instrumentOutcome.instrument.skipped[functionName] = {
+      functionArn,
+      reason,
+      reasonCode,
+    };
+    logger.logInstrumentOutcome({
+      ddSlsEventName: INSTRUMENT,
+      outcome: SKIPPED,
+      targetFunctionName: functionName,
+      targetFunctionArn: functionArn,
+      runtime,
+      reason,
+      reasonCode,
+    });
+    return {
+      instrument: false,
+      uninstrument: false,
+      tag: false,
+      untag: false,
+    };
+  }
 
   // If it doesn't satisfy the targeting rules...
   if (!satisfiesTargetingRules(functionName, tags, config.ruleFilters)) {

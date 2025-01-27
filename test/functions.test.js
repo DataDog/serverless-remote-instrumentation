@@ -5,6 +5,7 @@ const {
   isCorrectlyInstrumented,
   needsInstrumentationUpdate,
   filterFunctionsToChangeInstrumentation,
+  isInstrumented,
 } = require("../src/functions");
 const {
   DD_SLS_REMOTE_INSTRUMENTER_VERSION,
@@ -42,6 +43,7 @@ function createTestLambdaFunction({
   runtime,
   tags,
   layers,
+  envVars,
 }) {
   return {
     FunctionName: functionName,
@@ -50,6 +52,9 @@ function createTestLambdaFunction({
     Runtime: runtime,
     Tags: tags,
     Layers: layers,
+    Environment: {
+      Variables: envVars,
+    },
   };
 }
 describe("satisfiesTargetingRules", () => {
@@ -758,6 +763,27 @@ describe("needsInstrumentationUpdate", () => {
       expect(untag).toBe(true);
     });
   });
+
+  describe("When the function is manually instrumented", () => {
+    test("manually instrumented function should not be changed", () => {
+      const functionName = "ManuallyInstrumentedFunction";
+      const lambdaFunc = createTestLambdaFunction({
+        functionName,
+        envVars: { DD_SITE: "a", DD_API_KEY: "b" },
+        tags: new Set([]),
+      });
+      const { instrument, uninstrument, tag, untag } =
+        needsInstrumentationUpdate(lambdaFunc, {}, baseInstrumentOutcome);
+      expect(instrument).toBe(false);
+      expect(uninstrument).toBe(false);
+      expect(tag).toBe(false);
+      expect(untag).toBe(false);
+      expect(
+        baseInstrumentOutcome.instrument.skipped[functionName].reasonCode,
+      ).toStrictEqual("already-manually-instrumented");
+    });
+  });
+
   describe("When it's the remote instrumenter lambda", () => {
     test("function should not be changed", () => {
       const lambdaFunc = createTestLambdaFunction({
@@ -1044,5 +1070,51 @@ describe("filterFunctionsToChangeInstrumentation", () => {
     expect(functionsToTag[0].FunctionName).toBe("functionA");
     expect(functionsToUntag.length).toBe(1);
     expect(functionsToUntag[0].FunctionName).toBe("functionB");
+  });
+});
+
+describe("isInstrumented", () => {
+  test.each([
+    ["Empty object is not instrumented", {}, false],
+    ["Undefined is not instrumented", undefined, false],
+    ["Has no environment Variables", { Environment: { Variables: {} } }, false],
+    [
+      "Is instrumented with both variables",
+      {
+        Environment: {
+          Variables: {
+            DD_API_KEY: "a",
+            DD_SITE: "b",
+          },
+        },
+      },
+      true,
+    ],
+
+    [
+      "Only has API key",
+      {
+        Environment: {
+          Variables: {
+            DD_API_KEY: "a",
+          },
+        },
+      },
+      false,
+    ],
+
+    [
+      "Only has site",
+      {
+        Environment: {
+          Variables: {
+            DD_SITE: "b",
+          },
+        },
+      },
+      false,
+    ],
+  ])("%s", (_, lambdaFunc, expected) => {
+    expect(isInstrumented(lambdaFunc)).toBe(expected);
   });
 });
