@@ -2,11 +2,14 @@ const JSZip = require("jszip");
 const {
   CreateFunctionCommand,
   DeleteFunctionCommand,
+  GetFunctionConfigurationCommand,
   ResourceNotFoundException,
   Runtime,
+  TagResourceCommand,
 } = require("@aws-sdk/client-lambda");
-const { account, testLambdaRole } = require("../config.json");
+const { account, region, testLambdaRole } = require("../config.json");
 const { getLambdaClient } = require("./aws-resources");
+const { sleep } = require("./sleep");
 
 const createFunction = async (lambdaProps) => {
   const zip = new JSZip();
@@ -30,7 +33,23 @@ const createFunction = async (lambdaProps) => {
   });
 
   const lambdaClient = await getLambdaClient();
-  await lambdaClient.send(command);
+  const { FunctionName } = await lambdaClient.send(command);
+
+  // When a new function is created it is in a pending state for a little bit,
+  // wait until it is active since it cannot be modified in this pending state
+  let isFunctionReady = false;
+  while (!isFunctionReady) {
+    await sleep(1000);
+    const functionStatus = await lambdaClient.send(
+      new GetFunctionConfigurationCommand({
+        FunctionName,
+      }),
+    );
+    const { State } = functionStatus;
+    if (State !== "Pending") {
+      isFunctionReady = true;
+    }
+  }
 };
 
 exports.createFunction = createFunction;
@@ -50,3 +69,15 @@ const deleteFunction = async (functionName) => {
 };
 
 exports.deleteFunction = deleteFunction;
+
+const tagFunction = async (functionName, tags) => {
+  const lambdaClient = await getLambdaClient();
+  await lambdaClient.send(
+    new TagResourceCommand({
+      Resource: `arn:aws:lambda:${region}:${account}:function:${functionName}`,
+      Tags: tags,
+    }),
+  );
+};
+
+exports.tagFunction = tagFunction;
