@@ -1,6 +1,7 @@
 const axios = require("axios");
 const { account, region } = require("../config.json");
 const { getApiKey, getAppKey } = require("./datadog-keys");
+const { sleep } = require("./sleep");
 
 const getRemoteConfig = async () => {
   const [apiKey, appKey] = await Promise.all([getApiKey(), getAppKey()]);
@@ -21,7 +22,13 @@ const getRemoteConfig = async () => {
 
 exports.getRemoteConfig = getRemoteConfig;
 
-const setRemoteConfig = async () => {
+const setRemoteConfig = async ({
+  waitForEventualConsistency = true,
+  extensionVersion = 67,
+  pythonLayerVersion = 99,
+  nodeLayerVersion = 112,
+  id,
+} = {}) => {
   const [apiKey, appKey] = await Promise.all([getApiKey(), getAppKey()]);
 
   const rc = {
@@ -30,9 +37,9 @@ const setRemoteConfig = async () => {
       attributes: {
         entity_type: "lambda",
         instrumentation_settings: {
-          extension_version: 67,
-          python_layer_version: 99,
-          node_layer_version: 112,
+          extension_version: extensionVersion,
+          python_layer_version: pythonLayerVersion,
+          node_layer_version: nodeLayerVersion,
         },
         priority: 1,
         rule_filters: [
@@ -58,13 +65,28 @@ const setRemoteConfig = async () => {
   const url =
     "https://datad0g.com/api/unstable/remote_config/products/serverless_remote_instrumentation/config";
 
-  const remoteConfig = await axios.post(url, rc, {
-    headers: {
-      "dd-api-key": apiKey,
-      "dd-application-key": appKey,
-    },
-  });
-  return remoteConfig;
+  let remoteConfig;
+  if (id) {
+    rc.data.id = id;
+    remoteConfig = await axios.put(`${url}/${id}`, rc, {
+      headers: {
+        "dd-api-key": apiKey,
+        "dd-application-key": appKey,
+      },
+    });
+  } else {
+    remoteConfig = await axios.post(url, rc, {
+      headers: {
+        "dd-api-key": apiKey,
+        "dd-application-key": appKey,
+      },
+    });
+  }
+
+  if (waitForEventualConsistency) {
+    await sleep(2500);
+  }
+  return remoteConfig.data.data;
 };
 
 exports.setRemoteConfig = setRemoteConfig;

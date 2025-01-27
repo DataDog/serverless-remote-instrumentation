@@ -1,4 +1,4 @@
-const sleep = async (ms) => new Promise((res) => setTimeout(res, ms));
+const { sleep } = require("./sleep");
 
 // This function will call functionToCheck every interval ms
 // until the timeout (in ms), and return once it is true

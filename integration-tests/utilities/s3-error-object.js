@@ -4,10 +4,14 @@ const {
   HeadObjectCommand,
   NotFound,
 } = require("@aws-sdk/client-s3");
+const { getS3Client } = require("./aws-resources");
 
-const putErrorObject = async (s3, bucket, functionName) => {
+const { bucketName } = require("../config.json");
+
+const putErrorObject = async (functionName) => {
+  const s3 = await getS3Client();
   const command = new PutObjectCommand({
-    Bucket: bucket,
+    Bucket: bucketName,
     Key: `errors/${functionName}.json`,
     Body: JSON.stringify({ functionName }),
   });
@@ -17,9 +21,10 @@ const putErrorObject = async (s3, bucket, functionName) => {
 
 exports.putErrorObject = putErrorObject;
 
-const deleteErrorObject = async (s3, bucket, functionName) => {
+const deleteErrorObject = async (functionName) => {
+  const s3 = await getS3Client();
   const command = new DeleteObjectCommand({
-    Bucket: bucket,
+    Bucket: bucketName,
     Key: `errors/${functionName}.json`,
   });
 
@@ -28,9 +33,10 @@ const deleteErrorObject = async (s3, bucket, functionName) => {
 
 exports.deleteErrorObject = deleteErrorObject;
 
-const doesErrorObjectExist = async (s3, bucket, functionName) => {
+const doesErrorObjectExist = async (functionName) => {
+  const s3 = await getS3Client();
   const command = new HeadObjectCommand({
-    Bucket: bucket,
+    Bucket: bucketName,
     Key: `errors/${functionName}.json`,
   });
   try {

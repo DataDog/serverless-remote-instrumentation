@@ -24,6 +24,8 @@ const getLambdaClient = async () => {
   if (!lambdaClient) {
     lambdaClient = new LambdaClient({
       credentials: getCredentials(arn),
+      maxAttempts: 6,
+      retryMode: "adaptive",
       region,
     });
   }
