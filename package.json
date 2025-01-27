@@ -34,7 +34,7 @@
     "lint-yaml": "eslint -c eslint.config.yaml.mjs . ",
     "format-yaml": "eslint --fix -c eslint.config.yaml.mjs . ",
     "test": "jest --config test/jest.config.js",
-    "integ": "jest --config integration-tests/jest.config.js",
+    "integ": "jest -i --config integration-tests/jest.config.js",
     "integ-test-setup": "node scripts/test_setup.js",
     "integ-test-teardown": "node scripts/test_teardown.js"
   }
