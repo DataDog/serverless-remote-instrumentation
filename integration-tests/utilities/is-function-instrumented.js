@@ -8,8 +8,12 @@ const hasLayerMatching = (l, matcher, version) =>
       layer.Arn.includes(matcher) &&
       Number(layer.Arn.split(":").at(-1)) === version,
   );
+
+const hasLayer = (l, matcher) =>
+  l?.Layers?.some((layer) => layer.Arn.includes(matcher));
+
 const hasEnvVar = (l, varName) =>
-  Object.keys(l.Environment.Variables).includes(varName);
+  Object.keys(l?.Environment?.Variables || {}).includes(varName);
 
 // A function is considered instrumented if all are true:
 // 1. If the extension layer is configured, there is a Datadog-Extension with matching version
@@ -51,3 +55,22 @@ const isFunctionInstrumented = async (functionName) => {
 };
 
 exports.isFunctionInstrumented = isFunctionInstrumented;
+
+const isFunctionUninstrumented = async (functionName) => {
+  const lambdaClient = await getLambdaClient();
+  const funConfig = await lambdaClient.send(
+    new GetFunctionConfigurationCommand({
+      FunctionName: functionName,
+    }),
+  );
+
+  return (
+    !hasLayer(funConfig, "Datadog-Python") &&
+    !hasLayer(funConfig, "Datadog-Node") &&
+    !hasLayer(funConfig, "Datadog-Extension") &&
+    !hasEnvVar(funConfig, "DD_API_KEY") &&
+    !hasEnvVar(funConfig, "DD_SITE")
+  );
+};
+
+exports.isFunctionUninstrumented = isFunctionUninstrumented;
