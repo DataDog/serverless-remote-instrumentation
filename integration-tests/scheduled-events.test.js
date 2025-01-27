@@ -63,6 +63,13 @@ describe("Remote instrumenter scheduled event tests", () => {
       ),
     ).toEqual(expect.arrayContaining([testFunction]));
 
+    // If it was skipped, it should have the reason that it already has the correct layer
+    if (Object.keys(res.instrument.skipped).includes(testFunction)) {
+      expect(res.instrument.skipped[testFunction].reasonCode).toStrictEqual(
+        "already-correct-extension-and-layer",
+      );
+    }
+
     const isInstrumented = await isFunctionInstrumented(testFunction);
     expect(isInstrumented).toStrictEqual(true);
   });
