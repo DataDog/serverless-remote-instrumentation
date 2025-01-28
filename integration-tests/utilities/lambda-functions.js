@@ -5,6 +5,7 @@ const {
   GetFunctionConfigurationCommand,
   ResourceNotFoundException,
   TagResourceCommand,
+  Runtime,
 } = require("@aws-sdk/client-lambda");
 const { account, region, testLambdaRole } = require("../config.json");
 const { getLambdaClient } = require("./aws-resources");
@@ -25,6 +26,7 @@ const createFunction = async (lambdaProps) => {
     },
     Handler: "index.handler",
     Role: `arn:aws:iam::${account}:role/${testLambdaRole}`,
+    Runtime: Runtime.nodejs20x,
     PackageType: "Zip",
     MemorySize: 512,
     ...lambdaProps,
