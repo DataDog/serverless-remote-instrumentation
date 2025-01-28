@@ -149,4 +149,30 @@ describe("Remote instrumenter scheduled event tests", () => {
     const isReInstrumented = await isFunctionInstrumented(testFunction);
     expect(isReInstrumented).toStrictEqual(true);
   });
+
+  it("clears remote instrumentation when all configs are deleted", async () => {
+    await setRemoteConfig();
+    await createFunction({
+      FunctionName: testFunction,
+      Tags: { foo: "bar" },
+    });
+
+    // The function should be instrumented by the lambda management event
+    const isInstrumented = await pollUntilTrue(60000, 5000, () =>
+      isFunctionInstrumented(testFunction),
+    );
+    expect(isInstrumented).toStrictEqual(true);
+
+    // Remove all configs
+    await clearRemoteConfigs();
+
+    // After the next scheduled event
+    await invokeLambdaWithScheduledEvent();
+
+    // The function should be uninstrumented
+    const isUninstrumented = await pollUntilTrue(60000, 5000, () =>
+      isFunctionUninstrumented(testFunction),
+    );
+    expect(isUninstrumented).toStrictEqual(true);
+  });
 });
