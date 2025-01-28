@@ -48,6 +48,29 @@ describe("Remote instrumenter scheduled event tests", () => {
     expect(isUninstrumented).toStrictEqual(true);
   });
 
+  it("manually instrumented function does NOT get instrumented", async () => {
+    await setRemoteConfig();
+    await createFunction({
+      FunctionName: testFunction,
+      Tags: { foo: "bar" },
+      Environment: {
+        Variables: {
+          DD_API_KEY: "a",
+          DD_SITE: "b",
+        },
+      },
+    });
+
+    const res = await invokeLambdaWithScheduledEvent();
+
+    expect(Object.keys(res.instrument.skipped)).toEqual(
+      expect.arrayContaining([testFunction]),
+    );
+    expect(res.instrument.skipped[testFunction].reasonCode).toStrictEqual(
+      "already-manually-instrumented",
+    );
+  });
+
   it("function with correct tags does get instrumented", async () => {
     await createFunction({
       FunctionName: testFunction,
