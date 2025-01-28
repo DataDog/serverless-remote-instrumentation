@@ -413,7 +413,7 @@ function needsInstrumentationUpdate(
         `Skipping function '${functionName}' because it has an unsupported runtime.`,
       );
     }
-    const reason = `Function's runtime '${currentMemorySize}' not supported.`;
+    const reason = `Function's runtime '${runtime}' not supported.`;
     instrumentOutcome.instrument.skipped[functionName] = {
       functionArn,
       reason: reason,
