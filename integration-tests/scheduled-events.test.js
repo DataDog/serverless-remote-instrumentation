@@ -14,6 +14,7 @@ const {
   createFunction,
   deleteFunction,
 } = require("./utilities/lambda-functions");
+const { Runtime } = require("@aws-sdk/client-lambda");
 
 describe("Remote instrumenter scheduled event tests", () => {
   const testFunction = "scheduledEventTest";
@@ -95,6 +96,27 @@ describe("Remote instrumenter scheduled event tests", () => {
 
     const isInstrumented = await isFunctionInstrumented(testFunction);
     expect(isInstrumented).toStrictEqual(true);
+  });
+
+  it("function with unsupported runtime does not get instrumented", async () => {
+    await createFunction({
+      FunctionName: testFunction,
+      Tags: { foo: "bar" },
+      Runtime: Runtime.java21,
+    });
+    await setRemoteConfig();
+
+    const res = await invokeLambdaWithScheduledEvent();
+
+    expect(Object.keys(res.instrument.skipped)).toEqual(
+      expect.arrayContaining([testFunction]),
+    );
+    expect(res.instrument.skipped[testFunction].reasonCode).toStrictEqual(
+      "unsupported-runtime",
+    );
+
+    const isUninstrumented = await isFunctionUninstrumented(testFunction);
+    expect(isUninstrumented).toStrictEqual(true);
   });
 
   it("can upgrade layer versions when the config changes", async () => {
