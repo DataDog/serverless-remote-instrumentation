@@ -33,7 +33,6 @@ describe("Remote instrumenter scheduled event tests", () => {
     await createFunction({
       FunctionName: testFunction,
       Tags: { foo: "baz" },
-      Runtime: Runtime.nodejs20x,
     });
     await setRemoteConfig();
 
@@ -54,7 +53,6 @@ describe("Remote instrumenter scheduled event tests", () => {
     await createFunction({
       FunctionName: testFunction,
       Tags: { foo: "bar" },
-      Runtime: Runtime.nodejs20x,
     });
     await setRemoteConfig();
 
@@ -106,7 +104,6 @@ describe("Remote instrumenter scheduled event tests", () => {
     await createFunction({
       FunctionName: testFunction,
       Tags: { foo: "bar" },
-      Runtime: Runtime.nodejs20x,
     });
 
     // The function should be instrumented by the lambda management event

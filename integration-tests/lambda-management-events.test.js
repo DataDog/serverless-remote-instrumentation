@@ -15,7 +15,6 @@ const {
 const {
   invokeLambdaWithScheduledEvent,
 } = require("./utilities/remote-instrumenter-invocations");
-const { Runtime } = require("@aws-sdk/client-lambda");
 
 describe("Remote instrumenter lambda management event tests", () => {
   const testFunction = "lambdaManagementEventTest";
@@ -38,7 +37,6 @@ describe("Remote instrumenter lambda management event tests", () => {
     await createFunction({
       FunctionName: testFunction,
       Tags: { foo: "bar" },
-      Runtime: Runtime.nodejs20x,
     });
 
     // After some time
@@ -56,7 +54,6 @@ describe("Remote instrumenter lambda management event tests", () => {
     await createFunction({
       FunctionName: testFunction,
       Tags: { foo: "baz" },
-      Runtime: Runtime.nodejs20x,
     });
 
     await invokeLambdaWithScheduledEvent();
