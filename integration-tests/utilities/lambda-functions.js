@@ -4,8 +4,8 @@ const {
   DeleteFunctionCommand,
   GetFunctionConfigurationCommand,
   ResourceNotFoundException,
-  TagResourceCommand,
   Runtime,
+  TagResourceCommand,
 } = require("@aws-sdk/client-lambda");
 const { account, region, testLambdaRole } = require("../config.json");
 const { getLambdaClient } = require("./aws-resources");
