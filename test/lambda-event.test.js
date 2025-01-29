@@ -231,4 +231,14 @@ describe("shouldSkipEvent", () => {
     };
     expect(shouldSkipEvent(event)).toBe(false);
   });
+  it("should return true for events that did not succeed", () => {
+    const event = {
+      detail: {
+        eventName: "UntagResource20170331v2",
+        errorCode: "DidNotWork!",
+        errorMessage: "SomethingBadHappened",
+      },
+    };
+    expect(shouldSkipEvent(event)).toBe(true);
+  });
 });

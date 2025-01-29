@@ -104,6 +104,14 @@ function shouldSkipEvent(event) {
     );
     return true;
   }
+
+  if (event?.detail?.errorCode) {
+    logger.log(
+      `Skipping '${event.detail.eventName}' event because the lambda update failed: ${event?.detail?.errorCode}: ${event?.detail?.errorMessage}.`,
+    );
+    return true;
+  }
+
   return false;
 }
 exports.shouldSkipEvent = shouldSkipEvent;
