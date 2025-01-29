@@ -4,6 +4,8 @@ const { DD_SLS_REMOTE_INSTRUMENTER_VERSION } = require("./consts");
 const { logger } = require("./logger");
 const { PROCESSING } = require("./consts");
 
+const { ResourceNotFoundException } = require("@aws-sdk/client-lambda");
+
 const UPDATE_FUNCTION_CONFIGURATION_EVENT_NAME =
   "UpdateFunctionConfiguration20150331v2";
 const CREATE_FUNCTION_EVENT_NAME = "CreateFunction20150331";
@@ -151,7 +153,17 @@ async function getFunctionFromLambdaEvent(lambdaClient, event) {
     `Received function name '${functionName}' from event '${event.detail.eventName}'`,
   );
 
-  const functionFromEvent = await getLambdaFunction(lambdaClient, functionName);
-  return functionFromEvent.Configuration;
+  try {
+    const functionFromEvent = await getLambdaFunction(
+      lambdaClient,
+      functionName,
+    );
+    return functionFromEvent.Configuration;
+  } catch (e) {
+    if (e instanceof ResourceNotFoundException) {
+      return;
+    }
+    throw e;
+  }
 }
 exports.getFunctionFromLambdaEvent = getFunctionFromLambdaEvent;

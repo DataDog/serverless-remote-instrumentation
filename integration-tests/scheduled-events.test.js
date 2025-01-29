@@ -15,12 +15,19 @@ const {
   deleteFunction,
 } = require("./utilities/lambda-functions");
 const { Runtime } = require("@aws-sdk/client-lambda");
+const {
+  deleteErrorObject,
+  putErrorObject,
+  doesErrorObjectExist,
+} = require("./utilities/s3-error-object");
 
 describe("Remote instrumenter scheduled event tests", () => {
   const testFunction = "scheduledEventTest";
+  const functionThatDoesntExist = "ThisDoesNotExist";
 
   afterAll(async () => {
     await deleteFunction(testFunction);
+    await deleteErrorObject(functionThatDoesntExist);
     await clearRemoteConfigs();
   });
 
@@ -174,5 +181,22 @@ describe("Remote instrumenter scheduled event tests", () => {
       isFunctionUninstrumented(testFunction),
     );
     expect(isUninstrumented).toStrictEqual(true);
+  });
+
+  it("error for nonexistant function gets cleared and skipped", async () => {
+    await putErrorObject(functionThatDoesntExist);
+
+    const res = await invokeLambdaWithScheduledEvent();
+
+    if (Object.keys(res.instrument.skipped).includes(functionThatDoesntExist)) {
+      expect(
+        res.instrument.skipped[functionThatDoesntExist].reasonCode,
+      ).toStrictEqual("function-not-found");
+    }
+
+    const doesErrorObjectStillExist = await doesErrorObjectExist(
+      functionThatDoesntExist,
+    );
+    expect(doesErrorObjectStillExist).toEqual(false);
   });
 });

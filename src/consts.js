@@ -38,6 +38,7 @@ exports.UNSUPPORTED_RUNTIME = "unsupported-runtime";
 exports.NOT_SATISFYING_TARGETING_RULES = "not-satisfying-targeting-rules";
 exports.ALREADY_MANUALLY_INSTRUMENTED = "already-manually-instrumented";
 exports.REMOTE_INSTRUMENTER_FUNCTION = "remote-instrumenter-function";
+exports.FUNCTION_NOT_FOUND = "function-not-found";
 
 // Remote instrumentation tag values
 exports.VERSION = "1.0.0";
