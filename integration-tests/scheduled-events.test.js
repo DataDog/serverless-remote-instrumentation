@@ -3,6 +3,7 @@ const {
   isFunctionInstrumented,
   isFunctionUninstrumented,
 } = require("./utilities/is-function-instrumented");
+const { namingSeed } = require("./config.json");
 const {
   setRemoteConfig,
   clearRemoteConfigs,
@@ -17,7 +18,7 @@ const {
 const { Runtime } = require("@aws-sdk/client-lambda");
 
 describe("Remote instrumenter scheduled event tests", () => {
-  const testFunction = "scheduledEventTest";
+  const testFunction = `scheduledEventTest${namingSeed}`;
 
   afterAll(async () => {
     await deleteFunction(testFunction);
