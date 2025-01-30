@@ -38,6 +38,7 @@ const generateTestConfig = () => {
       bucketName: `remote-instrumenter-testing-bucket-${region}-${namingSeed}`,
       roleName: `remote-instrumenter-testing-${region}-${namingSeed}`,
       trailName: `datadog-serverless-instrumentation-trail-testing-${namingSeed}`,
+      namingSeed,
     };
 
     // There is a 64 character limit for a lot of resources

@@ -7,6 +7,7 @@ const {
   setRemoteConfig,
   clearRemoteConfigs,
 } = require("./utilities/remote-config");
+const { namingSeed } = require("./config.json");
 const {
   createFunction,
   deleteFunction,
@@ -17,7 +18,7 @@ const {
 } = require("./utilities/remote-instrumenter-invocations");
 
 describe("Remote instrumenter lambda management event tests", () => {
-  const testFunction = "lambdaManagementEventTest";
+  const testFunction = `lambdaManagementEventTest${namingSeed}`;
 
   afterAll(async () => {
     await deleteFunction(testFunction);
