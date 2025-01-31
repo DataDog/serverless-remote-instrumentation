@@ -15,6 +15,7 @@ const {
 } = require("./utilities/lambda-functions");
 const {
   invokeLambdaWithScheduledEvent,
+  invokeLambdaWithLambdaManagementEvent,
 } = require("./utilities/remote-instrumenter-invocations");
 
 describe("Remote instrumenter lambda management event tests", () => {
@@ -73,5 +74,12 @@ describe("Remote instrumenter lambda management event tests", () => {
 
     // The function is instrumented correctly
     expect(isInstrumented).toStrictEqual(true);
+  });
+
+  it("doesn't error on nonexistant function", async () => {
+    const { errors } = await invokeLambdaWithLambdaManagementEvent({
+      targetFunctionName: "LambdaEventThisDoesNotExist",
+    });
+    expect(errors).toBeFalsy();
   });
 });
