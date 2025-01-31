@@ -14,7 +14,10 @@ const {
   putError,
   listErrors,
 } = require("./error-storage");
-const { LambdaClient } = require("@aws-sdk/client-lambda");
+const {
+  LambdaClient,
+  ResourceNotFoundException,
+} = require("@aws-sdk/client-lambda");
 const {
   ResourceGroupsTaggingAPIClient,
 } = require("@aws-sdk/client-resource-groups-tagging-api");
@@ -25,7 +28,13 @@ const {
   enrichFunctionsWithTags,
 } = require("./functions");
 const { instrumentFunctions } = require("./instrument");
-const { LAMBDA_EVENT, SCHEDULED_INVOCATION_EVENT } = require("./consts");
+const {
+  LAMBDA_EVENT,
+  SCHEDULED_INVOCATION_EVENT,
+  FUNCTION_NOT_FOUND,
+  INSTRUMENT,
+  SKIPPED,
+} = require("./consts");
 
 const awsRegion = process.env.AWS_REGION;
 const lambdaClient = new LambdaClient({
@@ -102,6 +111,29 @@ exports.handler = async (event, context) => {
       // If the config has changed, check all functions for instrumentation
       // Get all functions in the customer's account
       const allFunctions = await getAllFunctions(lambdaClient);
+      const deletedErrorFunctions = errors.filter(
+        (functionName) =>
+          !allFunctions.some(
+            (element) => element.FunctionName === functionName,
+          ),
+      );
+
+      deletedErrorFunctions.forEach((functionName) => {
+        const reasonCode = FUNCTION_NOT_FOUND;
+        const reason = `The function '${functionName}' does not exist`;
+        instrumentOutcome.instrument.skipped[functionName] = {
+          reason,
+          reasonCode,
+        };
+        logger.logInstrumentOutcome({
+          ddSlsEventName: INSTRUMENT,
+          outcome: SKIPPED,
+          targetFunctionName: functionName,
+          reason,
+          reasonCode,
+        });
+      });
+
       functionsToCheck = await enrichFunctionsWithTags(
         lambdaClient,
         allFunctions,
@@ -121,18 +153,41 @@ exports.handler = async (event, context) => {
       logger.log(
         `Found previous errors in ${errors.length} functions.  ${JSON.stringify(errors)}`,
       );
-      const functionsToCheck = await Promise.all(
-        errors.map(async (lambdaFunctionName) => {
-          const lambdaFunction = await getLambdaFunction(
-            lambdaClient,
-            lambdaFunctionName,
-          );
-          return {
-            ...lambdaFunction.Configuration,
-            Tags: lambdaFunction.Tags,
-          };
-        }),
-      );
+      const functionsToCheck = (
+        await Promise.all(
+          errors.map(async (lambdaFunctionName) => {
+            try {
+              const lambdaFunction = await getLambdaFunction(
+                lambdaClient,
+                lambdaFunctionName,
+              );
+              return {
+                ...lambdaFunction.Configuration,
+                Tags: lambdaFunction.Tags,
+              };
+            } catch (e) {
+              if (e instanceof ResourceNotFoundException) {
+                // Function no longer exists, add it to skipped to get cleaned up
+                const reasonCode = FUNCTION_NOT_FOUND;
+                const reason = `The function '${lambdaFunctionName}' does not exist`;
+                instrumentOutcome.instrument.skipped[lambdaFunctionName] = {
+                  reason,
+                  reasonCode,
+                };
+                logger.logInstrumentOutcome({
+                  ddSlsEventName: INSTRUMENT,
+                  outcome: SKIPPED,
+                  targetFunctionName: lambdaFunctionName,
+                  reason,
+                  reasonCode,
+                });
+                return undefined;
+              }
+            }
+          }),
+        )
+      ).filter((item) => item);
+
       const enrichedFunctions = await enrichFunctionsWithTags(
         lambdaClient,
         functionsToCheck,
@@ -148,22 +203,22 @@ exports.handler = async (event, context) => {
       logger.log("Configuration has not changed. Skipping instrumentation.");
     }
 
-    if (errors.length) {
-      const { newErrors, resolvedErrors } = identifyNewErrorsAndResolvedErrors(
-        instrumentOutcome,
-        errors,
-      );
-      await Promise.all(
-        [
-          newErrors.map(async ({ functionName, reason }) =>
-            putError(s3Client, functionName, reason),
-          ),
-          resolvedErrors.map(async (functionName) =>
-            deleteError(s3Client, functionName),
-          ),
-        ].flat(),
-      );
-    }
+    // Clear the errors that have been handled, including skipped functions that no longer exist
+    const { newErrors, resolvedErrors } = identifyNewErrorsAndResolvedErrors(
+      instrumentOutcome,
+      errors,
+    );
+
+    await Promise.all(
+      [
+        newErrors.map(async ({ functionName, reason }) =>
+          putError(s3Client, functionName, reason),
+        ),
+        resolvedErrors.map(async (functionName) =>
+          deleteError(s3Client, functionName),
+        ),
+      ].flat(),
+    );
   }
 
   // If it's a different event type, log an error
