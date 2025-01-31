@@ -3,6 +3,7 @@ const {
   isFunctionInstrumented,
   isFunctionUninstrumented,
 } = require("./utilities/is-function-instrumented");
+const { namingSeed } = require("./config.json");
 const {
   setRemoteConfig,
   clearRemoteConfigs,
@@ -22,7 +23,7 @@ const {
 } = require("./utilities/s3-error-object");
 
 describe("Remote instrumenter scheduled event tests", () => {
-  const testFunction = "scheduledEventTest";
+  const testFunction = `scheduledEventTest${namingSeed}`;
   const functionThatDoesntExist = "ThisDoesNotExist";
 
   afterAll(async () => {
