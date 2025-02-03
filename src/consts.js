@@ -45,6 +45,8 @@ exports.VERSION = "1.0.0";
 exports.DD_SLS_REMOTE_INSTRUMENTER_VERSION =
   "dd_sls_remote_instrumenter_version";
 exports.DD_API_KEY = "DD_API_KEY";
+exports.DD_KMS_API_KEY = "DD_KMS_API_KEY";
+exports.DD_API_KEY_SECRET_ARN = "DD_API_KEY_SECRET_ARN";
 exports.DD_SITE = "DD_SITE";
 
 // Remote config constants
