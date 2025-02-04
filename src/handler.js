@@ -31,6 +31,7 @@ const { instrumentFunctions } = require("./instrument");
 const {
   LAMBDA_EVENT,
   SCHEDULED_INVOCATION_EVENT,
+  CLOUDFORMATION_DELETE_EVENT,
   FUNCTION_NOT_FOUND,
   INSTRUMENT,
   SKIPPED,
@@ -53,7 +54,7 @@ exports.handler = async (event, context) => {
   };
 
   // If it's a stack event, send a response to CloudFormation for custom resource management
-  if (isStackDeletedEvent(event) || isStackCreatedEvent(event)) {
+  if (isStackCreatedEvent(event)) {
     /**
      * TODO: [Followup] Do one of two things:
      * 1. On Stack Created, check all functions for instrumentation like we do for the scheduled event
@@ -61,6 +62,31 @@ exports.handler = async (event, context) => {
      */
     logger.log(`Received a CloudFormation '${event.RequestType}' event.`);
     await cfnResponse.send(event, context, "SUCCESS");
+  } else if (isStackDeletedEvent(event)) {
+    logger.log(`Received a CloudFormation '${event.RequestType}' event.`);
+    const allFunctions = await getAllFunctions(lambdaClient);
+    const enrichedFunctions = await enrichFunctionsWithTags(
+      lambdaClient,
+      allFunctions,
+    );
+    await instrumentFunctions(
+      s3Client,
+      [],
+      enrichedFunctions,
+      instrumentOutcome,
+      taggingClient,
+      CLOUDFORMATION_DELETE_EVENT,
+    );
+    const failedToUninstrument = Object.keys(
+      instrumentOutcome.uninstrument.failed,
+    );
+    if (failedToUninstrument.length) {
+      await cfnResponse.send(event, context, "FAILED", {
+        failed: failedToUninstrument,
+      });
+    } else {
+      await cfnResponse.send(event, context, "SUCCESS");
+    }
   }
 
   // Else if it's a Lambda Management event, validate the event and instrument the function
