@@ -888,46 +888,6 @@ describe("needsInstrumentationUpdate", () => {
     });
   });
   describe("When the function is already correctly instrumented", () => {
-    test("untagged function should be tagged", () => {
-      const layers = [
-        {
-          Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Node:1",
-        },
-        {
-          Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Extension:1",
-        },
-      ];
-      const lambdaFunc = createTestLambdaFunction({
-        functionName: "functionA",
-        functionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionA",
-        memorySize: 512,
-        runtime: "nodejs14.x",
-        tags: new Set(["foo:bar"]),
-        layers: layers,
-      });
-      const ruleFilters = [
-        {
-          key: "foo",
-          values: ["bar"],
-          allow: true,
-          filterType: "tag",
-        },
-      ];
-      const config = createTestConfig({
-        entityType: "lambda",
-        extensionVersion: 1,
-        nodeLayerVersion: 1,
-        pythonLayerVersion: 1,
-        priority: 1,
-        ruleFilters: ruleFilters,
-      });
-      const { instrument, uninstrument, tag, untag } =
-        needsInstrumentationUpdate(lambdaFunc, config, baseInstrumentOutcome);
-      expect(instrument).toBe(false);
-      expect(uninstrument).toBe(false);
-      expect(tag).toBe(true);
-      expect(untag).toBe(false);
-    });
     test("tagged function should not be changed", () => {
       const layers = [
         {
@@ -987,7 +947,10 @@ describe("needsInstrumentationUpdate", () => {
         functionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionA",
         memorySize: 512,
         runtime: "nodejs14.x",
-        tags: new Set(["foo:bar"]),
+        tags: new Set([
+          "foo:bar",
+          DD_SLS_REMOTE_INSTRUMENTER_VERSION + ":" + VERSION,
+        ]),
         layers: layers,
       });
       const ruleFilters = [
@@ -1025,7 +988,10 @@ describe("filterFunctionsToChangeInstrumentation", () => {
         functionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionA",
         memorySize: 512,
         runtime: "nodejs14.x",
-        tags: new Set(["foo:bar"]),
+        tags: new Set([
+          "foo:bar",
+          DD_SLS_REMOTE_INSTRUMENTER_VERSION + ":" + VERSION,
+        ]),
         layers: [],
       }),
       // Function B should be uninstrumented and untagged
@@ -1111,6 +1077,28 @@ describe("isInstrumented", () => {
             DD_SITE: "b",
           },
         },
+      },
+      false,
+    ],
+    [
+      "Has datadog layers, others potentially configured in yaml",
+      {
+        Layers: [
+          {
+            Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Extension:1",
+          },
+        ],
+      },
+      true,
+    ],
+    [
+      "Has other layers",
+      {
+        Layers: [
+          {
+            Arn: "arn:aws:lambda:us-east-1:464622532012:layer:InformationCat:100",
+          },
+        ],
       },
       false,
     ],

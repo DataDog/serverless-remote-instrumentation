@@ -10,6 +10,8 @@ const {
   DD_SLS_REMOTE_INSTRUMENTER_VERSION,
   ALREADY_MANUALLY_INSTRUMENTED,
   DD_API_KEY,
+  DD_KMS_API_KEY,
+  DD_API_KEY_SECRET_ARN,
   DD_SITE,
   VERSION,
   SUPPORTED_RUNTIMES,
@@ -236,11 +238,33 @@ function isRemotelyInstrumented(lambdaFunc) {
 }
 exports.isRemotelyInstrumented = isRemotelyInstrumented;
 
+const hasLayerMatching = (l, matcher) =>
+  l?.Layers?.some((layer) => layer.Arn.includes(matcher));
+
 function isInstrumented(lambdaFunc) {
   const envVars = new Set(
     Object.keys(lambdaFunc?.Environment?.Variables || {}),
   );
-  return envVars.has(DD_API_KEY) && envVars.has(DD_SITE);
+  // If there is a key and the dd site is configured
+  if (
+    (envVars.has(DD_API_KEY) ||
+      envVars.has(DD_API_KEY_SECRET_ARN) ||
+      envVars.has(DD_KMS_API_KEY)) &&
+    envVars.has(DD_SITE)
+  ) {
+    return true;
+  }
+  // Since the above environment variables can be configured
+  // in a datadog.yaml file, check if a datadog layer is present
+  const hasDatadogLayer =
+    hasLayerMatching(lambdaFunc, "Datadog-Python") ||
+    hasLayerMatching(lambdaFunc, "Datadog-Node") ||
+    hasLayerMatching(lambdaFunc, "Datadog-Extension");
+
+  if (hasDatadogLayer) {
+    return true;
+  }
+  return false;
 }
 exports.isInstrumented = isInstrumented;
 
@@ -501,14 +525,6 @@ function needsInstrumentationUpdate(
       reason: reason,
       reasonCode: ALREADY_CORRECT_EXTENSION_AND_LAYER,
     };
-    if (!isCurrentlyRemotelyInstrumented) {
-      return {
-        instrument: false,
-        uninstrument: false,
-        tag: true,
-        untag: false,
-      };
-    }
     return { instrument: false, uninstrument: false, tag: false, untag: false };
   }
 
