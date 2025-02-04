@@ -5,12 +5,14 @@ const lambdaEvent = require("../src/lambda-event");
 const instrument = require("../src/instrument");
 const errorStorage = require("../src/error-storage");
 const { LAMBDA_EVENT } = require("../src/consts");
+const cfnResponse = require("cfn-response");
 
 jest.mock("../src/lambda-event");
 jest.mock("../src/config");
 jest.mock("../src/functions");
 jest.mock("../src/instrument");
 jest.mock("../src/error-storage");
+jest.mock("cfn-response");
 
 describe("handler lambda management events", () => {
   beforeEach(() => {
@@ -158,5 +160,99 @@ describe("scheduled invocation events", () => {
       expect.anything(),
       "error!",
     );
+  });
+});
+
+describe("stack delete events", () => {
+  beforeEach(() => {
+    jest.resetAllMocks();
+  });
+
+  test("successfully uninstruments and calls back with success", async () => {
+    const event = {
+      RequestType: "Delete",
+      ResponseURL: "url",
+      ResourceType: "AWS::CloudFormation::CustomResource",
+      StackId: "fakeStackId",
+      PhysicalResourceId: "fakePhysicalResourceId",
+      RequestId: "fakeRequestId",
+    };
+    const context = "context";
+
+    lambdaEvent.isStackDeletedEvent.mockReturnValue(true);
+    functions.getAllFunctions.mockReturnValue("getAllFunctionsRV");
+    functions.enrichFunctionsWithTags.mockReturnValue(
+      "enrichFunctionsWithTagsRV",
+    );
+    instrument.instrumentFunctions.mockImplementation(
+      (a, b, c, outcome) => (outcome.uninstrument.succeeded.test = "1"),
+    );
+    cfnResponse.send.mockReturnValue(true);
+
+    const res = await handler.handler(event, context);
+
+    expect(functions.getAllFunctions).toHaveBeenCalledTimes(1);
+    expect(functions.enrichFunctionsWithTags).toHaveBeenCalledTimes(1);
+    expect(functions.enrichFunctionsWithTags).toHaveBeenCalledWith(
+      expect.anything(),
+      "getAllFunctionsRV",
+    );
+    expect(instrument.instrumentFunctions).toHaveBeenCalledTimes(1);
+    expect(instrument.instrumentFunctions).toHaveBeenCalledWith(
+      expect.anything(),
+      [],
+      "enrichFunctionsWithTagsRV",
+      expect.anything(),
+      expect.anything(),
+      "CloudformationDeleteEvent",
+    );
+    expect(cfnResponse.send).toHaveBeenCalledTimes(1);
+    expect(cfnResponse.send).toHaveBeenCalledWith(event, context, "SUCCESS");
+    expect(res.uninstrument.succeeded.test).toStrictEqual("1");
+  });
+
+  test("fails to uninstrument and calls back with fail", async () => {
+    const event = {
+      RequestType: "Delete",
+      ResponseURL: "url",
+      ResourceType: "AWS::CloudFormation::CustomResource",
+      StackId: "fakeStackId",
+      PhysicalResourceId: "fakePhysicalResourceId",
+      RequestId: "fakeRequestId",
+    };
+    const context = "context";
+
+    lambdaEvent.isStackDeletedEvent.mockReturnValue(true);
+    functions.getAllFunctions.mockReturnValue("getAllFunctionsRV");
+    functions.enrichFunctionsWithTags.mockReturnValue(
+      "enrichFunctionsWithTagsRV",
+    );
+    instrument.instrumentFunctions.mockImplementation(
+      (a, b, c, outcome) => (outcome.uninstrument.failed.test = "1"),
+    );
+    cfnResponse.send.mockReturnValue(true);
+
+    const res = await handler.handler(event, context);
+
+    expect(functions.getAllFunctions).toHaveBeenCalledTimes(1);
+    expect(functions.enrichFunctionsWithTags).toHaveBeenCalledTimes(1);
+    expect(functions.enrichFunctionsWithTags).toHaveBeenCalledWith(
+      expect.anything(),
+      "getAllFunctionsRV",
+    );
+    expect(instrument.instrumentFunctions).toHaveBeenCalledTimes(1);
+    expect(instrument.instrumentFunctions).toHaveBeenCalledWith(
+      expect.anything(),
+      [],
+      "enrichFunctionsWithTagsRV",
+      expect.anything(),
+      expect.anything(),
+      "CloudformationDeleteEvent",
+    );
+    expect(cfnResponse.send).toHaveBeenCalledTimes(1);
+    expect(cfnResponse.send).toHaveBeenCalledWith(event, context, "FAILED", {
+      failed: ["test"],
+    });
+    expect(res.uninstrument.failed.test).toStrictEqual("1");
   });
 });
