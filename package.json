@@ -29,7 +29,7 @@
     "node": ">=20.0.0 <21.0.0"
   },
   "scripts": {
-    "format": "eslint --fix . self-monitoring-app/modifier_handler.js",
+    "format": "eslint --fix .",
     "lint": "eslint -c eslint.config.mjs . ",
     "lint-yaml": "eslint -c eslint.config.yaml.mjs . ",
     "format-yaml": "eslint --fix -c eslint.config.yaml.mjs . ",
