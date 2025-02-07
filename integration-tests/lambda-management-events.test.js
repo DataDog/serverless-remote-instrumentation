@@ -5,6 +5,7 @@ const {
 } = require("./utilities/is-function-instrumented");
 const {
   setRemoteConfig,
+  clearKnownRemoteConfigs,
   clearRemoteConfigs,
 } = require("./utilities/remote-config");
 const { namingSeed } = require("./config.json");
@@ -26,9 +27,13 @@ describe("Remote instrumenter lambda management event tests", () => {
     await clearRemoteConfigs();
   });
 
+  beforeAll(async () => {
+    await clearRemoteConfigs();
+  });
+
   beforeEach(async () => {
     await deleteFunction(testFunction);
-    await clearRemoteConfigs();
+    await clearKnownRemoteConfigs();
   });
 
   it("can instrument a new lambda function", async () => {

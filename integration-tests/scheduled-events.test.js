@@ -6,6 +6,7 @@ const {
 const { namingSeed } = require("./config.json");
 const {
   setRemoteConfig,
+  clearKnownRemoteConfigs,
   clearRemoteConfigs,
 } = require("./utilities/remote-config");
 const {
@@ -34,6 +35,10 @@ describe("Remote instrumenter scheduled event tests", () => {
 
   beforeEach(async () => {
     await deleteFunction(testFunction);
+    await clearKnownRemoteConfigs();
+  });
+
+  beforeAll(async () => {
     await clearRemoteConfigs();
   });
 
