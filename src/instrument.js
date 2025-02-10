@@ -8,6 +8,7 @@ const {
   SUCCEEDED,
   FAILED,
   LAMBDA_EVENT,
+  CLOUDFORMATION_DELETE_EVENT,
 } = require("./consts");
 const { logger } = require("./logger");
 const {
@@ -187,8 +188,8 @@ async function instrumentFunctions(
     // Add the config apply state to the list
     configApplyStates.push(createApplyStateObject(instrumentOutcome, config));
   }
-  // Write the config apply states to S3 or skip for lambda management events
-  if (triggeredBy !== LAMBDA_EVENT) {
+  // Write the config apply states to S3 or skip for some events
+  if (![LAMBDA_EVENT, CLOUDFORMATION_DELETE_EVENT].includes(triggeredBy)) {
     await putApplyState(s3Client, configApplyStates);
   }
   logger.emitFrontEndEvent(
