@@ -114,6 +114,15 @@ function shouldSkipEvent(event) {
     return true;
   }
 
+  if (
+    event?.detail?.userIdentity?.principalId.includes(instrumenterFunctionName)
+  ) {
+    logger.log(
+      `Skipping '${event.detail.eventName}' event because its source is the remote instrumenter.`,
+    );
+    return true;
+  }
+
   return false;
 }
 exports.shouldSkipEvent = shouldSkipEvent;
