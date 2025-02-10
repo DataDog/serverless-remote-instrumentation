@@ -14,6 +14,7 @@ const { logger } = require("./logger");
 const {
   filterFunctionsToChangeInstrumentation,
   isRemotelyInstrumented,
+  waitUntilFunctionIsActive,
 } = require("./functions");
 const { tagResourcesWithSlsTag, untagResourcesOfSlsTag } = require("./tag");
 const {
@@ -70,6 +71,8 @@ async function instrumentWithDatadogCi(
   } else {
     command.push("-r", config.awsRegion);
   }
+
+  await waitUntilFunctionIsActive(functionName);
 
   logger.logInstrumentOutcome({
     ddSlsEventName: operationName,

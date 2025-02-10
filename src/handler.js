@@ -14,10 +14,7 @@ const {
   putError,
   listErrors,
 } = require("./error-storage");
-const {
-  LambdaClient,
-  ResourceNotFoundException,
-} = require("@aws-sdk/client-lambda");
+const { ResourceNotFoundException } = require("@aws-sdk/client-lambda");
 const {
   ResourceGroupsTaggingAPIClient,
 } = require("@aws-sdk/client-resource-groups-tagging-api");
@@ -27,6 +24,7 @@ const {
   getAllFunctions,
   enrichFunctionsWithTags,
 } = require("./functions");
+const { getLambdaClient } = require("./aws-resources");
 const { instrumentFunctions } = require("./instrument");
 const {
   LAMBDA_EVENT,
@@ -39,9 +37,7 @@ const {
 } = require("./consts");
 
 const awsRegion = process.env.AWS_REGION;
-const lambdaClient = new LambdaClient({
-  region: awsRegion,
-});
+const lambdaClient = getLambdaClient();
 const taggingClient = new ResourceGroupsTaggingAPIClient({
   region: awsRegion,
 });
