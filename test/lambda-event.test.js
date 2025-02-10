@@ -241,4 +241,28 @@ describe("shouldSkipEvent", () => {
     };
     expect(shouldSkipEvent(event)).toBe(true);
   });
+  it("should return true for events that originate from the remote instrumenter", () => {
+    const event = {
+      detail: {
+        eventName: "UpdateFunctionConfiguration20150331v2",
+        userIdentity: {
+          principalId: "CanonicalID:instrumenter-function-name",
+        },
+      },
+    };
+    process.env.DD_INSTRUMENTER_FUNCTION_NAME = "instrumenter-function-name";
+    expect(shouldSkipEvent(event)).toBe(true);
+  });
+  it("should return false for events that originate from other sources", () => {
+    const event = {
+      detail: {
+        eventName: "UpdateFunctionConfiguration20150331v2",
+        userIdentity: {
+          principalId: "CanonicalID:something-else",
+        },
+      },
+    };
+    process.env.DD_INSTRUMENTER_FUNCTION_NAME = "instrumenter-function-name";
+    expect(shouldSkipEvent(event)).toBe(false);
+  });
 });
