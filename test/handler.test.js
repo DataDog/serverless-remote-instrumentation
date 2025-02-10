@@ -256,3 +256,76 @@ describe("stack delete events", () => {
     expect(res.uninstrument.failed.test).toStrictEqual("1");
   });
 });
+
+describe("stack create events", () => {
+  beforeEach(() => {
+    jest.resetAllMocks();
+  });
+
+  test("successfully instruments and calls back with success", async () => {
+    const event = {
+      RequestType: "Create",
+      ResponseURL: "url",
+      ResourceType: "AWS::CloudFormation::CustomResource",
+      StackId: "fakeStackId",
+      PhysicalResourceId: "fakePhysicalResourceId",
+      RequestId: "fakeRequestId",
+    };
+    const context = "context";
+
+    lambdaEvent.isStackCreatedEvent.mockReturnValue(true);
+    const configsResult = ["configs"];
+    config.getConfigs.mockReturnValue(configsResult);
+    functions.getAllFunctions.mockReturnValue("getAllFunctionsRV");
+    functions.enrichFunctionsWithTags.mockReturnValue(
+      "enrichFunctionsWithTagsRV",
+    );
+    instrument.instrumentFunctions.mockImplementation(
+      (a, b, c, outcome) => (outcome.instrument.succeeded.test = "1"),
+    );
+    cfnResponse.send.mockReturnValue(true);
+
+    const res = await handler.handler(event, context);
+
+    expect(functions.getAllFunctions).toHaveBeenCalledTimes(1);
+    expect(functions.enrichFunctionsWithTags).toHaveBeenCalledTimes(1);
+    expect(functions.enrichFunctionsWithTags).toHaveBeenCalledWith(
+      expect.anything(),
+      "getAllFunctionsRV",
+    );
+    expect(instrument.instrumentFunctions).toHaveBeenCalledTimes(1);
+    expect(instrument.instrumentFunctions).toHaveBeenCalledWith(
+      expect.anything(),
+      ["configs"],
+      "enrichFunctionsWithTagsRV",
+      expect.anything(),
+      expect.anything(),
+      "CloudformationCreateEvent",
+    );
+    expect(cfnResponse.send).toHaveBeenCalledTimes(1);
+    expect(cfnResponse.send).toHaveBeenCalledWith(event, context, "SUCCESS");
+    expect(res.instrument.succeeded.test).toStrictEqual("1");
+  });
+
+  test("throwing an error should still result in SUCCESS being sent", async () => {
+    const event = {
+      RequestType: "Create",
+      ResponseURL: "url",
+      ResourceType: "AWS::CloudFormation::CustomResource",
+      StackId: "fakeStackId",
+      PhysicalResourceId: "fakePhysicalResourceId",
+      RequestId: "fakeRequestId",
+    };
+    const context = "context";
+
+    lambdaEvent.isStackCreatedEvent.mockReturnValue(true);
+    config.getConfigs.mockImplementation(() => {
+      throw new Error();
+    });
+
+    await handler.handler(event, context);
+
+    expect(cfnResponse.send).toHaveBeenCalledTimes(1);
+    expect(cfnResponse.send).toHaveBeenCalledWith(event, context, "SUCCESS");
+  });
+});

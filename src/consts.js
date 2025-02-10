@@ -8,6 +8,7 @@ exports.SUPPORTED_RUNTIMES = [NODE, PYTHON];
 // Event Types
 exports.LAMBDA_EVENT = "LambdaEvent";
 exports.SCHEDULED_INVOCATION_EVENT = "ScheduledInvocationEvent";
+exports.CLOUDFORMATION_CREATE_EVENT = "CloudformationCreateEvent";
 exports.CLOUDFORMATION_DELETE_EVENT = "CloudformationDeleteEvent";
 
 // Config Enums
