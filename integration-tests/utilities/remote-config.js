@@ -3,6 +3,8 @@ const { account, region } = require("../config.json");
 const { getApiKey, getAppKey } = require("./datadog-keys");
 const { sleep } = require("./sleep");
 
+const remoteConfigIds = [];
+
 const getRemoteConfig = async () => {
   const [apiKey, appKey] = await Promise.all([getApiKey(), getAppKey()]);
 
@@ -17,6 +19,7 @@ const getRemoteConfig = async () => {
       "dd-application-key": appKey,
     },
   });
+  remoteConfigIds.push(...remoteConfig.data.data.map((item) => item.id));
   return remoteConfig.data;
 };
 
@@ -83,6 +86,8 @@ const setRemoteConfig = async ({
     });
   }
 
+  remoteConfigIds.push(remoteConfig.data.data.id);
+
   if (waitForEventualConsistency) {
     await sleep(2500);
   }
@@ -111,6 +116,20 @@ const clearRemoteConfigs = async () => {
   const ids = rcs.data.map((item) => item.id);
   const results = ids.map((id) => deleteRemoteConfig(id));
   await Promise.all(results);
+  while (remoteConfigIds.length) {
+    remoteConfigIds.pop();
+  }
 };
 
 exports.clearRemoteConfigs = clearRemoteConfigs;
+
+const clearKnownRemoteConfigs = async () => {
+  const ids = new Set(remoteConfigIds);
+  const results = [...ids].map((id) => deleteRemoteConfig(id));
+  await Promise.all(results);
+  while (remoteConfigIds.length) {
+    remoteConfigIds.pop();
+  }
+};
+
+exports.clearKnownRemoteConfigs = clearKnownRemoteConfigs;
