@@ -5,6 +5,7 @@ const {
 } = require("./utilities/is-function-instrumented");
 const {
   setRemoteConfig,
+  clearKnownRemoteConfigs,
   clearRemoteConfigs,
 } = require("./utilities/remote-config");
 const { namingSeed } = require("./config.json");
@@ -15,6 +16,7 @@ const {
   deleteFunction,
 } = require("./utilities/lambda-functions");
 const {
+  invokeLambdaWithCFNCreateEvent,
   invokeLambdaWithCFNDeleteEvent,
 } = require("./utilities/remote-instrumenter-invocations");
 
@@ -30,6 +32,10 @@ describe("Remote instrumenter cloudformation event tests", () => {
 
   beforeEach(async () => {
     await deleteFunction(testFunction);
+    await clearKnownRemoteConfigs();
+  });
+
+  beforeAll(async () => {
     await clearRemoteConfigs();
   });
 
@@ -61,5 +67,27 @@ describe("Remote instrumenter cloudformation event tests", () => {
 
     const isUninstrumented = await isFunctionUninstrumented(testFunction);
     expect(isUninstrumented).toStrictEqual(true);
+  });
+
+  it("instruments functions on stack creation", async () => {
+    // When there is a lambda
+    await createFunction({
+      FunctionName: testFunction,
+      Tags: { foo: "bar" },
+    });
+    // And a remote config that should cause that lambda to be instrumented
+    await setRemoteConfig();
+
+    // The remote instrumenter being called like it would be on stack create
+    const { s3Key } = await invokeLambdaWithCFNCreateEvent();
+    keysToDelete.push(s3Key);
+
+    // Does the CFN callback
+    const didCfnCallbackHappen = await doesObjectExist(s3Key);
+    expect(didCfnCallbackHappen).toEqual(true);
+
+    // And instruments the lambda
+    const isInstrumented = await isFunctionInstrumented(testFunction);
+    expect(isInstrumented).toStrictEqual(true);
   });
 });
