@@ -18,6 +18,11 @@ const {
   LAMBDA_EVENT,
 } = require("../src/consts");
 
+jest.mock("../src/functions", () => ({
+  ...jest.requireActual("../src/functions"),
+  waitUntilFunctionIsActive: jest.fn(),
+}));
+
 describe("getExtensionAndRuntimeLayerVersion", () => {
   it("should return the layer and runtime version for node", () => {
     const runtime = "nodejs12.x";
