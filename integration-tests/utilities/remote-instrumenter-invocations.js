@@ -51,12 +51,12 @@ const invokeLambdaWithLambdaManagementEvent = async ({
 exports.invokeLambdaWithLambdaManagementEvent =
   invokeLambdaWithLambdaManagementEvent;
 
-const invokeLambdaWithCFNDeleteEvent = async () => {
+const invokeLambdaWithCFNEvent = async (eventType) => {
   const s3Key = `cloudformationDelete/${new Date()}`;
   const command = new InvokeCommand({
     FunctionName: functionName,
     Payload: JSON.stringify({
-      RequestType: "Delete",
+      RequestType: eventType,
       ResponseURL: await createPresignedUrl(s3Key),
       ResourceType: "AWS::CloudFormation::CustomResource",
       StackId: "fakeStackId",
@@ -75,4 +75,14 @@ const invokeLambdaWithCFNDeleteEvent = async () => {
   };
 };
 
+const invokeLambdaWithCFNDeleteEvent = async () => {
+  return invokeLambdaWithCFNEvent("Delete");
+};
+
 exports.invokeLambdaWithCFNDeleteEvent = invokeLambdaWithCFNDeleteEvent;
+
+const invokeLambdaWithCFNCreateEvent = async () => {
+  return invokeLambdaWithCFNEvent("Create");
+};
+
+exports.invokeLambdaWithCFNCreateEvent = invokeLambdaWithCFNCreateEvent;
