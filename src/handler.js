@@ -31,6 +31,7 @@ const { instrumentFunctions } = require("./instrument");
 const {
   LAMBDA_EVENT,
   SCHEDULED_INVOCATION_EVENT,
+  CLOUDFORMATION_CREATE_EVENT,
   CLOUDFORMATION_DELETE_EVENT,
   FUNCTION_NOT_FOUND,
   INSTRUMENT,
@@ -55,12 +56,27 @@ exports.handler = async (event, context) => {
 
   // If it's a stack event, send a response to CloudFormation for custom resource management
   if (isStackCreatedEvent(event)) {
-    /**
-     * TODO: [Followup] Do one of two things:
-     * 1. On Stack Created, check all functions for instrumentation like we do for the scheduled event
-     * 2. Remove the lambda custom resource from the template and handler code
-     */
-    logger.log(`Received a CloudFormation '${event.RequestType}' event.`);
+    try {
+      const configs = await getConfigs(s3Client, context);
+      const allFunctions = await getAllFunctions(lambdaClient);
+      const functionsToCheck = await enrichFunctionsWithTags(
+        lambdaClient,
+        allFunctions,
+      );
+      await instrumentFunctions(
+        s3Client,
+        configs,
+        functionsToCheck,
+        instrumentOutcome,
+        taggingClient,
+        CLOUDFORMATION_CREATE_EVENT,
+      );
+    } catch (e) {
+      logger.log(e);
+    }
+    // Any failure should be and we should still send a CFN SUCCESS response since failing stack
+    // creation will be painful for a user, and the functions that didn't succeed will be retried
+    // on the next scheduled invocation
     await cfnResponse.send(event, context, "SUCCESS");
   } else if (isStackDeletedEvent(event)) {
     logger.log(`Received a CloudFormation '${event.RequestType}' event.`);
