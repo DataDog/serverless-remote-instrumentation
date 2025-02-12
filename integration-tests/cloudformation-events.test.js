@@ -8,12 +8,11 @@ const {
   clearKnownRemoteConfigs,
   clearRemoteConfigs,
 } = require("./utilities/remote-config");
-const { namingSeed } = require("./config.json");
 const { sleep } = require("./utilities/sleep");
 const { doesObjectExist, deleteObject } = require("./utilities/s3-helpers");
 const {
   createFunction,
-  deleteFunction,
+  deleteTestFunctions,
 } = require("./utilities/lambda-functions");
 const {
   invokeLambdaWithCFNCreateEvent,
@@ -21,17 +20,18 @@ const {
 } = require("./utilities/remote-instrumenter-invocations");
 
 describe("Remote instrumenter cloudformation event tests", () => {
-  const testFunction = `cloudformationEvents${namingSeed}`;
   let keysToDelete = [];
 
   afterAll(async () => {
-    await deleteFunction(testFunction);
     await clearRemoteConfigs();
     await Promise.all(keysToDelete.map((key) => deleteObject(key)));
   });
 
+  afterEach(async () => {
+    await deleteTestFunctions();
+  });
+
   beforeEach(async () => {
-    await deleteFunction(testFunction);
     await clearKnownRemoteConfigs();
   });
 
@@ -43,13 +43,12 @@ describe("Remote instrumenter cloudformation event tests", () => {
     // When there is a remote config
     await setRemoteConfig();
     // And a lambda is created
-    await createFunction({
-      FunctionName: testFunction,
+    const { FunctionName: functionName } = await createFunction({
       Tags: { foo: "bar" },
     });
     // After some time
     const isInstrumented = await pollUntilTrue(60000, 5000, () =>
-      isFunctionInstrumented(testFunction),
+      isFunctionInstrumented(functionName),
     );
 
     // The function is instrumented correctly
@@ -65,14 +64,13 @@ describe("Remote instrumenter cloudformation event tests", () => {
     const didCfnCallbackHappen = await doesObjectExist(s3Key);
     expect(didCfnCallbackHappen).toEqual(true);
 
-    const isUninstrumented = await isFunctionUninstrumented(testFunction);
+    const isUninstrumented = await isFunctionUninstrumented(functionName);
     expect(isUninstrumented).toStrictEqual(true);
   });
 
   it("instruments functions on stack creation", async () => {
     // When there is a lambda
-    await createFunction({
-      FunctionName: testFunction,
+    const { FunctionName: functionName } = await createFunction({
       Tags: { foo: "bar" },
     });
     // And a remote config that should cause that lambda to be instrumented
@@ -87,7 +85,7 @@ describe("Remote instrumenter cloudformation event tests", () => {
     expect(didCfnCallbackHappen).toEqual(true);
 
     // And instruments the lambda
-    const isInstrumented = await isFunctionInstrumented(testFunction);
+    const isInstrumented = await isFunctionInstrumented(functionName);
     expect(isInstrumented).toStrictEqual(true);
   });
 });
