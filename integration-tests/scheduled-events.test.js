@@ -3,7 +3,6 @@ const {
   isFunctionInstrumented,
   isFunctionUninstrumented,
 } = require("./utilities/is-function-instrumented");
-const { namingSeed } = require("./config.json");
 const {
   setRemoteConfig,
   clearKnownRemoteConfigs,
@@ -14,7 +13,7 @@ const {
 } = require("./utilities/remote-instrumenter-invocations");
 const {
   createFunction,
-  deleteFunction,
+  deleteTestFunctions,
 } = require("./utilities/lambda-functions");
 const { Runtime } = require("@aws-sdk/client-lambda");
 const {
@@ -24,17 +23,18 @@ const {
 } = require("./utilities/s3-error-object");
 
 describe("Remote instrumenter scheduled event tests", () => {
-  const testFunction = `scheduledEventTest${namingSeed}`;
   const functionThatDoesntExist = "ThisDoesNotExist";
 
   afterAll(async () => {
-    await deleteFunction(testFunction);
     await deleteErrorObject(functionThatDoesntExist);
     await clearRemoteConfigs();
   });
 
+  afterEach(async () => {
+    await deleteTestFunctions();
+  });
+
   beforeEach(async () => {
-    await deleteFunction(testFunction);
     await clearKnownRemoteConfigs();
   });
 
@@ -43,8 +43,7 @@ describe("Remote instrumenter scheduled event tests", () => {
   });
 
   it("function with different tags does NOT get instrumented", async () => {
-    await createFunction({
-      FunctionName: testFunction,
+    const { FunctionName: functionName } = await createFunction({
       Tags: { foo: "baz" },
     });
     await setRemoteConfig();
@@ -52,20 +51,19 @@ describe("Remote instrumenter scheduled event tests", () => {
     const res = await invokeLambdaWithScheduledEvent();
 
     expect(Object.keys(res.instrument.skipped)).toEqual(
-      expect.arrayContaining([testFunction]),
+      expect.arrayContaining([functionName]),
     );
-    expect(res.instrument.skipped[testFunction].reasonCode).toStrictEqual(
+    expect(res.instrument.skipped[functionName].reasonCode).toStrictEqual(
       "not-satisfying-targeting-rules",
     );
 
-    const isUninstrumented = await isFunctionUninstrumented(testFunction);
+    const isUninstrumented = await isFunctionUninstrumented(functionName);
     expect(isUninstrumented).toStrictEqual(true);
   });
 
   it("manually instrumented function does NOT get instrumented", async () => {
     await setRemoteConfig();
-    await createFunction({
-      FunctionName: testFunction,
+    const { FunctionName: functionName } = await createFunction({
       Tags: { foo: "bar" },
       Environment: {
         Variables: {
@@ -78,16 +76,15 @@ describe("Remote instrumenter scheduled event tests", () => {
     const res = await invokeLambdaWithScheduledEvent();
 
     expect(Object.keys(res.instrument.skipped)).toEqual(
-      expect.arrayContaining([testFunction]),
+      expect.arrayContaining([functionName]),
     );
-    expect(res.instrument.skipped[testFunction].reasonCode).toStrictEqual(
+    expect(res.instrument.skipped[functionName].reasonCode).toStrictEqual(
       "already-manually-instrumented",
     );
   });
 
   it("function with correct tags does get instrumented", async () => {
-    await createFunction({
-      FunctionName: testFunction,
+    const { FunctionName: functionName } = await createFunction({
       Tags: { foo: "bar" },
     });
     await setRemoteConfig();
@@ -98,22 +95,21 @@ describe("Remote instrumenter scheduled event tests", () => {
       Object.keys(res.instrument.succeeded).concat(
         Object.keys(res.instrument.skipped),
       ),
-    ).toEqual(expect.arrayContaining([testFunction]));
+    ).toEqual(expect.arrayContaining([functionName]));
 
     // If it was skipped, it should have the reason that it already has the correct layer
-    if (Object.keys(res.instrument.skipped).includes(testFunction)) {
-      expect(res.instrument.skipped[testFunction].reasonCode).toStrictEqual(
+    if (Object.keys(res.instrument.skipped).includes(functionName)) {
+      expect(res.instrument.skipped[functionName].reasonCode).toStrictEqual(
         "already-correct-extension-and-layer",
       );
     }
 
-    const isInstrumented = await isFunctionInstrumented(testFunction);
+    const isInstrumented = await isFunctionInstrumented(functionName);
     expect(isInstrumented).toStrictEqual(true);
   });
 
   it("function with unsupported runtime does not get instrumented", async () => {
-    await createFunction({
-      FunctionName: testFunction,
+    const { FunctionName: functionName } = await createFunction({
       Tags: { foo: "bar" },
       Runtime: Runtime.java21,
     });
@@ -122,13 +118,13 @@ describe("Remote instrumenter scheduled event tests", () => {
     const res = await invokeLambdaWithScheduledEvent();
 
     expect(Object.keys(res.instrument.skipped)).toEqual(
-      expect.arrayContaining([testFunction]),
+      expect.arrayContaining([functionName]),
     );
-    expect(res.instrument.skipped[testFunction].reasonCode).toStrictEqual(
+    expect(res.instrument.skipped[functionName].reasonCode).toStrictEqual(
       "unsupported-runtime",
     );
 
-    const isUninstrumented = await isFunctionUninstrumented(testFunction);
+    const isUninstrumented = await isFunctionUninstrumented(functionName);
     expect(isUninstrumented).toStrictEqual(true);
   });
 
@@ -137,14 +133,13 @@ describe("Remote instrumenter scheduled event tests", () => {
       extensionVersion: 66,
       nodeLayerVersion: 111,
     });
-    await createFunction({
-      FunctionName: testFunction,
+    const { FunctionName: functionName } = await createFunction({
       Tags: { foo: "bar" },
     });
 
     // The function should be instrumented by the lambda management event
     const isInstrumented = await pollUntilTrue(60000, 5000, () =>
-      isFunctionInstrumented(testFunction),
+      isFunctionInstrumented(functionName),
     );
     expect(isInstrumented).toStrictEqual(true);
 
@@ -159,32 +154,31 @@ describe("Remote instrumenter scheduled event tests", () => {
 
     // isFunctionInstrumented checks against the RC version, so
     // it being instrumented here means the version is correct
-    const isReInstrumented = await isFunctionInstrumented(testFunction);
+    const isReInstrumented = await isFunctionInstrumented(functionName);
     expect(isReInstrumented).toStrictEqual(true);
   });
 
   it("clears remote instrumentation when all configs are deleted", async () => {
     await setRemoteConfig();
-    await createFunction({
-      FunctionName: testFunction,
+    const { FunctionName: functionName } = await createFunction({
       Tags: { foo: "bar" },
     });
 
     // The function should be instrumented by the lambda management event
     const isInstrumented = await pollUntilTrue(60000, 5000, () =>
-      isFunctionInstrumented(testFunction),
+      isFunctionInstrumented(functionName),
     );
     expect(isInstrumented).toStrictEqual(true);
 
     // Remove all configs
-    await clearRemoteConfigs();
+    await clearRemoteConfigs(true);
 
     // After the next scheduled event
     await invokeLambdaWithScheduledEvent();
 
     // The function should be uninstrumented
     const isUninstrumented = await pollUntilTrue(60000, 5000, () =>
-      isFunctionUninstrumented(testFunction),
+      isFunctionUninstrumented(functionName),
     );
     expect(isUninstrumented).toStrictEqual(true);
   });

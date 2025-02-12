@@ -111,13 +111,16 @@ const deleteRemoteConfig = async (id) => {
 
 exports.deleteRemoteConfig = deleteRemoteConfig;
 
-const clearRemoteConfigs = async () => {
+const clearRemoteConfigs = async (waitForEventualConsistency = false) => {
   const rcs = await getRemoteConfig();
   const ids = rcs.data.map((item) => item.id);
   const results = ids.map((id) => deleteRemoteConfig(id));
   await Promise.all(results);
   while (remoteConfigIds.length) {
     remoteConfigIds.pop();
+  }
+  if (waitForEventualConsistency) {
+    await sleep(2500);
   }
 };
 
