@@ -7,11 +7,29 @@ const {
   Runtime,
   TagResourceCommand,
 } = require("@aws-sdk/client-lambda");
-const { account, region, testLambdaRole } = require("../config.json");
+const {
+  account,
+  region,
+  namingSeed,
+  testLambdaRole,
+} = require("../config.json");
 const { getLambdaClient } = require("./aws-resources");
 const { sleep } = require("./sleep");
 
+const functionNames = [];
+
 const createFunction = async (lambdaProps) => {
+  // Name the function after the test, picking the last 64 characters since
+  // lambda limits function name length and that is probably the most descriptive
+  let functionName =
+    `${expect.getState().currentTestName}${namingSeed.slice(0, 6)}`.replace(
+      /\W/g,
+      "",
+    );
+  if (functionName.length > 64) {
+    functionName = functionName.slice(functionName.length - 64);
+  }
+
   const zip = new JSZip();
   zip.file(
     "index.js",
@@ -24,6 +42,7 @@ const createFunction = async (lambdaProps) => {
     Code: {
       ZipFile: zippedHandler,
     },
+    FunctionName: functionName,
     Handler: "index.handler",
     Role: `arn:aws:iam::${account}:role/${testLambdaRole}`,
     Runtime: Runtime.nodejs20x,
@@ -33,7 +52,9 @@ const createFunction = async (lambdaProps) => {
   });
 
   const lambdaClient = await getLambdaClient();
-  const { FunctionName } = await lambdaClient.send(command);
+  const lambda = await lambdaClient.send(command);
+  const { FunctionName } = lambda;
+  functionNames.push(FunctionName);
 
   // When a new function is created it is in a pending state for a little bit,
   // wait until it is active since it cannot be modified in this pending state
@@ -50,6 +71,7 @@ const createFunction = async (lambdaProps) => {
       isFunctionReady = true;
     }
   }
+  return lambda;
 };
 
 exports.createFunction = createFunction;
@@ -69,6 +91,15 @@ const deleteFunction = async (functionName) => {
 };
 
 exports.deleteFunction = deleteFunction;
+
+const deleteTestFunctions = async () => {
+  await Promise.all(functionNames.map((name) => deleteFunction(name)));
+  while (functionNames.length) {
+    functionNames.pop();
+  }
+};
+
+exports.deleteTestFunctions = deleteTestFunctions;
 
 const tagFunction = async (functionName, tags) => {
   const lambdaClient = await getLambdaClient();

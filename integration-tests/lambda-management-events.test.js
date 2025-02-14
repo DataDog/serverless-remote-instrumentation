@@ -8,10 +8,9 @@ const {
   clearKnownRemoteConfigs,
   clearRemoteConfigs,
 } = require("./utilities/remote-config");
-const { namingSeed } = require("./config.json");
 const {
   createFunction,
-  deleteFunction,
+  deleteTestFunctions,
   tagFunction,
 } = require("./utilities/lambda-functions");
 const {
@@ -20,10 +19,7 @@ const {
 } = require("./utilities/remote-instrumenter-invocations");
 
 describe("Remote instrumenter lambda management event tests", () => {
-  const testFunction = `lambdaManagementEventTest${namingSeed}`;
-
   afterAll(async () => {
-    await deleteFunction(testFunction);
     await clearRemoteConfigs();
   });
 
@@ -32,8 +28,11 @@ describe("Remote instrumenter lambda management event tests", () => {
   });
 
   beforeEach(async () => {
-    await deleteFunction(testFunction);
     await clearKnownRemoteConfigs();
+  });
+
+  afterEach(async () => {
+    await deleteTestFunctions();
   });
 
   it("can instrument a new lambda function", async () => {
@@ -41,14 +40,13 @@ describe("Remote instrumenter lambda management event tests", () => {
     await setRemoteConfig();
 
     // And a lambda is created
-    await createFunction({
-      FunctionName: testFunction,
+    const { FunctionName: functionName } = await createFunction({
       Tags: { foo: "bar" },
     });
 
     // After some time
     const isInstrumented = await pollUntilTrue(60000, 5000, () =>
-      isFunctionInstrumented(testFunction),
+      isFunctionInstrumented(functionName),
     );
 
     // The function is instrumented correctly
@@ -58,23 +56,22 @@ describe("Remote instrumenter lambda management event tests", () => {
   it("can instrument an existing lambda function that changes tags", async () => {
     // Create a lambda with tags that do not match the rule
     await setRemoteConfig();
-    await createFunction({
-      FunctionName: testFunction,
+    const { FunctionName: functionName } = await createFunction({
       Tags: { foo: "baz" },
     });
 
     await invokeLambdaWithScheduledEvent();
 
     // The lambda should be uninstrumented
-    const isUninstrumented = await isFunctionUninstrumented(testFunction);
+    const isUninstrumented = await isFunctionUninstrumented(functionName);
     expect(isUninstrumented).toStrictEqual(true);
 
     // Tag the function with tags that match the rule
-    await tagFunction(testFunction, { foo: "bar" });
+    await tagFunction(functionName, { foo: "bar" });
 
     // After some time
     const isInstrumented = await pollUntilTrue(60000, 5000, () =>
-      isFunctionInstrumented(testFunction),
+      isFunctionInstrumented(functionName),
     );
 
     // The function is instrumented correctly
