@@ -163,6 +163,7 @@ Resources:
             Action:
               - lambda:InvokeFunction
               - lambda:GetFunction
+              - lambda:GetFunctionConfiguration
               - lambda:UpdateFunctionConfiguration
               - lambda:TagResource
               - lambda:UntagResource

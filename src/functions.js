@@ -1,10 +1,13 @@
 const {
   GetResourcesCommand,
 } = require("@aws-sdk/client-resource-groups-tagging-api");
+const { sleep } = require("./sleep");
 const {
   GetFunctionCommand,
+  GetFunctionConfigurationCommand,
   ListFunctionsCommand,
 } = require("@aws-sdk/client-lambda");
+const { getLambdaClient } = require("./aws-resources");
 const { logger } = require("./logger");
 const {
   DD_SLS_REMOTE_INSTRUMENTER_VERSION,
@@ -532,3 +535,29 @@ function needsInstrumentationUpdate(
   return { instrument: true, uninstrument: false, tag: true, untag: false };
 }
 exports.needsInstrumentationUpdate = needsInstrumentationUpdate;
+
+const waitUntilFunctionIsActive = async (functionName) => {
+  // Attempting to edit a function that is in a pending state will cause
+  // a resource conflict exception to be thrown, and they usually exit that
+  // state after a few seconds
+  const lambdaClient = getLambdaClient();
+  let isFunctionReady = false;
+  let count = 0;
+  while (!isFunctionReady && count < 10) {
+    count += 1;
+    const functionStatus = await lambdaClient.send(
+      new GetFunctionConfigurationCommand({
+        FunctionName: functionName,
+      }),
+    );
+    const { State } = functionStatus;
+    if (State !== "Pending") {
+      isFunctionReady = true;
+    } else {
+      await sleep(1000);
+    }
+  }
+  return isFunctionReady;
+};
+
+exports.waitUntilFunctionIsActive = waitUntilFunctionIsActive;

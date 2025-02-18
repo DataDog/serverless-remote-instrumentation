@@ -6,12 +6,18 @@ const {
   needsInstrumentationUpdate,
   filterFunctionsToChangeInstrumentation,
   isInstrumented,
+  waitUntilFunctionIsActive,
 } = require("../src/functions");
 const {
   DD_SLS_REMOTE_INSTRUMENTER_VERSION,
   VERSION,
 } = require("../src/consts");
+const awsClients = require("../src/aws-resources");
+const sleep = require("../src/sleep");
 const { baseInstrumentOutcome } = require("./test-utils");
+
+jest.mock("../src/aws-resources");
+jest.mock("../src/sleep");
 
 // Creates a test config object
 function createTestConfig({
@@ -1104,5 +1110,41 @@ describe("isInstrumented", () => {
     ],
   ])("%s", (_, lambdaFunc, expected) => {
     expect(isInstrumented(lambdaFunc)).toBe(expected);
+  });
+});
+
+describe("waitUntilFunctionIsActive", () => {
+  beforeEach(() => {
+    jest.resetAllMocks();
+  });
+
+  test("stops when the status is active", async () => {
+    awsClients.getLambdaClient.mockReturnValue({
+      send: () => ({ State: "Active" }),
+    });
+    const res = await waitUntilFunctionIsActive();
+    expect(res).toStrictEqual(true);
+    expect(sleep.sleep).toHaveBeenCalledTimes(0);
+  });
+
+  test("stops when the status is active after the second time", async () => {
+    awsClients.getLambdaClient.mockReturnValue({
+      send: jest
+        .fn()
+        .mockReturnValueOnce({ State: "Pending" })
+        .mockReturnValueOnce({ State: "Active" }),
+    });
+    const res = await waitUntilFunctionIsActive();
+    expect(res).toStrictEqual(true);
+    expect(sleep.sleep).toHaveBeenCalledTimes(1);
+  });
+
+  test("times out waiting when the status never exits", async () => {
+    awsClients.getLambdaClient.mockReturnValue({
+      send: () => ({ State: "Pending" }),
+    });
+    const res = await waitUntilFunctionIsActive();
+    expect(res).toStrictEqual(false);
+    expect(sleep.sleep).toHaveBeenCalledTimes(10);
   });
 });
