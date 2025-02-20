@@ -1,6 +1,7 @@
 const { GetFunctionConfigurationCommand } = require("@aws-sdk/client-lambda");
 const { getRemoteConfig } = require("./remote-config");
 const { getLambdaClient } = require("./aws-resources");
+const { ddSite } = require("../config.json");
 
 const hasLayerMatching = (l, matcher, version) =>
   l?.Layers?.some(
@@ -14,6 +15,9 @@ const hasLayer = (l, matcher) =>
 
 const hasEnvVar = (l, varName) =>
   Object.keys(l?.Environment?.Variables || {}).includes(varName);
+
+const hasEnvVarMatching = (l, varName, value) =>
+  l?.Environment?.Variables[varName] === value;
 
 // A function is considered instrumented if all are true:
 // 1. If the extension layer is configured, there is a Datadog-Extension with matching version
@@ -51,7 +55,10 @@ const isFunctionInstrumented = async (functionName) => {
     }
   }
 
-  return hasEnvVar(funConfig, "DD_API_KEY") && hasEnvVar(funConfig, "DD_SITE");
+  return (
+    hasEnvVar(funConfig, "DD_API_KEY") &&
+    hasEnvVarMatching(funConfig, "DD_SITE", ddSite)
+  );
 };
 
 exports.isFunctionInstrumented = isFunctionInstrumented;
