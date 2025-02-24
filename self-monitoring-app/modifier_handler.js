@@ -32,11 +32,11 @@ const ORIGINAL_EXTENSION_VERSION = process.env.DdExtensionLayerVersion;
 const INSTRUMENTER_TEMPLATE_VERSION = "0.40.0";
 
 exports.handler = async (event) => {
-  console.log(JSON.stringify(event));
+  logMessage(JSON.stringify(event));
   const config = getConfig();
 
   if (!Object.prototype.hasOwnProperty.call(event, "eventName")) {
-    console.log('The event doesn\'t have "eventName" field.');
+    logMessage('The event doesn\'t have "eventName" field.');
     return;
   }
 
@@ -104,7 +104,7 @@ async function checkFunction(config, functionName, expectedExtensionVersion) {
     );
     return;
   }
-  console.log(
+  logMessage(
     `getFunctionCommandOutput: ${JSON.stringify(getFunctionCommandOutput)}`,
   );
   // check if lambda has layer
@@ -131,7 +131,7 @@ async function checkFunction(config, functionName, expectedExtensionVersion) {
             extraTags,
           );
         } else {
-          console.error(
+          logErrorMessage(
             `\n serverless.remote_instrument.instrument_function.extension_version_unmatched \n The extension layer version unmatched! getFunctionCommandOutput: ${JSON.stringify(getFunctionCommandOutput)}`,
           );
           sendDistributionMetricWrapper(
@@ -142,7 +142,7 @@ async function checkFunction(config, functionName, expectedExtensionVersion) {
       }
     }
     if (!hasExtensionLayer) {
-      console.error(
+      logErrorMessage(
         `\n serverless.remote_instrument.instrument_function.failed \n The Extension layer is not found on the ${config.NODE_FUNCTION_NAME}. Function config is: ${JSON.stringify(getFunctionCommandOutput)}`,
       );
       sendDistributionMetricWrapper(
@@ -156,7 +156,7 @@ async function checkFunction(config, functionName, expectedExtensionVersion) {
       );
     }
   } else {
-    console.error(
+    logErrorMessage(
       `\n serverless.remote_instrument.instrument_function.failed \n The extension layer version unmatched! getFunctionCommandOutput: ${JSON.stringify(getFunctionCommandOutput)}`,
     );
     sendDistributionMetricWrapper(
@@ -178,7 +178,7 @@ async function getFunction(config, functionName) {
     return getFunctionCommandOutput;
   } catch (error) {
     // simply skip this current instrumentation of the function.
-    console.error(
+    logErrorMessage(
       `\nError is caught when fetching function for ${functionName}. Error is: ${error}`,
     );
   }
@@ -193,11 +193,11 @@ async function deleteS3Bucket(bucketName, config) {
     const data = await s3Client.send(
       new DeleteBucketCommand({ Bucket: bucketName }),
     );
-    console.log("Delete S3 bucket succeeded", JSON.stringify(data));
+    logMessage("Delete S3 bucket succeeded", JSON.stringify(data));
   } catch (err) {
     // try to delete the bucket before stack is delete just in case stack deletion failed
     // to delete the bucket which will block the stack creation later on.
-    console.log("Delete S3 bucket error", err);
+    logMessage("Delete S3 bucket error", err);
   }
 }
 
@@ -248,8 +248,8 @@ async function emptyBucket(bucketName, config) {
   }
 
   await deleteAllObjects(bucketName)
-    .then(() => console.log("All objects deleted successfully."))
-    .catch((error) => console.error("An error occurred:", error));
+    .then(() => logMessage("All objects deleted successfully."))
+    .catch((error) => logErrorMessage("An error occurred:", error));
 }
 
 async function getNestedInstrumenterStackName(config) {
@@ -261,11 +261,11 @@ async function getNestedInstrumenterStackName(config) {
   };
   const command = new DescribeStackResourcesCommand(input);
   const response = await client.send(command);
-  console.log(`DescribeStackResourcesCommand: ${JSON.stringify(response)}`);
+  logMessage(`DescribeStackResourcesCommand: ${JSON.stringify(response)}`);
 
   const nestedStackARN = response.StackResources[0].PhysicalResourceId;
   const nestedStackName = nestedStackARN.split("/")[1];
-  console.log(`nestedStackName: ${nestedStackName}`);
+  logMessage(`nestedStackName: ${nestedStackName}`);
   return nestedStackName;
 }
 
@@ -278,7 +278,7 @@ async function deleteStack(config) {
     stackNamesToDelete.push(nestedStackName);
   } catch {
     // manually retry for the 2nd time to avoid needing to use another package
-    console.log("failed to fetch nestedStackName. trying again");
+    logMessage("failed to fetch nestedStackName. trying again");
     nestedStackName = await getNestedInstrumenterStackName(config);
     stackNamesToDelete.push(nestedStackName);
   }
@@ -286,11 +286,11 @@ async function deleteStack(config) {
   try {
     await getBucketNameFromStackNameAndDelete(nestedStackName, config);
   } catch (e) {
-    console.warn(
+    logWarnMessage(
       `getBucketNameFromStackNameAndDelete failed for nestedStackName: ${nestedStackName}`,
     );
-    console.warn(`${JSON.stringify(e)}`);
-    console.log(
+    logWarnMessage(`${JSON.stringify(e)}`);
+    logMessage(
       `Nested stack may not exist anymore. Trying to get s3BucketName from ${INSTRUMENTER_STACK_NAME} stack now...`,
     );
     await getBucketNameFromStackNameAndDelete(INSTRUMENTER_STACK_NAME, config);
@@ -306,11 +306,11 @@ async function deleteStack(config) {
     try {
       const command = new DeleteStackCommand(deleteStackInput);
       const response = await client.send(command);
-      console.log(
+      logMessage(
         `datadog-remote-instrument response for deleting ${stackName}: ${JSON.stringify(response)}`,
       );
     } catch (e) {
-      console.log(`DeleteStackCommand failed with error: ${JSON.stringify(e)}`);
+      logMessage(`DeleteStackCommand failed with error: ${JSON.stringify(e)}`);
     }
   }
 }
@@ -324,10 +324,10 @@ async function getS3BucketNameByStackName(stackName, config) {
   };
   const command = new DescribeStackResourcesCommand(input);
   const response = await client.send(command);
-  console.log(`DescribeStackResourcesCommand: ${JSON.stringify(response)}`);
+  logMessage(`DescribeStackResourcesCommand: ${JSON.stringify(response)}`);
 
   const s3BucketName = response.StackResources[0].PhysicalResourceId;
-  console.log(
+  logMessage(
     `s3BucketName from DescribeStackResourcesCommand: ${s3BucketName}`,
   );
   return s3BucketName;
@@ -337,7 +337,7 @@ async function getBucketNameFromStackNameAndDelete(stackName, config) {
   let s3BucketName = await getS3BucketNameByStackName(stackName, config);
   await emptyBucket(s3BucketName, config);
   await sleep(60000);
-  console.log(`Bucket ${s3BucketName} should be emptied now`);
+  logMessage(`Bucket ${s3BucketName} should be emptied now`);
   await deleteS3Bucket(s3BucketName, config);
 }
 
@@ -413,7 +413,7 @@ async function createStack(config) {
   const client = new CloudFormationClient(clientConfig);
   const command = new CreateStackCommand(createStackInput);
   const response = await client.send(command);
-  console.log(`Create stack response: ${JSON.stringify(response)}`);
+  logMessage(`Create stack response: ${JSON.stringify(response)}`);
 }
 
 // update stack
@@ -465,19 +465,19 @@ async function updateStack(config) {
       ParameterValue: "false",
     },
   ];
-  console.log(
+  logMessage(
     `updateStackInput: ${JSON.stringify(updateStackInput.Parameters)}`,
   );
 
   const command = new UpdateStackCommand(updateStackInput);
   try {
     const response = await client.send(command);
-    console.log(`UpdateStackCommand response: ${JSON.stringify(response)}`);
+    logMessage(`UpdateStackCommand response: ${JSON.stringify(response)}`);
   } catch (error) {
     if (error.message === "Stack [datadog-remote-instrument] does not exist") {
-      console.info(`Expected error. Error is: ${error}`);
+      logMessage(`Expected error. Error is: ${error}`);
     } else {
-      console.error(`Unexpected error: ${error}`);
+      logErrorMessage(`Unexpected error: ${error}`);
     }
   }
 }
@@ -493,18 +493,18 @@ async function uninstrument(config) {
 }
 
 function sleep(ms) {
-  console.log(`sleeping for ${ms} ms`);
+  logMessage(`sleeping for ${ms} ms`);
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
   });
 }
 
 async function uninstrumentFunctions(functionNamesToUninstrument, config) {
-  console.log(`\n functionNamesToUninstrument: ${functionNamesToUninstrument}`);
+  logMessage(`\n functionNamesToUninstrument: ${functionNamesToUninstrument}`);
 
   const uninstrumentedFunctionArns = [];
   for (const functionName of functionNamesToUninstrument) {
-    console.log(
+    logMessage(
       `\n functionName in functionNamesToUninstrument : ${functionName}`,
     );
     const functionArn = `arn:aws:lambda:${config.AWS_REGION}:${DD_AWS_ACCOUNT_NUMBER}:function:${functionName}`;
@@ -523,9 +523,9 @@ async function uninstrumentWithDatadogCi(
   config,
   functionArns,
 ) {
-  console.log(`instrumentWithDatadogCi: functionArns: ${functionArns}`);
+  logMessage(`instrumentWithDatadogCi: functionArns: ${functionArns}`);
   const cli = datadogCi.cli;
-  console.log("\n uninstrumenting...");
+  logMessage("\n uninstrumenting...");
   const command = [
     "lambda",
     "uninstrument",
@@ -534,21 +534,19 @@ async function uninstrumentWithDatadogCi(
     "-r",
     config.AWS_REGION,
   ];
-  console.log(`🖥️ datadog-ci command: ${JSON.stringify(command)}`);
-  console.log(`runtime: ${runtime}`);
+  logMessage(`🖥️ datadog-ci command: ${JSON.stringify(command)}`);
+  logMessage(`runtime: ${runtime}`);
   const commandExitCode = await cli.run(command);
 
-  console.log(
+  logMessage(
     `\n commandExitCode type: ${typeof commandExitCode}, \n commandExitCode: ${commandExitCode}`,
   );
   if (commandExitCode === 0) {
-    console.log(
-      `✅ Function ${functionArn} is uninstrumented with datadog-ci.`,
-    );
+    logMessage(`✅ Function ${functionArn} is uninstrumented with datadog-ci.`);
     functionArns.push(functionArn);
-    console.log(`now functionArns: ${JSON.stringify(functionArns)}`);
+    logMessage(`now functionArns: ${JSON.stringify(functionArns)}`);
   } else {
-    console.log(
+    logMessage(
       `❌ datadog-ci uninstrumentation failed for function ${functionArn}`,
     );
   }
@@ -567,7 +565,7 @@ function getConfig() {
     LAMBDA_WITH_TAGS_UPDATE_TO_BE_IN_DENY_LIST_FUNCTION_NAME:
       process.env.LambdaWithTagsUpdatedToBeInDenyListFunctionName,
   };
-  console.log(`\n config: ${JSON.stringify(config)}`);
+  logMessage(`\n config: ${JSON.stringify(config)}`);
   return config;
 }
 
@@ -579,4 +577,33 @@ function sendDistributionMetricWrapper(metricName, extraTags) {
     `service:${SERVICE_NAME}`,
     ...extraTags,
   );
+}
+
+function redact(log) {
+  let newlog = log.replace(/"DD_API_KEY":.*,/, `"DD_API_KEY":"****",`);
+  newlog = newlog.replace(
+    /"AWS_ACCESS_KEY_ID":.*,/,
+    `"AWS_ACCESS_KEY_ID":"****",`,
+  );
+  newlog = newlog.replace(
+    /"AWS_SECRET_ACCESS_KEY":.*,/,
+    `"AWS_SECRET_ACCESS_KEY":"****",`,
+  );
+  newlog = newlog.replace(
+    /"AWS_SESSION_TOKEN":.*,/,
+    `"AWS_SESSION_TOKEN":"****",`,
+  );
+  return newlog;
+}
+
+function logMessage(log) {
+  console.log(redact(log));
+}
+
+function logErrorMessage(log) {
+  console.error(redact(log));
+}
+
+function logWarnMessage(log) {
+  console.warn(redact(log));
 }
