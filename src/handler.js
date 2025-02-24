@@ -132,7 +132,7 @@ exports.handler = async (event, context) => {
       config,
     );
   } else {
-    console.error("Unexpected event encountered. Please check event.");
+    logger.error("Unexpected event encountered. Please check event.");
   }
 };
 
@@ -188,7 +188,7 @@ async function getConfig() {
         );
       }
     } catch (error) {
-      console.error("Error parsing s3 layer JSON:", error);
+      logger.error("Error parsing s3 layer JSON:", error);
     }
   }
 
@@ -522,7 +522,7 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
 
   // get runtime
   if (typeof runtime !== "string") {
-    console.error(`unexpected event.responseElements.runtime: ${runtime}`);
+    logger.error(`unexpected event.responseElements.runtime: ${runtime}`);
   }
   const instrumentedFunctionArns = [];
   await instrumentWithDatadogCi(
@@ -806,7 +806,7 @@ async function instrumentByFunctionNames(
       );
       const runtime = getFunctionCommandOutput.Configuration?.Runtime;
       if (runtime === undefined) {
-        console.error(
+        logger.error(
           `Unexpected runtime: ${runtime} on getFunctionCommandOutput.Configuration?.Runtime`,
         );
       }
@@ -895,7 +895,7 @@ async function instrumentWithDatadogCi(
 
   // skip instrumenter function
   if (functionName === process.env.DD_INSTRUMENTER_FUNCTION_NAME) {
-    console.info(
+    logger.log(
       `Skipping instrumenting ${functionName} since it is the remote instrumenter function.`,
     );
     return;
@@ -983,9 +983,7 @@ async function instrumentWithDatadogCi(
       instrumentOutcome.instrument[SUCCEEDED][functionName] = { functionArn };
     }
     operatedFunctionArns.push(functionArn);
-    logger.log(
-      `operatedFunctionArns: ${JSON.stringify(operatedFunctionArns)}`,
-    );
+    logger.log(`operatedFunctionArns: ${JSON.stringify(operatedFunctionArns)}`);
   } else {
     if (uninstrument === true) {
       logger.logInstrumentOutcome(
@@ -1032,7 +1030,7 @@ async function tagResourcesWithSlsTag(functionArns, config) {
       `tagResourcesCommandOutput: ${JSON.stringify(tagResourcesCommandOutput)}`,
     );
   } catch (error) {
-    console.error(`error: ${error.toString()} when tagging resources`);
+    logger.error(`error: ${error.toString()} when tagging resources`);
   }
 }
 
@@ -1058,7 +1056,7 @@ async function untagResourcesOfSlsTag(functionArns, config) {
       `untagResourcesCommandOutput: ${JSON.stringify(untagResourcesCommandOutput)}`,
     );
   } catch (error) {
-    console.error(`Error removing tags:`, error);
+    logger.error(`Error removing tags:`, error);
   }
 }
 
@@ -1146,7 +1144,7 @@ function getVersionFromLayerArn(jsonData, fieldToParse) {
     const arnSplitList = parsedField.split(":");
     return arnSplitList[arnSplitList.length - 1];
   }
-  console.error(`${fieldToParse} is not a property of ${jsonData}`);
+  logger.error(`${fieldToParse} is not a property of ${jsonData}`);
 }
 
 async function getLatestLayersFromS3() {
@@ -1155,7 +1153,7 @@ async function getLatestLayersFromS3() {
   try {
     return await axios.get(layerURL);
   } catch (error) {
-    console.error(error);
+    logger.error(error);
   }
 }
 
@@ -1227,17 +1225,27 @@ class Logger {
   }
 
   error(message) {
-    console.error(this.redact(message))
+    console.error(this.redact(message));
   }
 
   log(message) {
-    console.log(this.redact(message))
+    console.log(this.redact(message));
   }
+
   redact(log) {
     let newlog = log.replace(/"DD_API_KEY":.*,/, `"DD_API_KEY":"****",`);
-    newlog = newlog.replace(/"AWS_ACCESS_KEY_ID":.*,/, `"AWS_ACCESS_KEY_ID":"****",`);
-    newlog = newlog.replace(/"AWS_SECRET_ACCESS_KEY":.*,/, `"AWS_SECRET_ACCESS_KEY":"****",`);
-    newlog = newlog.replace(/"AWS_SESSION_TOKEN":.*,/, `"AWS_SESSION_TOKEN":"****",`);
+    newlog = newlog.replace(
+      /"AWS_ACCESS_KEY_ID":.*,/,
+      `"AWS_ACCESS_KEY_ID":"****",`,
+    );
+    newlog = newlog.replace(
+      /"AWS_SECRET_ACCESS_KEY":.*,/,
+      `"AWS_SECRET_ACCESS_KEY":"****",`,
+    );
+    newlog = newlog.replace(
+      /"AWS_SESSION_TOKEN":.*,/,
+      `"AWS_SESSION_TOKEN":"****",`,
+    );
     return newlog;
   }
 }
