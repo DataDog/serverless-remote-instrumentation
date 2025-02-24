@@ -72,7 +72,7 @@ exports.handler = async (event, context) => {
     // Created stack or deleted Stack
   } else if (Object.prototype.hasOwnProperty.call(event, "RequestType")) {
     if (event.RequestType === "Delete") {
-      console.log("Getting CloudFormation Delete event.");
+      logger.log("Getting CloudFormation Delete event.");
       await cfnResponse.send(event, context, "SUCCESS"); // send to response to CloudFormation custom resource endpoint to continue stack deletion
       return;
     }
@@ -215,10 +215,10 @@ async function getConfig() {
     MinimumMemorySize: process.env.DD_MinimumMemorySize,
   };
   logger.logObject({ ...config, ...{ eventName: "config" } });
-  console.log(
+  logger.log(
     `AllowList: ${JSON.stringify([...config.AllowListFunctionNameSet])}`,
   );
-  console.log(
+  logger.log(
     `DenyList: ${JSON.stringify([...config.DenyListFunctionNameSet])}`,
   );
   return config;
@@ -235,7 +235,7 @@ async function uninstrumentBasedOnAllowListAndTagRule(
       config,
       otherFilteringTags,
     );
-  console.log(
+  logger.log(
     `functions that is already instrumented: ${remoteInstrumentedFunctionNames}`,
   );
 
@@ -264,7 +264,7 @@ async function uninstrumentBasedOnAllowListAndTagRule(
         config.DenyListFunctionNameSet.has(functionName),
     );
   }
-  console.log(
+  logger.log(
     `functionsToBeUninstrumented: ${JSON.stringify(functionsToBeUninstrumented)}`,
   );
   await uninstrumentFunctions(
@@ -285,14 +285,14 @@ async function uninstrumentFunctions(
     });
   }
 
-  console.log(
+  logger.log(
     'waiting for 10 seconds for instrument to complete before running unistrument to avoid "The operation cannot be performed at this time. An update is in progress."',
   );
   await sleep(10000);
 
   const uninstrumentedFunctionArns = [];
   for (const functionName of functionNamesToUninstrument) {
-    console.log(`functionName in functionNamesToUninstrument: ${functionName}`);
+    logger.log(`functionName in functionNamesToUninstrument: ${functionName}`);
     const functionArn = `arn:aws:lambda:${config.AWS_REGION}:${config.DD_AWS_ACCOUNT_NUMBER}:function:${functionName}`;
     await instrumentWithDatadogCi(
       instrumentOutcome,
@@ -312,7 +312,7 @@ function getTagRuleFromConfig(config) {
     return [];
   }
   const tagRuleTags = tagRule.split(",");
-  console.log(
+  logger.log(
     `tags of TagRule from env var are: ${JSON.stringify(tagRuleTags)}`,
   );
   return tagRuleTags;
@@ -320,7 +320,7 @@ function getTagRuleFromConfig(config) {
 
 function getFunctionNamesFromString(s) {
   const functionNamesArray = s.split(",");
-  console.log(
+  logger.log(
     "Function names parsed by getFunctionNamesFromString:",
     functionNamesArray,
   );
@@ -368,11 +368,11 @@ async function instrumentByEvent(event, config, instrumentOutcome) {
     event.detail.eventName === "UpdateFunctionConfiguration20150331v2"
   ) {
     functionName = event.detail.responseElements.functionName;
-    console.log(
+    logger.log(
       `The function name in the UpdateFunctionConfiguration20150331v2 event is: ${functionName}`,
     );
   }
-  console.log(`The current function name is ${functionName}`);
+  logger.log(`The current function name is ${functionName}`);
 
   if (config.DenyList === "*") {
     logger.logInstrumentOutcome(
@@ -583,9 +583,9 @@ function shouldBeRemoteInstrumentedByTag(
   functionArn,
 ) {
   const targetFunctionTagsObj = getFunctionCommandOutput.Tags; // {"env":"prod", "team":"serverless"}
-  console.log(`getFunctionCommandOutput.Tags: ${targetFunctionTagsObj}`);
+  logger.log(`getFunctionCommandOutput.Tags: ${targetFunctionTagsObj}`);
   if (typeof targetFunctionTagsObj === "undefined") {
-    console.log("no tags found on the function");
+    logger.log("no tags found on the function");
     return false;
   }
 
@@ -631,7 +631,7 @@ function shouldBeRemoteInstrumentedByTag(
       return false;
     }
   }
-  console.log("this function should be remote instrumented by tags");
+  logger.log("this function should be remote instrumented by tags");
   return true;
 }
 
@@ -651,20 +651,20 @@ async function getFunctionNamesFromResourceGroupsTaggingAPI(
   try {
     getResourcesCommandOutput = await client.send(getResourcesCommand);
   } catch (error) {
-    console.error(
+    logger.error(
       `Error: ${error}. Returning empty array for instrumenting functions by tags`,
     );
     return [];
   }
 
-  console.log(
+  logger.log(
     `api call output of getResourcesCommandOutput: ${JSON.stringify(getResourcesCommandOutput)}`,
   );
   const functionArns = [];
   for (const resourceTagMapping of getResourcesCommandOutput.ResourceTagMappingList) {
     functionArns.push(resourceTagMapping.ResourceARN);
   }
-  console.log(`functionArns: ${functionArns}`);
+  logger.log(`functionArns: ${functionArns}`);
 
   if (functionArns.length === 0) {
     return [];
@@ -677,12 +677,12 @@ async function getFunctionNamesFromResourceGroupsTaggingAPI(
     }
   }
   if (functionNames.length === 0) {
-    console.log(
+    logger.log(
       `No functions to be instrumented by specified tags ${JSON.stringify(tagFilters)}.`,
     );
     return [];
   }
-  console.log(`=== functionNames: ${functionNames}`);
+  logger.log(`=== functionNames: ${functionNames}`);
   return functionNames;
 }
 
@@ -700,17 +700,17 @@ async function getFunctionNamesByTagRuleOrOtherFilteringTags(
   let tagsKvMapping = {};
   if (Object.keys(otherFilteringTags).length === 0) {
     const specifiedTags = getTagRuleFromConfig(config); // tags: ['k1:v1', 'k2:v2']
-    console.log(`specifiedTags: ${specifiedTags}`);
+    logger.log(`specifiedTags: ${specifiedTags}`);
     if (specifiedTags === undefined || specifiedTags.length === 0) {
       return;
     }
-    console.log(`RemoteInstrumentTagsFromEnvVar: ${specifiedTags}`);
+    logger.log(`RemoteInstrumentTagsFromEnvVar: ${specifiedTags}`);
     tagsKvMapping = getSpecifiedTagsKvMapping(specifiedTags);
   } else {
     tagsKvMapping = otherFilteringTags;
   }
 
-  console.log(
+  logger.log(
     `After merging tagsKvMapping and additionalFilteringTags, tagsKvMapping is ${JSON.stringify(tagsKvMapping)}`,
   );
 
@@ -728,7 +728,7 @@ async function getFunctionNamesByTagRuleOrOtherFilteringTags(
       });
     }
   }
-  console.log(`tagFilters: ${JSON.stringify(tagFilters)}`);
+  logger.log(`tagFilters: ${JSON.stringify(tagFilters)}`);
 
   const functionNames = await getFunctionNamesFromResourceGroupsTaggingAPI(
     tagFilters,
@@ -747,7 +747,7 @@ function getSpecifiedTagsKvMapping(specifiedTags) {
     }
     tagsKvMapping[k].push(v);
   }
-  console.log(`tagKvMapping: ${JSON.stringify(tagsKvMapping)}`);
+  logger.log(`tagKvMapping: ${JSON.stringify(tagsKvMapping)}`);
   return tagsKvMapping;
 }
 
@@ -760,7 +760,7 @@ async function instrumentByFunctionNames(
     return;
   }
   if (typeof functionNames !== "object" || functionNames.length === 0) {
-    console.log("functionNames is empty in instrumentByFunctionNames().");
+    logger.log("functionNames is empty in instrumentByFunctionNames().");
     return;
   }
   const ddAwsAccountNumber = config.DD_AWS_ACCOUNT_NUMBER;
@@ -768,14 +768,14 @@ async function instrumentByFunctionNames(
   const client = new LambdaClient({ region: config.AWS_REGION });
   const instrumentedFunctionArns = [];
   for (const functionName of functionNames) {
-    console.log(
+    logger.log(
       JSON.stringify({ message: `processing ${functionName}`, functionName }),
     );
-    // console.log(`processing ${functionName}`)
+    // logger.log(`processing ${functionName}`)
 
     // filter out functions that are on the DenyList
     if (config.DenyListFunctionNameSet.has(functionName)) {
-      console.log(
+      logger.log(
         `function ${functionName} is on the DenyList ${JSON.stringify(config.DenyListFunctionNameSet)}`,
       );
       continue;
@@ -790,14 +790,14 @@ async function instrumentByFunctionNames(
       // filter out already instrumented functions
       const getFunctionCommandOutput = await client.send(command);
 
-      console.log(
+      logger.log(
         `function config is: ${JSON.stringify(getFunctionCommandOutput.Configuration)} \n`,
       );
 
       // instrument checks
       const layers = getFunctionCommandOutput.Configuration.Layers || [];
       const functionArn = `arn:aws:lambda:${config.AWS_REGION}:${ddAwsAccountNumber}:function:${functionName}`;
-      console.log(
+      logger.log(
         JSON.stringify({
           message: "instrumentByFunctionNames",
           functionName,
@@ -870,7 +870,7 @@ async function instrumentByFunctionNames(
         instrumentedFunctionArns,
       );
     } catch (error) {
-      console.log(
+      logger.log(
         `Error is caught for functionName ${functionName}. Skipping instrumenting this function. Error is: ${error}`,
       );
     }
@@ -887,7 +887,7 @@ async function instrumentWithDatadogCi(
   config,
   operatedFunctionArns,
 ) {
-  console.log(
+  logger.log(
     `instrumentWithDatadogCi, functionArns: ${operatedFunctionArns} , uninstrument: ${uninstrument}`,
   );
 
@@ -956,7 +956,7 @@ async function instrumentWithDatadogCi(
       config.AWS_REGION,
     ];
   }
-  console.log(`datadog-ci command: ${JSON.stringify(command)}`);
+  logger.log(`datadog-ci command: ${JSON.stringify(command)}`);
 
   const commandExitCode = await cli.run(command);
 
@@ -983,7 +983,7 @@ async function instrumentWithDatadogCi(
       instrumentOutcome.instrument[SUCCEEDED][functionName] = { functionArn };
     }
     operatedFunctionArns.push(functionArn);
-    console.log(
+    logger.log(
       `operatedFunctionArns: ${JSON.stringify(operatedFunctionArns)}`,
     );
   } else {
@@ -1012,11 +1012,11 @@ async function instrumentWithDatadogCi(
 }
 
 async function tagResourcesWithSlsTag(functionArns, config) {
-  console.log(`functionArns to tag: ${functionArns}`);
+  logger.log(`functionArns to tag: ${functionArns}`);
   if (functionArns.length === 0) {
     return;
   }
-  console.log(`version: ${DD_SLS_REMOTE_INSTRUMENTER_VERSION}:v${VERSION}`);
+  logger.log(`version: ${DD_SLS_REMOTE_INSTRUMENTER_VERSION}:v${VERSION}`);
 
   const client = new ResourceGroupsTaggingAPIClient({
     region: config.AWS_REGION,
@@ -1028,7 +1028,7 @@ async function tagResourcesWithSlsTag(functionArns, config) {
   const tagResourcesCommand = new TagResourcesCommand(input);
   try {
     const tagResourcesCommandOutput = await client.send(tagResourcesCommand);
-    console.log(
+    logger.log(
       `tagResourcesCommandOutput: ${JSON.stringify(tagResourcesCommandOutput)}`,
     );
   } catch (error) {
@@ -1037,7 +1037,7 @@ async function tagResourcesWithSlsTag(functionArns, config) {
 }
 
 async function untagResourcesOfSlsTag(functionArns, config) {
-  console.log(`functionArns to untag: ${functionArns}`);
+  logger.log(`functionArns to untag: ${functionArns}`);
   if (functionArns.length === 0) {
     return;
   }
@@ -1054,7 +1054,7 @@ async function untagResourcesOfSlsTag(functionArns, config) {
     const untagResourcesCommandOutput = await client.send(
       untagResourcesCommand,
     );
-    console.log(
+    logger.log(
       `untagResourcesCommandOutput: ${JSON.stringify(untagResourcesCommandOutput)}`,
     );
   } catch (error) {
@@ -1088,7 +1088,7 @@ function functionIsInstrumentedWithSpecifiedLayerVersions(
   }
 
   for (const layer of layers) {
-    console.log(`\n runtime layer: ${JSON.stringify(layer)}`);
+    logger.log(`\n runtime layer: ${JSON.stringify(layer)}`);
     if (layer?.Arn?.includes("464622532012:layer")) {
       // Datadog Layer
       if (
@@ -1170,7 +1170,7 @@ class Logger {
     reason = null,
     reasonCode = null,
   ) {
-    console.log(
+    this.log(
       JSON.stringify({
         ddSlsEventName,
         outcome,
@@ -1186,7 +1186,7 @@ class Logger {
 
   emitFrontEndEvent(ddSlsEventName, triggeredBy, instrumentOutcome, config) {
     // emit REMOTE_INSTRUMENTATION_STARTED and REMOTE_INSTRUMENTATION_ENDED event
-    console.log(
+    this.log(
       JSON.stringify({
         ddSlsEventName,
         triggeredBy,
@@ -1200,7 +1200,7 @@ class Logger {
 
   frontendLambdaEvents(outcome, targetFunctionName, message = null) {
     // all for LAMBDA_EVENT
-    console.log(
+    this.log(
       JSON.stringify({
         ddSlsEventName: LAMBDA_EVENT,
         outcome,
@@ -1211,7 +1211,7 @@ class Logger {
   }
 
   debugLogs(ddSlsEventName, outcome, targetFunctionName, message = null) {
-    console.log(
+    this.log(
       JSON.stringify({
         ddSlsEventName,
         outcome,
@@ -1223,7 +1223,22 @@ class Logger {
 
   logObject(event) {
     // For logging lambda payload and configs
-    console.log(JSON.stringify(event));
+    console.log(this.redact(JSON.stringify(event)));
+  }
+
+  error(message) {
+    console.error(this.redact(message))
+  }
+
+  log(message) {
+    console.log(this.redact(message))
+  }
+  redact(log) {
+    let newlog = log.replace(/"DD_API_KEY":.*,/, `"DD_API_KEY":"****",`);
+    newlog = newlog.replace(/"AWS_ACCESS_KEY_ID":.*,/, `"AWS_ACCESS_KEY_ID":"****",`);
+    newlog = newlog.replace(/"AWS_SECRET_ACCESS_KEY":.*,/, `"AWS_SECRET_ACCESS_KEY":"****",`);
+    newlog = newlog.replace(/"AWS_SESSION_TOKEN":.*,/, `"AWS_SESSION_TOKEN":"****",`);
+    return newlog;
   }
 }
 
