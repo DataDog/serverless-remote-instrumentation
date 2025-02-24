@@ -27,7 +27,7 @@ if [[ ! "${VALID_ACCOUNTS[@]}" =~ $ACCOUNT ]]; then
 fi
 if [ $ACCOUNT = "sandbox" ]; then
     REGION="sa-east-1"
-    S3_BUCKET_NAME="dd-lambda-signing-bucket-sandbox"
+    S3_BUCKET_NAME="dd-lambda-signing-bucket-serverless-sandbox"
 fi
 if [ $ACCOUNT = "prod" ]; then
     REGION="us-east-1"
