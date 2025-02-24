@@ -52,15 +52,19 @@ class Logger {
   }
 
   logObject(event) {
-    console.log(JSON.stringify(event));
+    console.log(this.redact(JSON.stringify(event)));
   }
 
   log(message) {
-    console.log("[Datadog Remote Instrumenter] " + message);
+    console.log(this.redact("[Datadog Remote Instrumenter] " + message));
   }
 
   error(message) {
-    console.error("[Datadog Remote Instrumenter] " + message);
+    console.error(this.redact("[Datadog Remote Instrumenter] " + message));
+  }
+
+  redact(log) {
+    return log.replace(/"DD_API_KEY":.*,/, `"DD_API_KEY":"****",`);
   }
 }
 exports.logger = new Logger();
