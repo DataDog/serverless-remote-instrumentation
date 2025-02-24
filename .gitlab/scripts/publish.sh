@@ -29,7 +29,7 @@ cd $SCRIPTS_DIR/..
 VERSION=$VERSION ARCHITECTURE=$ARCHITECTURE ./scripts/build_layer.sh
 
 # Signing layer
-./scripts/sign_layers.sh prod
+./scripts/sign_layers.sh
 
 # Publish layer
 ./scripts/publish_layers.sh
