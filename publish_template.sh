@@ -11,31 +11,29 @@
 
 set -e
 
-CURRENT_VERSION=$(grep -o 'Version: \d\+\.\d\+\.\d\+' template.yaml | cut -d' ' -f2)
+TEMPLATE_VERSION=$(grep -o 'Version: \d\+\.\d\+\.\d\+' template.yaml | cut -d' ' -f2)
 
 # Read the desired version
-if [ -z "$1" ]; then
+if [ -z $TEMPLATE_VERSION ]; then
     echo "ERROR: You must specify a desired version number"
     exit 1
-elif [[ ! $1 =~ [0-9]+\.[0-9]+\.[0-9]+ ]]; then
+elif [[ ! $TEMPLATE_VERSION =~ [0-9]+\.[0-9]+\.[0-9]+ ]]; then
     echo "ERROR: You must use a semantic version (e.g. 3.1.4)"
     exit 1
 else
-    SAMPLE_APP_VERSION=$1
+    SAMPLE_APP_VERSION=$TEMPLATE_VERSION
 fi
 
 # Check account parameter
 VALID_ACCOUNTS=("serverless-sandbox" "prod")
-if [ -z "$2" ]; then
-    echo "ERROR: You must pass an account parameter. Please choose serverless-sandbox or prod."
+if [ -z $ACCOUNT ]; then
+    echo "ERROR: You must pass an ACOUNT parameter. Please choose serverless-sandbox or prod."
     exit 1
 fi
-if [[ ! "${VALID_ACCOUNTS[@]}" =~ $2 ]]; then
-    echo "ERROR: The account parameter was invalid. Please choose serverless-sandbox or prod."
+if [[ ! "${VALID_ACCOUNTS[@]}" =~ $ACCOUNT ]]; then
+    echo "ERROR: The ACCOUNT parameter was invalid. Please choose serverless-sandbox or prod."
     exit 1
 fi
-
-ACCOUNT="${2}"
 
 if [ "$ACCOUNT" = "serverless-sandbox" ]; then
     BUCKET="datadog-cloudformation-template-serverless-sandbox"
@@ -44,15 +42,6 @@ if [ "$ACCOUNT" = "prod" ]; then
     BUCKET="datadog-cloudformation-template"
 fi
 
-function aws-login() {
-    cfg=( "$@" )
-    shift
-    if [ "$ACCOUNT" = "prod" ] ; then
-        aws-vault exec sso-prod-engineering --  ${cfg[@]}
-    else
-        aws-vault exec sso-serverless-sandbox-account-admin-8h --  ${cfg[@]}
-    fi
-}
 
 echo "Injecting lambda code into CloudFormation template"
 rm -rf dist
@@ -63,54 +52,54 @@ cp template.yaml dist/template.yaml
 
 # Validate the template
 echo "Validating template.yaml..."
-aws-login aws cloudformation validate-template --template-body file://dist/template.yaml
+aws cloudformation validate-template --template-body file://dist/template.yaml
 echo "Uploading the CloudFormation Template"
 if [ "$ACCOUNT" = "prod" ]; then
-    # Make sure we are on the prod branch
-    BRANCH=$(git rev-parse --abbrev-ref HEAD)
-    if [ $BRANCH != "prod" ]; then
-        echo "ERROR: Not on the prod branch, aborting."
-        exit 1
-    fi
+    # # Make sure we are on the prod branch
+    # BRANCH=$(git rev-parse --abbrev-ref HEAD)
+    # if [ $BRANCH != "prod" ]; then
+    #     echo "ERROR: Not on the prod branch, aborting."
+    #     exit 1
+    # fi
 
-    # Confirm to proceed
-    echo
-    read -p "About to bump the version from ${CURRENT_VERSION} to ${SAMPLE_APP_VERSION}, create a release of v${SAMPLE_APP_VERSION} on GitHub, upload the template.yaml to s3://${BUCKET}/aws/remote-instrument/${SAMPLE_APP_VERSION}.yaml. Continue (y/n)?" CONT
-    if [ "$CONT" != "y" ]; then
-        echo "Exiting..."
-        exit 1
-    fi
+    # # Confirm to proceed
+    # echo
+    # read -p "About to bump the version from ${CURRENT_VERSION} to ${SAMPLE_APP_VERSION}, create a release of v${SAMPLE_APP_VERSION} on GitHub, upload the template.yaml to s3://${BUCKET}/aws/remote-instrument/${SAMPLE_APP_VERSION}.yaml. Continue (y/n)?" CONT
+    # if [ "$CONT" != "y" ]; then
+    #     echo "Exiting..."
+    #     exit 1
+    # fi
 
-    # Get the latest code
-    git pull origin prod
+    # # Get the latest code
+    # git pull origin prod
 
-    # Create a release branch
-    RELEASE_BRANCH="release/${SAMPLE_APP_VERSION}"
-    git checkout -b $RELEASE_BRANCH
+    # # Create a release branch
+    # RELEASE_BRANCH="release/${SAMPLE_APP_VERSION}"
+    # git checkout -b $RELEASE_BRANCH
 
-    # Bump version number in template.yml
-    echo "Bumping the version number to ${SAMPLE_APP_VERSION}..."
-    perl -pi -e "s/Version: [0-9\.]+/Version: ${SAMPLE_APP_VERSION}/g" template.yaml
-    perl -pi -e "s/Version: [0-9\.]+/Version: ${SAMPLE_APP_VERSION}/g" dist/template.yaml
+    # # Bump version number in template.yml
+    # echo "Bumping the version number to ${SAMPLE_APP_VERSION}..."
+    # perl -pi -e "s/Version: [0-9\.]+/Version: ${SAMPLE_APP_VERSION}/g" template.yaml
+    # perl -pi -e "s/Version: [0-9\.]+/Version: ${SAMPLE_APP_VERSION}/g" dist/template.yaml
 
-    # Commit version number changes to git
-    echo "Committing version number change..."
-    git add template.yaml
-    git commit -m "Bump version from ${CURRENT_VERSION} to ${SAMPLE_APP_VERSION}"
-    git push origin $RELEASE_BRANCH
+    # # Commit version number changes to git
+    # echo "Committing version number change..."
+    # git add template.yaml
+    # git commit -m "Bump version from ${CURRENT_VERSION} to ${SAMPLE_APP_VERSION}"
+    # git push origin $RELEASE_BRANCH
 
-    git tag v${SAMPLE_APP_VERSION}
+    # git tag v${SAMPLE_APP_VERSION}
 
-    git push origin v${SAMPLE_APP_VERSION}
+    # git push origin v${SAMPLE_APP_VERSION}
 
-    aws-login aws s3 cp dist/template.yaml s3://${BUCKET}/aws/remote-instrument/${SAMPLE_APP_VERSION}.yaml \
+    aws s3 cp dist/template.yaml s3://${BUCKET}/aws/remote-instrument/${SAMPLE_APP_VERSION}.yaml \
         --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers
-    aws-login aws s3 cp dist/template.yaml s3://${BUCKET}/aws/remote-instrument/latest.yaml \
+    aws s3 cp dist/template.yaml s3://${BUCKET}/aws/remote-instrument/latest.yaml \
         --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers
     TEMPLATE_URL="https://${BUCKET}.s3.amazonaws.com/aws/remote-instrument/latest.yaml"
 else
-    aws-login aws s3 cp dist/template.yaml s3://${BUCKET}/aws/remote-instrument-dev/${SAMPLE_APP_VERSION}.yaml
-    aws-login aws s3 cp dist/template.yaml s3://${BUCKET}/aws/remote-instrument-dev/latest.yaml
+    aws s3 cp dist/template.yaml s3://${BUCKET}/aws/remote-instrument-dev/${SAMPLE_APP_VERSION}.yaml
+    aws s3 cp dist/template.yaml s3://${BUCKET}/aws/remote-instrument-dev/latest.yaml
     TEMPLATE_URL="https://${BUCKET}.s3.amazonaws.com/aws/remote-instrument-dev/latest.yaml"
     echo "CURRENT_VERSION: $CURRENT_VERSION"
     echo "SAMPLE_APP_VERSION: $SAMPLE_APP_VERSION"
@@ -126,9 +115,9 @@ echo "https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?s
 echo
 echo "Serverless Sample App release process complete!"
 
-if [ "$ACCOUNT" = "prod" ] ; then
-    echo "Create and merge a pull request with the version bumps:"
-    echo "https://github.com/DataDog/Serverless-Remote-Instrumentation/pull/new/$RELEASE_BRANCH"
-    echo "Create the release with the pushed tag in GitHub:"
-    echo "https://github.com/DataDog/Serverless-Remote-Instrumentation/releases/new?tag=v$SAMPLE_APP_VERSION&title=v$SAMPLE_APP_VERSION"
-fi
+# if [ "$ACCOUNT" = "prod" ] ; then
+#     echo "Create and merge a pull request with the version bumps:"
+#     echo "https://github.com/DataDog/Serverless-Remote-Instrumentation/pull/new/$RELEASE_BRANCH"
+#     echo "Create the release with the pushed tag in GitHub:"
+#     echo "https://github.com/DataDog/Serverless-Remote-Instrumentation/releases/new?tag=v$SAMPLE_APP_VERSION&title=v$SAMPLE_APP_VERSION"
+# fi
