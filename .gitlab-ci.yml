@@ -1,0 +1,34 @@
+variables:
+  DOCKER_TARGET_IMAGE: registry.ddbuild.io/ci/serverless-remote-instrumentation
+  DOCKER_TARGET_VERSION: latest
+
+stages:
+  - pre
+  - build
+
+ci image:
+  stage: build
+  image: registry.ddbuild.io/images/docker:20.10
+  tags: ["arch:arm64"]
+  needs: []
+  rules:
+    # - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"'
+    #   changes:
+    #     - .gitlab/Dockerfile
+    #   when: on_success
+    when: manual
+  variables:
+    DOCKER_TARGET: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
+  script:
+    - docker buildx build --platform linux/amd64,linux/arm64 --no-cache --pull --push --tag ${DOCKER_TARGET} -f .gitlab/Dockerfile .
+
+publish:
+  stage: build
+  image: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
+  tags: ["arch:arm64"]
+  needs: []
+  when: manual
+  # before_script:
+  #   - EXTERNAL_ID_NAME=integration-test-externalid ROLE_TO_ASSUME=sandbox-integration-test-deployer AWS_ACCOUNT=425362996713 source .gitlab/scripts/get_secrets.sh
+  script:
+    - .gitlab/scripts/publish.sh
