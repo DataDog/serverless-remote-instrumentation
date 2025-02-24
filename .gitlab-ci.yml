@@ -28,6 +28,8 @@ layer:
   tags: ["arch:arm64"]
   needs: []
   when: manual
+  variables:
+    ACCOUNT: sandbox
   before_script:
     - EXTERNAL_ID_NAME=sandbox-publish-externalid ROLE_TO_ASSUME=sandbox-layer-deployer AWS_ACCOUNT=425362996713 source .gitlab/scripts/get_secrets.sh
     # - EXTERNAL_ID_NAME={{ $environment.external_id }} ROLE_TO_ASSUME={{ $environment.role_to_assume }} AWS_ACCOUNT={{ $environment.account }} source .gitlab/scripts/get_secrets.sh
