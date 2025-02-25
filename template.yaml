@@ -48,7 +48,7 @@ Parameters:
     Description: Whether to enable code signing configurations.
   DdRemoteInstrumentLayerVersion:
     Type: String
-    Default: '3'
+    Default: '5'
   DdApiKey:
     Type: String
     Description: >-
