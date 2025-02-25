@@ -11,8 +11,6 @@
 
 set -e
 
-TEMPLATE_VERSION=$(grep -o 'Version: \d\+\.\d\+\.\d\+' template.yaml | cut -d' ' -f2)
-
 # Read the desired version
 if [ -z $TEMPLATE_VERSION ]; then
     echo "ERROR: You must specify a desired version number"
