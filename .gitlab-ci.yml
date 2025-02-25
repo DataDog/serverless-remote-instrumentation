@@ -22,7 +22,7 @@ ci image:
   script:
     - docker buildx build --platform linux/amd64,linux/arm64 --no-cache --pull --push --tag ${DOCKER_TARGET} -f .gitlab/Dockerfile .
 
-layer:
+layer-sandbox:
   stage: publish
   image: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
   tags: ["arch:arm64"]
@@ -35,7 +35,7 @@ layer:
   script:
     - .gitlab/scripts/publish.sh
 
-template:
+template-sandbox:
   stage: publish
   image: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
   tags: ["arch:arm64"]
@@ -45,6 +45,34 @@ template:
     ACCOUNT: serverless-sandbox
   before_script:
     - EXTERNAL_ID_NAME=sandbox-publish-externalid ROLE_TO_ASSUME=sandbox-layer-deployer AWS_ACCOUNT=425362996713 source .gitlab/scripts/get_secrets.sh
+    # - EXTERNAL_ID_NAME={{ $environment.external_id }} ROLE_TO_ASSUME={{ $environment.role_to_assume }} AWS_ACCOUNT={{ $environment.account }} source .gitlab/scripts/get_secrets.sh
+  script:
+    - ./publish_template.sh
+
+
+layer-prod:
+  stage: publish
+  image: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
+  tags: ["arch:arm64"]
+  needs: []
+  when: manual
+  variables:
+    ACCOUNT: prod
+  before_script:
+    - EXTERNAL_ID_NAME=prod-publish-externalid ROLE_TO_ASSUME=dd-serverless-layer-deployer-role AWS_ACCOUNT=464622532012 source .gitlab/scripts/get_secrets.sh
+  script:
+    - .gitlab/scripts/publish.sh
+
+template-prod:
+  stage: publish
+  image: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
+  tags: ["arch:arm64"]
+  needs: []
+  when: manual
+  variables:
+    ACCOUNT: prod
+  before_script:
+    - EXTERNAL_ID_NAME=prod-publish-externalid ROLE_TO_ASSUME=dd-serverless-layer-deployer-role AWS_ACCOUNT=464622532012 source .gitlab/scripts/get_secrets.sh
     # - EXTERNAL_ID_NAME={{ $environment.external_id }} ROLE_TO_ASSUME={{ $environment.role_to_assume }} AWS_ACCOUNT={{ $environment.account }} source .gitlab/scripts/get_secrets.sh
   script:
     - ./publish_template.sh
