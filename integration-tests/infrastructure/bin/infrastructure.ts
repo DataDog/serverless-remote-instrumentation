@@ -53,7 +53,7 @@ class TestingStack extends Stack {
         InstrumenterFunctionName: functionName,
         TrailName: trailName,
         DdSite: "datad0g.com",
-        DdApiKey: SecretValue.secretsManager("Remote_Instrumenter_Test_API_Key"),
+        DdApiKey: SecretValue.secretsManager("Remote_Instrumenter_Test_API_Key_20250226"),
         BucketName: bucketName,
         DdRemoteInstrumentLayerAwsAccount: "425362996713",
         DdRemoteInstrumentLayerVersion: version,
