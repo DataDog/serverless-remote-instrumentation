@@ -12,7 +12,7 @@ const getSecret = async (name) => {
 };
 
 const getApiKey = async () => {
-  return getSecret("Remote_Instrumenter_Test_API_Key");
+  return getSecret("Remote_Instrumenter_Test_API_Key_20250226");
 };
 
 exports.getApiKey = getApiKey;
