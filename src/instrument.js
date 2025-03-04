@@ -59,10 +59,6 @@ async function instrumentWithDatadogCi(
   const operationName = instrument ? INSTRUMENT : UNINSTRUMENT;
   const operation = instrument ? "instrument" : "uninstrument";
 
-  // Set datadog-ci environment variables
-  process.env.DD_CI_BYPASS_SITE_VALIDATION = "true";
-  process.env.DATADOG_SITE = process.env.DD_SITE;
-
   // Construct datadog-ci command
   let command = ["lambda", operation, "-f", functionArn];
   if (instrument) {
