@@ -46,8 +46,6 @@ class TestingStack extends Stack {
       roleName: testLambdaRole,
     });
 
-    const version = readFileSync('scripts/.layers/version', { encoding: 'utf8', flag: 'r' }).trim()
-
     new CfnInclude(this, 'ImportedRemoteInstrumenterTemplate', { 
       templateFile: this.modifyTemplate(),
       parameters: {
@@ -57,15 +55,17 @@ class TestingStack extends Stack {
         DdSite: ddSite,
         DdApiKey: SecretValue.secretsManager("Remote_Instrumenter_Test_API_Key_20250226"),
         BucketName: bucketName,
-        DdRemoteInstrumentLayerVersion: version,
       },
     });
   }
 
   modifyTemplate(): string {
     const modifiedPath = 'modified_template.yaml';
+    const version = readFileSync('scripts/.layers/version', { encoding: 'utf8', flag: 'r' }).trim();
     const template = yamlParse(readFileSync('template.yaml', { encoding: 'utf8', flag: 'r' }));
     template.Mappings.Constants.DdRemoteInstrumentLayerAwsAccount.Number = account;
+    template.Mappings.Constants.DdRemoteInstrumentLayerVersion.Version = version;
+    template.Resources.LambdaFunction.Properties.Environment.Variables.DD_LOG_LEVEL = "INFO";
     template.Mappings.Constants.DdCIBypassSiteValidation.Bypass = true;
     writeFileSync(modifiedPath, yamlDump(template));
     return modifiedPath;

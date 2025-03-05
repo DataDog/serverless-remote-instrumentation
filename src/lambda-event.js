@@ -71,7 +71,7 @@ exports.isUntagResourceEvent = isUntagResourceEvent;
 
 function shouldSkipEvent(event) {
   // Skip any events for the remote instrumenter itself
-  const instrumenterFunctionName = process.env.DD_INSTRUMENTER_FUNCTION_NAME;
+  const instrumenterFunctionName = process.env.AWS_LAMBDA_FUNCTION_NAME;
   if (
     event.detail.requestParameters?.functionName === instrumenterFunctionName
   ) {

@@ -8,6 +8,8 @@ Mappings:
       Version: 0.3.3
     DdRemoteInstrumentLayerAwsAccount:
       Number: 464622532012
+    DdRemoteInstrumentLayerVersion:
+      Version: 4
     DdCIBypassSiteValidation:
       Bypass: false
 
@@ -17,7 +19,6 @@ Metadata:
       - Label:
           default: Remote Instrumenter Configuration
         Parameters:
-          - DdRemoteInstrumentLayerVersion
           - DdApiKey
           - EnableCodeSigningConfigurations
           - DdInstrumenterFunctionEnv
@@ -43,9 +44,6 @@ Parameters:
       - "false"
     Default: "false"
     Description: Whether to enable code signing configurations.
-  DdRemoteInstrumentLayerVersion:
-    Type: String
-    Default: '3'
   DdApiKey:
     Type: String
     Description: >-
@@ -81,6 +79,8 @@ Parameters:
   MinimumMemorySize:
     Type: String
     Default: '512'
+    Description: >-
+      The minimum lambda function memory size that will be instrumented.  Can be set to ensure that functions with limited memory do not encounter out of memory errors.
   DdInstrumenterFunctionEnv:
     Type: String
     Default: 'dev'
@@ -116,12 +116,12 @@ Resources:
             - ':'
             - !FindInMap [ Constants, DdRemoteInstrumentLayerAwsAccount, Number ]
             - ':layer:Datadog-Serverless-Remote-Instrumentation-ARM:'
-            - !Ref DdRemoteInstrumentLayerVersion
+            - !FindInMap [ Constants, DdRemoteInstrumentLayerVersion, Version ]
       Environment:
         Variables:
           DD_TRACE_ENABLED: true
           DD_API_KEY: !Ref DdApiKey
-          DD_LOG_LEVEL: DEBUG
+          DD_LOG_LEVEL: WARN
           DD_TRACE_DEBUG: false
           DD_SERVICE: Datadog-Instrument
           DD_ENV: !Ref DdInstrumenterFunctionEnv
@@ -130,7 +130,6 @@ Resources:
           DD_CI_BYPASS_SITE_VALIDATION: !FindInMap [ Constants, DdCIBypassSiteValidation, Bypass ]
           DD_AWS_ACCOUNT_NUMBER: !Sub '${AWS::AccountId}'
           DD_MinimumMemorySize: !Ref MinimumMemorySize
-          DD_INSTRUMENTER_FUNCTION_NAME: !Ref InstrumenterFunctionName
           DD_S3_BUCKET: !Ref S3Bucket
           DD_REMOTE_CONFIGURATION_ENABLED: true
           DD_APM_ENABLED: true
