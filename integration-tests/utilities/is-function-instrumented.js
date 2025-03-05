@@ -56,7 +56,8 @@ const isFunctionInstrumented = async (functionName) => {
   }
 
   return (
-    hasEnvVar(funConfig, "DD_API_KEY") &&
+    !hasEnvVar(funConfig, "DD_API_KEY") &&
+    hasEnvVar(funConfig, "DD_API_KEY_SECRET_ARN") &&
     hasEnvVarMatching(funConfig, "DD_SITE", ddSite)
   );
 };
@@ -76,6 +77,7 @@ const isFunctionUninstrumented = async (functionName) => {
     !hasLayer(funConfig, "Datadog-Node") &&
     !hasLayer(funConfig, "Datadog-Extension") &&
     !hasEnvVar(funConfig, "DD_API_KEY") &&
+    !hasEnvVar(funConfig, "DD_API_KEY_SECRET_ARN") &&
     !hasEnvVar(funConfig, "DD_SITE")
   );
 };

@@ -94,6 +94,11 @@ Resources:
     Properties:
       ServiceToken: !GetAtt LambdaFunction.Arn
       FunctionName: !Ref InstrumenterFunctionName
+  DatadogRemoteInstrumenterSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: Datadog API key used by the remote instrumenter
+      SecretString: !Ref DdApiKey
   LambdaFunction:
     Type: 'AWS::Lambda::Function'
     Properties:
@@ -120,13 +125,14 @@ Resources:
       Environment:
         Variables:
           DD_TRACE_ENABLED: true
-          DD_API_KEY: !Ref DdApiKey
           DD_LOG_LEVEL: WARN
+          DD_API_KEY_SECRET_ARN: !Ref DatadogRemoteInstrumenterSecret
           DD_TRACE_DEBUG: false
           DD_SERVICE: Datadog-Instrument
           DD_ENV: !Ref DdInstrumenterFunctionEnv
           DD_SITE: !Ref DdSite
           DATADOG_SITE: !Ref DdSite
+          DATADOG_API_KEY_SECRET_ARN: !Ref DatadogRemoteInstrumenterSecret
           DD_CI_BYPASS_SITE_VALIDATION: !FindInMap [ Constants, DdCIBypassSiteValidation, Bypass ]
           DD_AWS_ACCOUNT_NUMBER: !Sub '${AWS::AccountId}'
           DD_MinimumMemorySize: !Ref MinimumMemorySize
@@ -207,6 +213,10 @@ Resources:
               - tag:UntagResources
               - lambda:ListFunctions
             Resource: '*'
+          - Effect: Allow
+            Action:
+              - secretsmanager:GetSecretValue
+            Resource: !Ref DatadogRemoteInstrumenterSecret
             Condition:
               ArnEquals:
                 lambda:SourceFunctionArn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${InstrumenterFunctionName}
