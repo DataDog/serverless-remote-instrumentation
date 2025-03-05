@@ -1,4 +1,10 @@
 const { LAMBDA_EVENT } = require("./consts");
+const LOG_LEVEL = process.env.DD_LOG_LEVEL;
+
+const LOG_INFO = ["TRACE", "DEBUG", "INFO"].includes(LOG_LEVEL);
+const LOG_ERROR = ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"].includes(
+  LOG_LEVEL,
+);
 
 class Logger {
   logInstrumentOutcome({
@@ -52,15 +58,21 @@ class Logger {
   }
 
   logObject(event) {
-    console.log(this.redact(JSON.stringify(event)));
+    if (LOG_INFO) {
+      console.log(this.redact(JSON.stringify(event)));
+    }
   }
 
   log(message) {
-    console.log(this.redact("[Datadog Remote Instrumenter] " + message));
+    if (LOG_INFO) {
+      console.log(this.redact("[Datadog Remote Instrumenter] " + message));
+    }
   }
 
   error(message) {
-    console.error(this.redact("[Datadog Remote Instrumenter] " + message));
+    if (LOG_ERROR) {
+      console.error(this.redact("[Datadog Remote Instrumenter] " + message));
+    }
   }
 
   redact(log) {

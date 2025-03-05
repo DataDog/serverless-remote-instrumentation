@@ -188,7 +188,7 @@ describe("shouldSkipEvent", () => {
         },
       },
     };
-    process.env.DD_INSTRUMENTER_FUNCTION_NAME = "instrumenter-function-name";
+    process.env.AWS_LAMBDA_FUNCTION_NAME = "instrumenter-function-name";
     expect(shouldSkipEvent(event)).toBe(true);
   });
   it("should return true for unsupported events", () => {
@@ -250,7 +250,7 @@ describe("shouldSkipEvent", () => {
         },
       },
     };
-    process.env.DD_INSTRUMENTER_FUNCTION_NAME = "instrumenter-function-name";
+    process.env.AWS_LAMBDA_FUNCTION_NAME = "instrumenter-function-name";
     expect(shouldSkipEvent(event)).toBe(true);
   });
   it("should return false for events that originate from other sources", () => {
@@ -262,7 +262,7 @@ describe("shouldSkipEvent", () => {
         },
       },
     };
-    process.env.DD_INSTRUMENTER_FUNCTION_NAME = "instrumenter-function-name";
+    process.env.AWS_LAMBDA_FUNCTION_NAME = "instrumenter-function-name";
     expect(shouldSkipEvent(event)).toBe(false);
   });
 });
