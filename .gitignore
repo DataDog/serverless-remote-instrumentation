@@ -14,6 +14,7 @@ self-monitoring-app/dist/*
 scripts/.cache
 scripts/.layers
 scripts/.src
-
+# Intermediate template for custom variables
+modified_template.yaml
 
 *.zip
