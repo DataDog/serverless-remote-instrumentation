@@ -3,7 +3,7 @@ import { App, SecretValue, Stack, Tags } from 'aws-cdk-lib';
 import { AccountRootPrincipal, Role, ServicePrincipal, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { CfnInclude } from 'aws-cdk-lib/cloudformation-include';
 import { Construct } from 'constructs';
-import { region, account, roleName, stackName, functionName, trailName, bucketName, testLambdaRole } from '../../config.json';
+import { region, account, roleName, stackName, functionName, trailName, bucketName, testLambdaRole, ddSite } from '../../config.json';
 import { readFileSync, writeFileSync } from 'fs'
 import { yamlParse, yamlDump } from 'yaml-cfn'
 
@@ -52,7 +52,7 @@ class TestingStack extends Stack {
         EnableCodeSigningConfigurations: false,
         InstrumenterFunctionName: functionName,
         TrailName: trailName,
-        DdSite: "datad0g.com",
+        DdSite: ddSite,
         DdApiKey: SecretValue.secretsManager("Remote_Instrumenter_Test_API_Key_20250226"),
         BucketName: bucketName,
       },
@@ -66,6 +66,7 @@ class TestingStack extends Stack {
     template.Mappings.Constants.DdRemoteInstrumentLayerAwsAccount.Number = account;
     template.Mappings.Constants.DdRemoteInstrumentLayerVersion.Version = version;
     template.Resources.LambdaFunction.Properties.Environment.Variables.DD_LOG_LEVEL = "INFO";
+    template.Mappings.Constants.DdCIBypassSiteValidation.Bypass = true;
     writeFileSync(modifiedPath, yamlDump(template));
     return modifiedPath;
   }

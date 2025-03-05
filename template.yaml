@@ -10,6 +10,8 @@ Mappings:
       Number: 464622532012
     DdRemoteInstrumentLayerVersion:
       Version: 4
+    DdCIBypassSiteValidation:
+      Bypass: false
 
 Metadata:
   AWS::CloudFormation::Interface:
@@ -124,6 +126,8 @@ Resources:
           DD_SERVICE: Datadog-Instrument
           DD_ENV: !Ref DdInstrumenterFunctionEnv
           DD_SITE: !Ref DdSite
+          DATADOG_SITE: !Ref DdSite
+          DD_CI_BYPASS_SITE_VALIDATION: !FindInMap [ Constants, DdCIBypassSiteValidation, Bypass ]
           DD_AWS_ACCOUNT_NUMBER: !Sub '${AWS::AccountId}'
           DD_MinimumMemorySize: !Ref MinimumMemorySize
           DD_S3_BUCKET: !Ref S3Bucket
