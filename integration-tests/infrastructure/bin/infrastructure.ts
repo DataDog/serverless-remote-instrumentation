@@ -4,7 +4,9 @@ import { AccountRootPrincipal, Role, ServicePrincipal, PolicyStatement } from 'a
 import { CfnInclude } from 'aws-cdk-lib/cloudformation-include';
 import { Construct } from 'constructs';
 import { region, account, roleName, stackName, functionName, trailName, bucketName, testLambdaRole } from '../../config.json';
-import { readFileSync } from 'fs'
+import { readFileSync, writeFileSync } from 'fs'
+import { yamlParse, yamlDump } from 'yaml-cfn'
+
 
 class TestingStack extends Stack {
   constructor(scope: Construct, id: string, props?: any) {
@@ -47,7 +49,7 @@ class TestingStack extends Stack {
     const version = readFileSync('scripts/.layers/version', { encoding: 'utf8', flag: 'r' }).trim()
 
     new CfnInclude(this, 'ImportedRemoteInstrumenterTemplate', { 
-      templateFile: 'template.yaml',
+      templateFile: this.modifyTemplate(),
       parameters: {
         EnableCodeSigningConfigurations: false,
         InstrumenterFunctionName: functionName,
@@ -55,10 +57,17 @@ class TestingStack extends Stack {
         DdSite: "datad0g.com",
         DdApiKey: SecretValue.secretsManager("Remote_Instrumenter_Test_API_Key_20250226"),
         BucketName: bucketName,
-        DdRemoteInstrumentLayerAwsAccount: "425362996713",
         DdRemoteInstrumentLayerVersion: version,
       },
     });
+  }
+
+  modifyTemplate(): string {
+    const modifiedPath = 'modified_template.yaml';
+    const template = yamlParse(readFileSync('template.yaml', { encoding: 'utf8', flag: 'r' }));
+    template.Mappings.Constants.DdRemoteInstrumentLayerAwsAccount.Number = account;
+    writeFileSync(modifiedPath, yamlDump(template));
+    return modifiedPath;
   }
 }
 
