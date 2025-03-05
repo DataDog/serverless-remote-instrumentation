@@ -66,6 +66,7 @@ class TestingStack extends Stack {
     const modifiedPath = 'modified_template.yaml';
     const template = yamlParse(readFileSync('template.yaml', { encoding: 'utf8', flag: 'r' }));
     template.Mappings.Constants.DdRemoteInstrumentLayerAwsAccount.Number = account;
+    template.Mappings.Constants.DdCIBypassSiteValidation.Bypass = true;
     writeFileSync(modifiedPath, yamlDump(template));
     return modifiedPath;
   }
