@@ -3,6 +3,7 @@ const { LambdaClient } = require("@aws-sdk/client-lambda");
 const { account, roleName, region } = require("../config.json");
 const { S3Client } = require("@aws-sdk/client-s3");
 const { getCredentials } = require("./get-credentials");
+const { CloudWatchLogsClient } = require("@aws-sdk/client-cloudwatch-logs");
 
 const arn = `arn:aws:iam::${account}:role/${roleName}`;
 
@@ -46,3 +47,16 @@ const getS3Client = async () => {
 };
 
 exports.getS3Client = getS3Client;
+
+let logsClient;
+const getLogsClient = () => {
+  if (!logsClient) {
+    logsClient = new CloudWatchLogsClient({
+      credentials: getCredentials(arn),
+      region,
+    });
+  }
+  return logsClient;
+};
+
+exports.getLogsClient = getLogsClient;
