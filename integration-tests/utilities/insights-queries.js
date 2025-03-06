@@ -45,7 +45,7 @@ const getFieldValueFromResults = (fieldName, results) =>
     .map((item) => item.value);
 
 const getTimestampsFromResults = (results) =>
-  getFieldValueFromResults("@timestam", results);
+  getFieldValueFromResults("@timestamp", results);
 
 exports.getTimestampsFromResults = getTimestampsFromResults;
 
