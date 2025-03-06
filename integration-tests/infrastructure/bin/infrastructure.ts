@@ -41,6 +41,11 @@ class TestingStack extends Stack {
       resources: [ `arn:aws:iam::${account}:role/${testLambdaRole}` ],
     }));
 
+    assumedRole.addToPolicy(new PolicyStatement({
+      actions: ["logs:StartQuery", "logs:GetQueryResults"],
+      resources: ["*"],
+    }));
+
     new Role(this, 'TestLambdaExecutionRole', {
       assumedBy: new ServicePrincipal("lambda.amazonaws.com"),
       roleName: testLambdaRole,
