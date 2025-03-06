@@ -7,6 +7,7 @@ const {
   isStackCreatedEvent,
   isScheduledInvocationEvent,
   getFunctionFromLambdaEvent,
+  isInstrumenterUpdateEvent,
 } = require("./lambda-event");
 const {
   deleteError,
@@ -35,6 +36,7 @@ const {
   INSTRUMENT,
   SKIPPED,
 } = require("./consts");
+const { updateInstrumenterDDTags } = require("./instrumenter-self-update");
 
 const awsRegion = process.env.AWS_REGION;
 const lambdaClient = getLambdaClient();
@@ -50,8 +52,13 @@ exports.handler = async (event, context) => {
     uninstrument: { succeeded: {}, failed: {}, skipped: {} },
   };
 
+  // If the instrumenter lambda was updated, ensure its DD_TAGS are set correctly
+  if (isInstrumenterUpdateEvent(event)) {
+    await updateInstrumenterDDTags(lambdaClient);
+    return;
+  }
   // If it's a stack event, send a response to CloudFormation for custom resource management
-  if (isStackCreatedEvent(event)) {
+  else if (isStackCreatedEvent(event)) {
     try {
       const configs = await getConfigs(s3Client, context);
       const allFunctions = await getAllFunctions(lambdaClient);

@@ -134,6 +134,7 @@ Resources:
           DD_REMOTE_CONFIGURATION_ENABLED: true
           DD_APM_ENABLED: true
           DD_EXTENSION_VERSION: compatibility
+          DD_TAGS: !Join ["", ["instrumenter_layer_version:", !FindInMap [ Constants, DdRemoteInstrumentLayerVersion, Version ]] ]
       Tags:
         - Key: "dd_serverless_service"
           Value: "remote_instrumenter"

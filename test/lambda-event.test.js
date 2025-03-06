@@ -8,6 +8,7 @@ const {
   isTagResourceEvent,
   isUntagResourceEvent,
   shouldSkipEvent,
+  isInstrumenterUpdateEvent,
 } = require("../src/lambda-event");
 
 describe("isScheduledInvocationEvent", () => {
@@ -176,6 +177,44 @@ describe("isUntagResourceEvent", () => {
       },
     };
     expect(isUntagResourceEvent(event)).toBe(false);
+  });
+});
+
+describe("isInstrumenterUpdateEvent", () => {
+  it("should return true if the event is an update function configuration event for the remote instrumenter", () => {
+    const event = {
+      detail: {
+        eventName: "UpdateFunctionConfiguration20150331v2",
+        requestParameters: {
+          functionName: "instrumenter-function-name",
+        },
+      },
+    };
+    process.env.AWS_LAMBDA_FUNCTION_NAME = "instrumenter-function-name";
+    expect(isInstrumenterUpdateEvent(event)).toBe(true);
+  });
+  it("should return false if the event is not an update function configuration event", () => {
+    const event = {
+      detail: {
+        eventName: "UntagResource20170331v2",
+        requestParameters: {
+          functionName: "instrumenter-function-name",
+        },
+      },
+    };
+    expect(isInstrumenterUpdateEvent(event)).toBe(false);
+  });
+  it("should return false if the event is not for the remote instrumenter", () => {
+    const event = {
+      detail: {
+        eventName: "UpdateFunctionConfiguration20150331v2",
+        requestParameters: {
+          functionName: "some-other-function",
+        },
+      },
+    };
+    process.env.AWS_LAMBDA_FUNCTION_NAME = "instrumenter-function-name";
+    expect(isInstrumenterUpdateEvent(event)).toBe(false);
   });
 });
 
