@@ -1,0 +1,126 @@
+variables:
+  DOCKER_TARGET_IMAGE: registry.ddbuild.io/ci/serverless-remote-instrumentation
+  DOCKER_TARGET_VERSION: latest
+  SELF_MONITORING: true
+  RUNNING_IN_GITHUB_ACTION: true
+
+stages:
+  - build
+  - sandbox
+  - testing
+  - release
+
+ci_image:
+  stage: build
+  image: registry.ddbuild.io/images/docker:20.10
+  tags: ["arch:arm64"]
+  resource_group: pipeline
+  needs: []
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"'
+      changes:
+        - .gitlab/Dockerfile
+      when: on_success
+  when: manual
+  variables:
+    DOCKER_TARGET: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
+  script:
+    - docker buildx build --platform linux/amd64,linux/arm64 --no-cache --pull --push --tag ${DOCKER_TARGET} -f .gitlab/Dockerfile .
+
+deploy_self_monitoring:
+  stage: sandbox
+  image: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
+  allow_failure: false
+  tags: ["arch:arm64"]
+  resource_group: pipeline
+  needs: []
+  when: manual
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"'
+      when: on_success
+  variables:
+    ACCOUNT: sandbox
+  before_script:
+    - ls -a
+    - EXTERNAL_ID_NAME=sandbox-publish-externalid ROLE_TO_ASSUME=sandbox-layer-deployer AWS_ACCOUNT=425362996713 source .gitlab/scripts/get_secrets.sh
+  script:
+    - echo "ABCD"
+    - yarn integ-test-setup
+
+publish_sandbox:
+  stage: sandbox
+  image: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
+  allow_failure: false
+  tags: ["arch:arm64"]
+  needs: []
+  when: manual
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"'
+      when: on_success
+  variables:
+    ACCOUNT: sandbox
+  before_script:
+    - EXTERNAL_ID_NAME=sandbox-publish-externalid ROLE_TO_ASSUME=sandbox-layer-deployer AWS_ACCOUNT=425362996713 source .gitlab/scripts/get_secrets.sh
+  script:
+    - echo "This will write the template and layer to the sandbox account"
+
+integration_tests:
+  stage: testing
+  image: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
+  allow_failure: false
+  tags: ["arch:arm64"]
+  resource_group: pipeline
+  needs: [deploy_self_monitoring, publish_sandbox]
+  when: manual
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"'
+      when: on_success
+  variables:
+    ACCOUNT: sandbox
+  before_script:
+    - EXTERNAL_ID_NAME=sandbox-publish-externalid ROLE_TO_ASSUME=sandbox-layer-deployer AWS_ACCOUNT=425362996713 source .gitlab/scripts/get_secrets.sh
+  script:
+    - yarn install
+    - node -e "require('./scripts/test_setup').generateTestConfig()"
+    - yarn integ
+
+metrics_validation:
+  stage: testing
+  image: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
+  allow_failure: false
+  tags: ["arch:arm64"]
+  resource_group: pipeline
+  needs: [integration_tests]
+  when: manual
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"'
+      when: on_success
+  variables:
+    ACCOUNT: sandbox
+  before_script:
+    - EXTERNAL_ID_NAME=sandbox-publish-externalid ROLE_TO_ASSUME=sandbox-layer-deployer AWS_ACCOUNT=425362996713 source .gitlab/scripts/get_secrets.sh
+  script:
+    - echo "This doesn't exist yet, but we should be calling datadog to get metrics for things like:"
+    - echo "There are no lambda errors"
+    - echo "The duration of the function is reasonable"
+    - echo "Other custom metrics we emit are being emitted at the values we expect"
+
+publish_prod:
+  stage: release
+  image: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
+  allow_failure: false
+  tags: ["arch:arm64"]
+  resource_group: pipeline
+  needs: [integration_tests, metrics_validation]
+  when: manual
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"'
+      when: on_success
+  variables:
+    ACCOUNT: sandbox
+  before_script:
+    - echo "This is where we'll get the prod secrets"
+  script:
+    - echo "This isn't done yet, but you can see where it will be!"
+    - echo "This also will need some way to identify the version changing and only run on releases"
+
