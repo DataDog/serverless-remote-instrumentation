@@ -43,7 +43,7 @@ exports.REMOTE_INSTRUMENTER_FUNCTION = "remote-instrumenter-function";
 exports.FUNCTION_NOT_FOUND = "function-not-found";
 
 // Remote instrumentation tag values
-exports.VERSION = "1.0.0";
+exports.VERSION = process.env.DD_INSTRUMENTER_VERSION;
 exports.DD_SLS_REMOTE_INSTRUMENTER_VERSION =
   "dd_sls_remote_instrumenter_version";
 exports.DD_API_KEY = "DD_API_KEY";

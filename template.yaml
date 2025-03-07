@@ -135,6 +135,7 @@ Resources:
           DD_APM_ENABLED: true
           DD_EXTENSION_VERSION: compatibility
           DD_TAGS: !Join ["", ["template_version:", !FindInMap [ Constants, DdRemoteInstrumentApp, Version ]] ]
+          DD_INSTRUMENTER_VERSION: !FindInMap [ Constants, DdRemoteInstrumentApp, Version ]
       Tags:
         - Key: "dd_serverless_service"
           Value: "remote_instrumenter"
