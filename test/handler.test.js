@@ -4,7 +4,6 @@ const config = require("../src/config");
 const lambdaEvent = require("../src/lambda-event");
 const instrument = require("../src/instrument");
 const errorStorage = require("../src/error-storage");
-const instrumentSelfUpdate = require("../src/instrumenter-self-update");
 const { LAMBDA_EVENT } = require("../src/consts");
 const cfnResponse = require("cfn-response");
 
@@ -13,32 +12,7 @@ jest.mock("../src/config");
 jest.mock("../src/functions");
 jest.mock("../src/instrument");
 jest.mock("../src/error-storage");
-jest.mock("../src/instrumenter-self-update");
 jest.mock("cfn-response");
-
-describe("instrumenter update events", () => {
-  beforeEach(() => {
-    jest.resetAllMocks();
-  });
-  test("Updates instrumenter DD_TAGS", async () => {
-    const event = {
-      detail: {
-        eventName: "UpdateFunctionConfiguration20150331v2",
-        requestParameters: {
-          functionName: "instrumenter-function-name",
-        },
-      },
-    };
-    process.env.AWS_LAMBDA_FUNCTION_NAME = "instrumenter-function-name";
-    const context = "context";
-    lambdaEvent.isInstrumenterUpdateEvent.mockReturnValue(true);
-    await handler.handler(event, context);
-
-    expect(instrumentSelfUpdate.updateInstrumenterDDTags).toHaveBeenCalledWith(
-      expect.anything(),
-    );
-  });
-});
 
 describe("handler lambda management events", () => {
   beforeEach(() => {

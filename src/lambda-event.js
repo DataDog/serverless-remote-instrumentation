@@ -69,15 +69,6 @@ function isUntagResourceEvent(event) {
 }
 exports.isUntagResourceEvent = isUntagResourceEvent;
 
-function isInstrumenterUpdateEvent(event) {
-  return (
-    event.detail?.requestParameters?.functionName ===
-      process.env.AWS_LAMBDA_FUNCTION_NAME &&
-    event.detail?.eventName === UPDATE_FUNCTION_CONFIGURATION_EVENT_NAME
-  );
-}
-exports.isInstrumenterUpdateEvent = isInstrumenterUpdateEvent;
-
 function shouldSkipEvent(event) {
   // Skip any events for the remote instrumenter itself
   const instrumenterFunctionName = process.env.AWS_LAMBDA_FUNCTION_NAME;
