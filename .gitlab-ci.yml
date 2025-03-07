@@ -32,7 +32,7 @@ ci image:
   script:
     - docker buildx build --platform linux/amd64,linux/arm64 --no-cache --pull --push --tag ${DOCKER_TARGET} -f .gitlab/Dockerfile .
 
-deploy self monitoring:
+deploy self monitoring apps:
   stage: deploy
   image: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
   allow_failure: false
