@@ -4,13 +4,18 @@ variables:
   SELF_MONITORING: true
   RUNNING_IN_GITHUB_ACTION: true
 
+.defined_rules:
+  merge_into_main:
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"'
+      when: on_success
+
 stages:
   - build
-  - sandbox
-  - testing
-  - release
+  - deploy
+  - test
+  - publish
 
-ci_image:
+ci image:
   stage: build
   image: registry.ddbuild.io/images/docker:20.10
   tags: ["arch:arm64"]
@@ -27,8 +32,8 @@ ci_image:
   script:
     - docker buildx build --platform linux/amd64,linux/arm64 --no-cache --pull --push --tag ${DOCKER_TARGET} -f .gitlab/Dockerfile .
 
-deploy_self_monitoring:
-  stage: sandbox
+deploy self monitoring:
+  stage: deploy
   image: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
   allow_failure: false
   tags: ["arch:arm64"]
@@ -36,45 +41,24 @@ deploy_self_monitoring:
   needs: []
   when: manual
   rules:
-    - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"'
-      when: on_success
+    - !reference [.defined_rules, merge_into_main]
   variables:
     ACCOUNT: sandbox
   before_script:
-    - ls -a
     - EXTERNAL_ID_NAME=sandbox-publish-externalid ROLE_TO_ASSUME=sandbox-layer-deployer AWS_ACCOUNT=425362996713 source .gitlab/scripts/get_secrets.sh
   script:
-    - echo "ABCD"
     - yarn integ-test-setup
 
-publish_sandbox:
-  stage: sandbox
-  image: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
-  allow_failure: false
-  tags: ["arch:arm64"]
-  needs: []
-  when: manual
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"'
-      when: on_success
-  variables:
-    ACCOUNT: sandbox
-  before_script:
-    - EXTERNAL_ID_NAME=sandbox-publish-externalid ROLE_TO_ASSUME=sandbox-layer-deployer AWS_ACCOUNT=425362996713 source .gitlab/scripts/get_secrets.sh
-  script:
-    - echo "This will write the template and layer to the sandbox account"
-
-integration_tests:
-  stage: testing
+integration tests:
+  stage: test
   image: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
   allow_failure: false
   tags: ["arch:arm64"]
   resource_group: pipeline
-  needs: [deploy_self_monitoring, publish_sandbox]
+  needs: [deploy self monitoring]
   when: manual
   rules:
-    - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"'
-      when: on_success
+    - !reference [.defined_rules, merge_into_main]
   variables:
     ACCOUNT: sandbox
   before_script:
@@ -84,17 +68,16 @@ integration_tests:
     - node -e "require('./scripts/test_setup').generateTestConfig()"
     - yarn integ
 
-metrics_validation:
-  stage: testing
+metrics validation:
+  stage: test
   image: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
   allow_failure: false
   tags: ["arch:arm64"]
   resource_group: pipeline
-  needs: [integration_tests]
+  needs: [integration tests]
   when: manual
   rules:
-    - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"'
-      when: on_success
+    - !reference [.defined_rules, merge_into_main]
   variables:
     ACCOUNT: sandbox
   before_script:
@@ -105,22 +88,36 @@ metrics_validation:
     - echo "The duration of the function is reasonable"
     - echo "Other custom metrics we emit are being emitted at the values we expect"
 
-publish_prod:
-  stage: release
+publish (sandbox):
+  stage: publish
+  image: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
+  allow_failure: false
+  tags: ["arch:arm64"]
+  needs: [metrics validation]
+  when: manual
+  rules:
+    - !reference [.defined_rules, merge_into_main]
+  variables:
+    ACCOUNT: sandbox
+  before_script:
+    - EXTERNAL_ID_NAME=sandbox-publish-externalid ROLE_TO_ASSUME=sandbox-layer-deployer AWS_ACCOUNT=425362996713 source .gitlab/scripts/get_secrets.sh
+  script:
+    - echo "This will write the template and layer to the sandbox account"
+
+publish (prod):
+  stage: publish
   image: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
   allow_failure: false
   tags: ["arch:arm64"]
   resource_group: pipeline
-  needs: [integration_tests, metrics_validation]
+  needs: [publish (sandbox)]
   when: manual
   rules:
-    - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"'
-      when: on_success
+    - !reference [.defined_rules, merge_into_main]
   variables:
-    ACCOUNT: sandbox
+    ACCOUNT: prod
   before_script:
     - echo "This is where we'll get the prod secrets"
   script:
     - echo "This isn't done yet, but you can see where it will be!"
     - echo "This also will need some way to identify the version changing and only run on releases"
-
