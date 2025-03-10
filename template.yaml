@@ -4,8 +4,8 @@ Description: Datadog Lambda Remote Instrumentation App
 
 Mappings:
   Constants:
-    DatadogRemoteInstrumentDemoApp:
-      Version: 0.3.3
+    DdRemoteInstrumentApp:
+      Version: 1.0.0
     DdRemoteInstrumentLayerAwsAccount:
       Number: 464622532012
     DdRemoteInstrumentLayerVersion:
@@ -134,6 +134,8 @@ Resources:
           DD_REMOTE_CONFIGURATION_ENABLED: true
           DD_APM_ENABLED: true
           DD_EXTENSION_VERSION: compatibility
+          DD_TAGS: !Join ["", ["template_version:", !FindInMap [ Constants, DdRemoteInstrumentApp, Version ]] ]
+          DD_INSTRUMENTER_VERSION: !FindInMap [ Constants, DdRemoteInstrumentApp, Version ]
       Tags:
         - Key: "dd_serverless_service"
           Value: "remote_instrumenter"
