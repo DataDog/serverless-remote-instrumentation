@@ -77,10 +77,22 @@ class Logger {
 
   redact(log) {
     return log
-      .replace(/"DD_API_KEY":.*,/, `"DD_API_KEY":"****",`)
-      .replace(/"AWS_ACCESS_KEY_ID":.*,/, `"AWS_ACCESS_KEY_ID":"****",`)
-      .replace(/"AWS_SECRET_ACCESS_KEY":.*,/, `"AWS_SECRET_ACCESS_KEY":"****",`)
-      .replace(/"AWS_SESSION_TOKEN":.*,/, `"AWS_SESSION_TOKEN":"****",`);
+      .replace(
+        /"?(DD|DATADOG)_?API_?KEY.*[0-9a-fA-F]{32}"?/i,
+        `"DD_API_KEY":"****"`,
+      )
+      .replace(
+        /"?((AWS)?_?ACCESS_?KEY(_ID)?).*[a-zA-Z0-9]{20}"?/i,
+        `"AWS_ACCESS_KEY_ID":"****"`,
+      )
+      .replace(
+        /"?(AWS_?SECRET_?ACCESS_?KEY|AWS|AMAZON)"?.{0,19}"?[-A-Za-z0-9+/=]{40}"?/i,
+        `"AWS_SECRET_ACCESS_KEY":"****"`,
+      )
+      .replace(
+        /"?AWS_?SESSION_?TOKEN(.+?)\b(.+?)\b"?/i,
+        `"AWS_SESSION_TOKEN":"****"`,
+      );
   }
 }
 exports.logger = new Logger();
