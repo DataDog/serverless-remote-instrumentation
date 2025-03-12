@@ -86,13 +86,10 @@ class Logger {
         `"AWS_ACCESS_KEY_ID":"****"`,
       )
       .replace(
-        /"?(AWS_?SECRET_?ACCESS_?KEY|AWS|AMAZON)"?.{0,19}"?[-A-Za-z0-9+/=]{40}"?/i,
+        /"?(AWS_?SECRET_?ACCESS_?KEY|AMAZON)"?.{0,19}"?[-A-Za-z0-9+/=]{40}"?/i,
         `"AWS_SECRET_ACCESS_KEY":"****"`,
       )
-      .replace(
-        /"?AWS_?SESSION_?TOKEN(.+?)\b(.+?)\b"?/i,
-        `"AWS_SESSION_TOKEN":"****"`,
-      );
+      .replace(/"?AWS_?SESSION_?TOKEN.*,"?/i, `"AWS_SESSION_TOKEN":"****",`);
   }
 }
 exports.logger = new Logger();
