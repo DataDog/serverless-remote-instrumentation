@@ -204,7 +204,7 @@ async function getConfigsFromRC(s3Client, accountID, region) {
       configs = getConfigsFromResponse(response);
     })
     .catch(function handleError(error) {
-      logger.log(error);
+      logger.error(error);
       throw new Error("Failed to retrieve configs");
     });
   return configs;
@@ -278,7 +278,15 @@ async function getConfigs(s3Client, context) {
     config.instrumenterFunctionName = instrumenterFunctionName;
     config.minimumMemorySize = minimumMemorySize;
   }
-  logger.logObject({ ...configsFromRC, ...{ eventName: "getConfigs" } });
+  logger.logObject({
+    ...configsFromRC.map((config) => {
+      return {
+        configID: config.configID,
+        rcConfigVersion: config.rcConfigVersion,
+      };
+    }),
+    eventName: "getConfigs",
+  });
   return configsFromRC;
 }
 exports.getConfigs = getConfigs;

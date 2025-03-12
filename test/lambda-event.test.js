@@ -8,6 +8,7 @@ const {
   isTagResourceEvent,
   isUntagResourceEvent,
   shouldSkipEvent,
+  selectEventFieldsForLogging,
 } = require("../src/lambda-event");
 
 describe("isScheduledInvocationEvent", () => {
@@ -264,5 +265,35 @@ describe("shouldSkipEvent", () => {
     };
     process.env.AWS_LAMBDA_FUNCTION_NAME = "instrumenter-function-name";
     expect(shouldSkipEvent(event)).toBe(false);
+  });
+});
+
+describe("selectEventFieldsForLogging", () => {
+  it("should include only selected fields", () => {
+    const event = {
+      source: "aws.lambda",
+      detail: {
+        requestParameters: {
+          functionName: "test-function-name",
+          tags: { foo: "bar" },
+        },
+        eventName: "UpdateFunctionConfiguration20150331v2",
+        userIdentity: {
+          principalId: "CanonicalID:something-else",
+        },
+        otherField: "some-value",
+      },
+    };
+    const expected = {
+      eventName: "UpdateFunctionConfiguration20150331v2",
+      requestType: undefined,
+      source: "aws.lambda",
+      detailType: undefined,
+      functionName: "test-function-name",
+      errorCode: undefined,
+      userIdentity: undefined,
+      tags: { foo: "bar" },
+    };
+    expect(selectEventFieldsForLogging(event)).toStrictEqual(expected);
   });
 });

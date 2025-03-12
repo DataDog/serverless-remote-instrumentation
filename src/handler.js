@@ -7,6 +7,7 @@ const {
   isStackCreatedEvent,
   isScheduledInvocationEvent,
   getFunctionFromLambdaEvent,
+  selectEventFieldsForLogging,
 } = require("./lambda-event");
 const {
   deleteError,
@@ -44,7 +45,7 @@ const taggingClient = new ResourceGroupsTaggingAPIClient({
 const s3Client = new S3Client({ region: awsRegion });
 
 exports.handler = async (event, context) => {
-  logger.logObject(event);
+  logger.logObject(selectEventFieldsForLogging(event));
   const instrumentOutcome = {
     instrument: { succeeded: {}, failed: {}, skipped: {} },
     uninstrument: { succeeded: {}, failed: {}, skipped: {} },
@@ -68,7 +69,7 @@ exports.handler = async (event, context) => {
         CLOUDFORMATION_CREATE_EVENT,
       );
     } catch (e) {
-      logger.log(e);
+      logger.error(e);
     }
     // Any failure should be and we should still send a CFN SUCCESS response since failing stack
     // creation will be painful for a user, and the functions that didn't succeed will be retried
