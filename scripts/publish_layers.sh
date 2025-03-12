@@ -72,14 +72,6 @@ ARCHITECTURE_MESSAGE="arm64 only"
 #else
 #    ARCHITECTURE_MESSAGE="both architectures"
 #fi
-if [ "$APPROVE" != "y" ]; then
-  read -p "Ready to publish Remote Instrumentation version $VERSION (for $ARCHITECTURE_MESSAGE) to regions ${REGIONS[*]} (y/n)?" CONT
-
-  if [ "$CONT" != "y" ]; then
-      echo "Exiting"
-      exit 1
-  fi
-fi
 
 echo $VERSION &> ".layers/version"
 
@@ -124,11 +116,7 @@ do
             echo "Layer $layer_name  version $VERSION already exists in region $region, skipping..."
             continue
         elif [ $latest_version -lt $((VERSION-1)) ]; then
-            read -p "WARNING: The latest version of layer $layer_name in region $region is $latest_version, publish all the missing versions including $VERSION or EXIT the script (y/n)?" CONT
-            if [ "$CONT" != "y" ]; then
-                echo "Exiting"
-                exit 1
-            fi
+            echo "WARNING: The latest version of layer $layer_name in region $region is $latest_version, publishing all the missing versions including $VERSION"
         fi
         index=$(index_of_layer $layer_name)
         layer_path="${LAYER_PATHS[$index]}"

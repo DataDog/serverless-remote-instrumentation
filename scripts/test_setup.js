@@ -1,14 +1,23 @@
 const { execSync } = require("child_process");
 const { existsSync, readFileSync, writeFileSync } = require("fs");
+const { yamlParse } = require("yaml-cfn");
 
 const generateTestConfig = () => {
   const configPath = "integration-tests/config.json";
+  const template = yamlParse(
+    readFileSync("template.yaml", { encoding: "utf8", flag: "r" }),
+  );
+  const version = template.Mappings.Constants.DdRemoteInstrumentApp.Version;
   let config;
 
   if (existsSync(configPath)) {
     config = JSON.parse(
       readFileSync(configPath, { encoding: "utf8", flag: "r" }).trim(),
     );
+    if (config.version !== version) {
+      config.version = version;
+      writeFileSync(configPath, JSON.stringify(config, null, 2));
+    }
   } else {
     let namingSeed = "";
     let region = "eu-north-1";
@@ -40,6 +49,7 @@ const generateTestConfig = () => {
       trailName: `datadog-serverless-instrumentation-trail-testing-${namingSeed}`,
       namingSeed,
       ddSite: "datad0g.com",
+      version,
     };
 
     // There is a 64 character limit for a lot of resources

@@ -5,11 +5,12 @@ Description: Datadog Lambda Remote Instrumentation App
 Mappings:
   Constants:
     DdRemoteInstrumentApp:
-      Version: 1.0.0
+      Version: 0.3.4
     DdRemoteInstrumentLayerAwsAccount:
       Number: 464622532012
     DdRemoteInstrumentLayerVersion:
-      Version: 4
+      # eslint-disable-next-line
+      Version: {CURRENT_LAYER_VERSION}
     DdCIBypassSiteValidation:
       Bypass: false
 
@@ -256,21 +257,21 @@ Resources:
     DeletionPolicy: Delete
     Properties:
       BucketName: !If 
-        - HasBucketName 
+        - HasBucketName
         - !Ref BucketName 
         - !Join
           - '-'
           - - !Ref BucketPrefix
-          - 'bucket'
-          - !Select
-            - 0
-            - !Split
-              - '-'
-              - !Select
-                - 2
-                - !Split
-                  - /
-                  - !Ref AWS::StackId
+            - 'bucket'
+            - !Select
+              - 0
+              - !Split
+                - '-'
+                - !Select
+                  - 2
+                  - !Split
+                    - /
+                    - !Ref AWS::StackId
 
   S3BucketPolicy:
     Type: AWS::S3::BucketPolicy

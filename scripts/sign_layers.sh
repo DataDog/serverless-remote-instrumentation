@@ -17,19 +17,19 @@ SIGNING_PROFILE_NAME="DatadogLambdaSigningProfile"
 
 # Check account parameter
 VALID_ACCOUNTS=("sandbox" "prod")
-if [ -z "$1" ]; then
+if [ -z $ACCOUNT ]; then
     echo "ERROR: You must pass an account parameter to sign the layers"
     exit 1
 fi
-if [[ ! "${VALID_ACCOUNTS[@]}" =~ $1 ]]; then
+if [[ ! "${VALID_ACCOUNTS[@]}" =~ $ACCOUNT ]]; then
     echo "ERROR: The account parameter was invalid. Please choose sandbox or prod."
     exit 1
 fi
-if [ "$1" = "sandbox" ]; then
+if [ $ACCOUNT = "sandbox" ]; then
     REGION="sa-east-1"
-    S3_BUCKET_NAME="dd-lambda-signing-bucket-sandbox"
+    S3_BUCKET_NAME="dd-lambda-signing-bucket-serverless-sandbox"
 fi
-if [ "$1" = "prod" ]; then
+if [ $ACCOUNT = "prod" ]; then
     REGION="us-east-1"
     S3_BUCKET_NAME="dd-lambda-signing-bucket"
 fi
