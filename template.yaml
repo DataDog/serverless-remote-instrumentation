@@ -55,24 +55,24 @@ Parameters:
     Type: String
     Default: datadoghq.com
     Description: >-
-      Possible values are `datadoghq.com`, `datadoghq.eu`, `us3.datadoghq.com`, `us5.datadoghq.com`, `ap1.datadoghq.com`.
+      The Datadog site where data will be sent. Possible values are `datadoghq.com`, `datadoghq.eu`, `us3.datadoghq.com`, `us5.datadoghq.com`, `ap1.datadoghq.com`.
     AllowedPattern: .+
     ConstraintDescription: DdSite is required
   InstrumenterFunctionName:
     Type: String
     Default: datadog-remote-instrumenter
     Description: >-
-      Define the Lambda function name which is instrumenting the other Lambda functions.
-  BucketPrefix:
-    Type: String
-    Default: datadog-remote-instrument
-    Description: >-
-      Since S3 buckets are globally unique across AWS regions, please update the name of the bucket that is used to store CloudTrail management event. And the bucket name should not contain upper case.
+      The name of the Lambda function that will instrument other Lambda functions.
   BucketName:
     Type: String
     Default: ""
     Description: >-
-      S3 buckets are globally unique across AWS regions, provide either a BucketName to specifiy a name to use or a BucketPrefix and the name will be generated based on the prefix
+      The name of the remote instrumenter bucket. If not provided, the bucket name will be generated based on the BucketPrefix.
+  BucketPrefix:
+    Type: String
+    Default: datadog-remote-instrument
+    Description: >-
+      A prefix to use for the name of the remote instrumenter bucket. The bucket name will be generated based on this prefix.
   TrailName:
     Type: String
     Default: datadog-serverless-instrumentation-trail
@@ -85,7 +85,7 @@ Parameters:
     Type: String
     Default: 'dev'
     Description: >-
-      DD_ENV value for the remote instrumenter Lambda function
+      The DD_ENV value for the remote instrumenter Lambda function
 
 Resources:
   CloudFormationLifeCycle:
@@ -342,8 +342,6 @@ Resources:
         detail-type:
           - CloudFormation Stack Status Change
         resources:
-          # - wildcard: !Sub "arn:aws:cloudformation:*:*:stack/${StackName}*/*"  -> does not work
-          # Hardcoded stack name so the customer cannot change their stack name until RC integration is released
           - wildcard: arn:aws:cloudformation:*:*:stack/datadog-remote-instrument*/*
         detail:
           status-details:
