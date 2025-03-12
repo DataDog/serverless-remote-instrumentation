@@ -76,7 +76,20 @@ class Logger {
   }
 
   redact(log) {
-    return log.replace(/"DD_API_KEY":.*,/, `"DD_API_KEY":"****",`);
+    return log
+      .replace(
+        /"?(DD|DATADOG)_?API_?KEY.*[0-9a-fA-F]{32}"?/i,
+        `"DD_API_KEY":"****"`,
+      )
+      .replace(
+        /"?((AWS)?_?ACCESS_?KEY(_ID)?).*[a-zA-Z0-9]{20}"?/i,
+        `"AWS_ACCESS_KEY_ID":"****"`,
+      )
+      .replace(
+        /"?(AWS_?SECRET_?ACCESS_?KEY|AMAZON)"?.{0,19}"?[-A-Za-z0-9+/=]{40}"?/i,
+        `"AWS_SECRET_ACCESS_KEY":"****"`,
+      )
+      .replace(/"?AWS_?SESSION_?TOKEN.*,"?/i, `"AWS_SESSION_TOKEN":"****",`);
   }
 }
 exports.logger = new Logger();
