@@ -285,7 +285,7 @@ async function getConfigs(s3Client, context) {
         rcConfigVersion: config.rcConfigVersion,
       };
     }),
-    ...{ eventName: "getConfigs" },
+    eventName: "getConfigs",
   });
   return configsFromRC;
 }
