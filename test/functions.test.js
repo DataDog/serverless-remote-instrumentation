@@ -7,6 +7,7 @@ const {
   filterFunctionsToChangeInstrumentation,
   isInstrumented,
   waitUntilFunctionIsActive,
+  selectFunctionFieldsForLogging,
 } = require("../src/functions");
 const {
   DD_SLS_REMOTE_INSTRUMENTER_VERSION,
@@ -50,6 +51,7 @@ function createTestLambdaFunction({
   tags,
   layers,
   envVars,
+  extraFields,
 }) {
   return {
     FunctionName: functionName,
@@ -61,6 +63,7 @@ function createTestLambdaFunction({
     Environment: {
       Variables: envVars,
     },
+    ...extraFields,
   };
 }
 describe("satisfiesTargetingRules", () => {
@@ -1146,5 +1149,33 @@ describe("waitUntilFunctionIsActive", () => {
     const res = await waitUntilFunctionIsActive();
     expect(res).toStrictEqual(false);
     expect(sleep.sleep).toHaveBeenCalledTimes(10);
+  });
+});
+
+describe("selectFunctionFieldsForLogging", () => {
+  test("should include only selected fields", () => {
+    const lambdaFunc = createTestLambdaFunction({
+      functionName: "functionA",
+      functionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionA",
+      memorySize: 512,
+      runtime: "go1.x",
+      tags: new Set(["foo:bar"]),
+      layers: [],
+      extraFields: {
+        Description: "This is a test function",
+        Role: "arn:aws:iam::123456789012:role/lambda-role",
+      },
+    });
+    const lambdaFuncWithSelectedFields =
+      selectFunctionFieldsForLogging(lambdaFunc);
+    expect(lambdaFuncWithSelectedFields).toStrictEqual({
+      FunctionName: "functionA",
+      FunctionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionA",
+      MemorySize: 512,
+      Runtime: "go1.x",
+      Architectures: undefined,
+      Tags: Array.from(lambdaFunc.Tags),
+      Layers: lambdaFunc.Layers,
+    });
   });
 });

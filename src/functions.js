@@ -81,12 +81,12 @@ async function getAllFunctions(client) {
       allFunctions.push(...listFunctionsCommandOutput.Functions);
       nextMarker = listFunctionsCommandOutput.NextMarker;
     } catch (error) {
-      logger.log(`Error retrieving functions: ${error}`);
+      logger.error(`Error retrieving functions: ${error}`);
       throw error;
     }
   }
   logger.log(
-    `Retrieved all lambda functions in the account: ${JSON.stringify(allFunctions)}`,
+    `Retrieved all lambda functions in the account: ${JSON.stringify(allFunctions.map((f) => selectFunctionFieldsForLogging(f)))}`,
   );
   return allFunctions;
 }
@@ -138,7 +138,9 @@ async function enrichFunctionsWithTags(client, functions) {
     enrichedFunctions.push(lambdaFunc);
   }
   logger.log(
-    `Enriched the following functions with tags: '${JSON.stringify(enrichedFunctions)}'`,
+    `Enriched the following functions with tags: '${JSON.stringify(
+      enrichedFunctions.map((f) => selectFunctionFieldsForLogging(f)),
+    )}'`,
   );
   return enrichedFunctions;
 }
@@ -561,3 +563,16 @@ const waitUntilFunctionIsActive = async (functionName) => {
 };
 
 exports.waitUntilFunctionIsActive = waitUntilFunctionIsActive;
+
+function selectFunctionFieldsForLogging(lambdaFunction) {
+  return {
+    FunctionName: lambdaFunction.FunctionName,
+    FunctionArn: lambdaFunction.FunctionArn,
+    Tags: Array.from(lambdaFunction.Tags ?? {}),
+    Runtime: lambdaFunction.Runtime,
+    MemorySize: lambdaFunction.MemorySize,
+    Layers: lambdaFunction.Layers,
+    Architectures: lambdaFunction.Architectures,
+  };
+}
+exports.selectFunctionFieldsForLogging = selectFunctionFieldsForLogging;

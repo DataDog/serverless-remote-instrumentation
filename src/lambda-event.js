@@ -176,3 +176,19 @@ async function getFunctionFromLambdaEvent(lambdaClient, event) {
   }
 }
 exports.getFunctionFromLambdaEvent = getFunctionFromLambdaEvent;
+
+function selectEventFieldsForLogging(event) {
+  return {
+    eventName: event.detail?.eventName,
+    requestType: event.RequestType,
+    source: event.source,
+    detailType: event["detail-type"],
+    functionName:
+      event.detail?.requestParameters?.functionName ??
+      event.detail?.responseElements?.functionName,
+    errorCode: event.detail?.errorCode,
+    userIdentity: event.detail?.userIdentity?.arn,
+    tags: event.detail?.requestParameters?.tags,
+  };
+}
+exports.selectEventFieldsForLogging = selectEventFieldsForLogging;
