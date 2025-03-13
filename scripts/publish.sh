@@ -15,7 +15,7 @@ set -e
 
 # A region needs to be set to track versions, it should be
 # the same across all versions in prod so just pick one
-REGION="sa-east-1"
+REGION="us-east-1"
 ARCHITECTURE="arm64"
 TEMPLATE_VERSION=$(jq -r .version ./integration-tests/config.json)
 LAYER_NAME="Datadog-Serverless-Remote-Instrumentation-ARM"
