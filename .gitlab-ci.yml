@@ -6,7 +6,7 @@ variables:
 
 .defined_rules:
   merge_into_main:
-    - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"'
+    - if: '$CI_COMMIT_BRANCH == "prod" && $CI_PIPELINE_SOURCE == "push"'
       when: on_success
 
 stages:
