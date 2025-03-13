@@ -47,6 +47,7 @@ deploy self monitoring apps:
   before_script:
     - EXTERNAL_ID_NAME=sandbox-publish-externalid ROLE_TO_ASSUME=sandbox-layer-deployer AWS_ACCOUNT=425362996713 source .gitlab/scripts/get_secrets.sh
   script:
+    - yarn install
     - yarn integ-test-setup
 
 integration tests:
@@ -99,10 +100,14 @@ publish (sandbox):
     - !reference [.defined_rules, merge_into_main]
   variables:
     ACCOUNT: sandbox
+    BUCKET: datadog-cloudformation-template-serverless-sandbox
+    OBJECT_PREFIX: aws/remote-instrument-dev/
   before_script:
     - EXTERNAL_ID_NAME=sandbox-publish-externalid ROLE_TO_ASSUME=sandbox-layer-deployer AWS_ACCOUNT=425362996713 source .gitlab/scripts/get_secrets.sh
   script:
-    - echo "This will write the template and layer to the sandbox account"
+    - yarn install
+    - node -e "require('./scripts/test_setup').generateTestConfig()"
+    - bash scripts/publish.sh
 
 publish (prod):
   stage: publish
@@ -116,8 +121,11 @@ publish (prod):
     - !reference [.defined_rules, merge_into_main]
   variables:
     ACCOUNT: prod
+    BUCKET: datadog-cloudformation-template
+    OBJECT_PREFIX: aws/remote-instrument/
   before_script:
-    - echo "This is where we'll get the prod secrets"
+    - EXTERNAL_ID_NAME=prod-publish-externalid ROLE_TO_ASSUME=dd-serverless-layer-deployer-role AWS_ACCOUNT=464622532012 source .gitlab/scripts/get_secrets.sh
   script:
-    - echo "This isn't done yet, but you can see where it will be!"
-    - echo "This also will need some way to identify the version changing and only run on releases"
+    - yarn install
+    - node -e "require('./scripts/test_setup').generateTestConfig()"
+    - bash scripts/publish.sh
