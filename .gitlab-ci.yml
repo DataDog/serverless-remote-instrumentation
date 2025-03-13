@@ -5,7 +5,7 @@ variables:
   RUNNING_IN_GITHUB_ACTION: true
 
 .defined_rules:
-  merge_into_main:
+  merge_into_prod:
     - if: '$CI_COMMIT_BRANCH == "prod" && $CI_PIPELINE_SOURCE == "push"'
       when: on_success
 
@@ -41,7 +41,7 @@ deploy self monitoring apps:
   needs: []
   when: manual
   rules:
-    - !reference [.defined_rules, merge_into_main]
+    - !reference [.defined_rules, merge_into_prod]
   variables:
     ACCOUNT: sandbox
   before_script:
@@ -59,7 +59,7 @@ integration tests:
   needs: [deploy self monitoring apps]
   when: manual
   rules:
-    - !reference [.defined_rules, merge_into_main]
+    - !reference [.defined_rules, merge_into_prod]
   variables:
     ACCOUNT: sandbox
   before_script:
@@ -78,7 +78,7 @@ metrics validation:
   needs: [integration tests]
   when: manual
   rules:
-    - !reference [.defined_rules, merge_into_main]
+    - !reference [.defined_rules, merge_into_prod]
   variables:
     ACCOUNT: sandbox
   before_script:
@@ -97,7 +97,7 @@ publish (sandbox):
   needs: [metrics validation]
   when: manual
   rules:
-    - !reference [.defined_rules, merge_into_main]
+    - !reference [.defined_rules, merge_into_prod]
   variables:
     ACCOUNT: sandbox
     BUCKET: datadog-cloudformation-template-serverless-sandbox
@@ -118,7 +118,7 @@ publish (prod):
   needs: [publish (sandbox)]
   when: manual
   rules:
-    - !reference [.defined_rules, merge_into_main]
+    - !reference [.defined_rules, merge_into_prod]
   variables:
     ACCOUNT: prod
     BUCKET: datadog-cloudformation-template
