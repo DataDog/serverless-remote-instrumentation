@@ -56,10 +56,12 @@ integration tests:
   allow_failure: false
   tags: ["arch:arm64"]
   resource_group: pipeline
-  needs: [deploy self monitoring apps]
+  needs: []
   when: manual
   rules:
     - !reference [.defined_rules, merge_into_prod]
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $SCHEDULE_NAME == "self-monitoring"'
+      when: always
   variables:
     ACCOUNT: sandbox
   before_script:
