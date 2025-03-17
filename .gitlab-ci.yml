@@ -22,7 +22,7 @@ ci image:
   resource_group: pipeline
   needs: []
   rules:
-    - if: '$CI_COMMIT_BRANCH == "prod" && $CI_PIPELINE_SOURCE == "push"'
+    - if: '$CI_PIPELINE_SOURCE == "push"'
       changes:
         - .gitlab/Dockerfile
       when: on_success
