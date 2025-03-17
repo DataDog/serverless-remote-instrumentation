@@ -18,7 +18,7 @@ const metricThresholds: {
   comparison: "lessThan",
 }, {
   metricName: "aws.lambda.enhanced.duration",
-  threshold: 10, // seconds
+  threshold: 5, // seconds
   aggregator: "avg",
   comparison: "lessThan",
 }];
