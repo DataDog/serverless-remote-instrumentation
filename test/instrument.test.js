@@ -114,9 +114,6 @@ describe("instrumentFunctions", () => {
     send: jest.fn(),
   };
 
-  // Mock datadog-ci command
-  datadogCi.cli.run.mockReturnValue(0);
-
   // Mock creating apply state object
   const applyStateObject = {
     id: sampleRcConfigID,
@@ -128,6 +125,9 @@ describe("instrumentFunctions", () => {
   applyState.createApplyStateObject.mockReturnValue(applyStateObject);
 
   beforeEach(() => {
+    // Mock datadog-ci command
+    datadogCi.cli.run.mockReturnValue(0);
+
     jest.clearAllMocks();
   });
 
@@ -140,16 +140,19 @@ describe("instrumentFunctions", () => {
       mockClient,
     );
     expect(datadogCi.cli.run).toHaveBeenCalledTimes(1);
-    expect(datadogCi.cli.run).toHaveBeenCalledWith([
-      "lambda",
-      "instrument",
-      "-f",
-      functionFoo.FunctionArn,
-      "-v",
-      "20",
-      "-e",
-      "10",
-    ]);
+    expect(datadogCi.cli.run).toHaveBeenCalledWith(
+      [
+        "lambda",
+        "instrument",
+        "-f",
+        functionFoo.FunctionArn,
+        "-v",
+        "20",
+        "-e",
+        "10",
+      ],
+      expect.anything(),
+    );
     expect(tag.tagResourcesWithSlsTag).toHaveBeenCalledTimes(1);
     expect(tag.tagResourcesWithSlsTag).toHaveBeenCalledWith(mockClient, [
       functionFoo.FunctionArn,
@@ -164,14 +167,17 @@ describe("instrumentFunctions", () => {
       mockClient,
     );
     expect(datadogCi.cli.run).toHaveBeenCalledTimes(1);
-    expect(datadogCi.cli.run).toHaveBeenCalledWith([
-      "lambda",
-      "uninstrument",
-      "-f",
-      functionBar.FunctionArn,
-      "-r",
-      "us-east-2",
-    ]);
+    expect(datadogCi.cli.run).toHaveBeenCalledWith(
+      [
+        "lambda",
+        "uninstrument",
+        "-f",
+        functionBar.FunctionArn,
+        "-r",
+        "us-east-2",
+      ],
+      expect.anything(),
+    );
     expect(tag.untagResourcesOfSlsTag).toHaveBeenCalledTimes(1);
     expect(tag.untagResourcesOfSlsTag).toHaveBeenCalledWith(mockClient, [
       functionBar.FunctionArn,
@@ -187,14 +193,17 @@ describe("instrumentFunctions", () => {
       mockClient,
     );
     expect(datadogCi.cli.run).toHaveBeenCalledTimes(1);
-    expect(datadogCi.cli.run).toHaveBeenCalledWith([
-      "lambda",
-      "uninstrument",
-      "-f",
-      functionBar.FunctionArn,
-      "-r",
-      "us-east-2",
-    ]);
+    expect(datadogCi.cli.run).toHaveBeenCalledWith(
+      [
+        "lambda",
+        "uninstrument",
+        "-f",
+        functionBar.FunctionArn,
+        "-r",
+        "us-east-2",
+      ],
+      expect.anything(),
+    );
     expect(tag.untagResourcesOfSlsTag).toHaveBeenCalledTimes(1);
     expect(tag.untagResourcesOfSlsTag).toHaveBeenCalledWith(mockClient, [
       functionBar.FunctionArn,
@@ -226,6 +235,36 @@ describe("instrumentFunctions", () => {
     );
     expect(applyState.putApplyState).toHaveBeenCalledTimes(0);
   });
+  test("should track datadog-ci command errors", async () => {
+    datadogCi.cli.run.mockReturnValue(1);
+    await instrument.instrumentFunctions(
+      mockClient,
+      [rcConfig],
+      [functionFoo],
+      baseInstrumentOutcome,
+      mockClient,
+    );
+    expect(datadogCi.cli.run).toHaveBeenCalledTimes(1);
+    expect(datadogCi.cli.run).toHaveBeenCalledWith(
+      [
+        "lambda",
+        "instrument",
+        "-f",
+        functionFoo.FunctionArn,
+        "-v",
+        "20",
+        "-e",
+        "10",
+      ],
+      expect.anything(),
+    );
+    expect(baseInstrumentOutcome.instrument.failed).toEqual({
+      [functionFoo.FunctionName]: {
+        functionArn: functionFoo.FunctionArn,
+        reasonCode: "datadog-ci-error",
+      },
+    });
+  });
 });
 
 describe("removeRemoteInstrumentation", () => {
@@ -233,6 +272,7 @@ describe("removeRemoteInstrumentation", () => {
     send: jest.fn(),
   };
   beforeEach(() => {
+    datadogCi.cli.run.mockReturnValue(0);
     jest.clearAllMocks();
   });
   test("should uninstrument and untag remotely instrumented functions", async () => {
@@ -254,14 +294,17 @@ describe("removeRemoteInstrumentation", () => {
       mockClient,
     );
     expect(datadogCi.cli.run).toHaveBeenCalledTimes(1);
-    expect(datadogCi.cli.run).toHaveBeenCalledWith([
-      "lambda",
-      "uninstrument",
-      "-f",
-      functionBar.FunctionArn,
-      "-r",
-      "us-east-2",
-    ]);
+    expect(datadogCi.cli.run).toHaveBeenCalledWith(
+      [
+        "lambda",
+        "uninstrument",
+        "-f",
+        functionBar.FunctionArn,
+        "-r",
+        "us-east-2",
+      ],
+      expect.anything(),
+    );
     expect(tag.untagResourcesOfSlsTag).toHaveBeenCalledTimes(1);
     expect(tag.untagResourcesOfSlsTag).toHaveBeenCalledWith(mockClient, [
       functionBar.FunctionArn,

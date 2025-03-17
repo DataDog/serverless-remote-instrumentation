@@ -39,7 +39,12 @@ class Logger {
         ddSlsEventName,
         triggeredBy,
         outcome: instrumentOutcome,
-        config: configs,
+        config: configs.map((config) => {
+          return {
+            configID: config.configID,
+            rcConfigVersion: config.rcConfigVersion,
+          };
+        }),
       }),
     );
   }
