@@ -36,7 +36,6 @@ deploy self monitoring apps:
   stage: deploy
   image: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
   allow_failure: false
-  resource_group: pipeline
   needs: []
   rules:
     - !reference [.defined_rules, merge_into_prod]
