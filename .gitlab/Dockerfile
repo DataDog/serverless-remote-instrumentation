@@ -20,7 +20,8 @@ RUN unzip awscliv2.zip && ./aws/install
 # Install gh
 RUN type -p wget >/dev/null || (sudo apt update && sudo apt-get install wget -y)
 RUN sudo mkdir -p -m 755 /etc/apt/keyrings
-RUN out=$(mktemp) && wget -nv -O$out https://cli.github.com/packages/githubcli-archive-keyring.gpg
+RUN out=$(mktemp)
+RUN wget -nv -O$out https://cli.github.com/packages/githubcli-archive-keyring.gpg
 RUN cat $out | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null 
 RUN sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg 
 RUN echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null 
