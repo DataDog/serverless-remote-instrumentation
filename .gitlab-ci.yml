@@ -22,7 +22,7 @@ ci image:
   resource_group: pipeline
   needs: []
   rules:
-    - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"'
+    - if: '$CI_COMMIT_BRANCH == "prod" && $CI_PIPELINE_SOURCE == "push"'
       changes:
         - .gitlab/Dockerfile
       when: on_success
@@ -86,10 +86,9 @@ metrics validation:
   before_script:
     - EXTERNAL_ID_NAME=sandbox-publish-externalid ROLE_TO_ASSUME=sandbox-layer-deployer AWS_ACCOUNT=425362996713 source .gitlab/scripts/get_secrets.sh
   script:
-    - echo "This doesn't exist yet, but we should be calling datadog to get metrics for things like:"
-    - echo "There are no lambda errors"
-    - echo "The duration of the function is reasonable"
-    - echo "Other custom metrics we emit are being emitted at the values we expect"
+    - yarn install
+    - node -e "require('./scripts/test_setup').generateTestConfig()"
+    - yarn metrics-validations
 
 publish (sandbox):
   stage: publish
@@ -120,7 +119,8 @@ publish (prod):
   needs: [publish (sandbox)]
   when: manual
   rules:
-    - !reference [.defined_rules, merge_into_prod]
+    - if: '$CI_COMMIT_BRANCH == "prod" && $CI_PIPELINE_SOURCE == "push"'
+      when: on_success
   variables:
     ACCOUNT: prod
     BUCKET: datadog-cloudformation-template
