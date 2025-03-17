@@ -17,7 +17,7 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip" -o "awscliv
 RUN unzip awscliv2.zip && ./aws/install
 
 # Install gh
-RUN (type -p wget >/dev/null || (sudo apt update && sudo apt-get install wget -y))
+RUN type -p wget >/dev/null || (sudo apt update && sudo apt-get install wget -y)
 RUN sudo mkdir -p -m 755 /etc/apt/keyrings
 RUN out=$(mktemp) && wget -nv -O$out https://cli.github.com/packages/githubcli-archive-keyring.gpg
 RUN cat $out | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null 
