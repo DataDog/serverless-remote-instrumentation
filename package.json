@@ -40,6 +40,7 @@
     "lint": "eslint -c eslint.config.mjs . ",
     "lint-yaml": "eslint -c eslint.config.yaml.mjs . ",
     "format-yaml": "eslint --fix -c eslint.config.yaml.mjs . ",
+    "create-release": "bash scripts/create_release.sh $1",
     "test": "jest --config test/jest.config.js",
     "integ": "jest -i --config integration-tests/jest.config.js",
     "metrics-validations": "jest -i --config metrics-validations/jest.config.js",
