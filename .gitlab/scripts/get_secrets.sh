@@ -27,6 +27,10 @@ printf "Getting DD API KEY...\n"
 
 export DD_API_KEY=$(vault kv get -field=dd-api-key kv/k8s/gitlab-runner/serverless-remote-instrumentation/secrets)
 
+printf "Getting GitHub Token"
+
+export GITHUB_TOKEN=$(vault kv get -field=github-token kv/k8s/gitlab-runner/serverless-remote-instrumentation/secrets)
+
 printf "Assuming role...\n"
 
 export $(printf "AWS_ACCESS_KEY_ID=%s AWS_SECRET_ACCESS_KEY=%s AWS_SESSION_TOKEN=%s" \
