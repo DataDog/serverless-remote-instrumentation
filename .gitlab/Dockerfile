@@ -9,6 +9,7 @@ RUN mkdir -p /etc/apt/keyrings && curl -fsSL https://deb.nodesource.com/gpgkey/n
 RUN echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
 RUN apt-get update && apt-get install nodejs -y
 RUN apt-get install wget
+RUN apt-get install mktemp
 
 # Install Yarn and Typescript globally
 RUN npm install --global yarn typescript
