@@ -183,6 +183,29 @@ describe("Remote instrumenter scheduled event tests", () => {
     expect(isUninstrumented).toStrictEqual(true);
   });
 
+  it("adds an appropriate reason code when datadog-ci fails", async () => {
+    // Set the extension version to a version that doesn't exist
+    await setRemoteConfig({
+      extensionVersion: 100000000,
+    });
+    const { FunctionName: functionName } = await createFunction({
+      Tags: { foo: "bar" },
+    });
+
+    const res = await invokeLambdaWithScheduledEvent();
+    expect(Object.keys(res.instrument.failed)).toEqual(
+      expect.arrayContaining([functionName]),
+    );
+
+    expect(res.instrument.failed[functionName].reasonCode).toStrictEqual(
+      "datadog-ci-error",
+    );
+    expect(res.instrument.failed[functionName].reason).toBeDefined();
+
+    const isUninstrumented = await isFunctionUninstrumented(functionName);
+    expect(isUninstrumented).toStrictEqual(true);
+  });
+
   it("error for nonexistant function gets cleared and skipped", async () => {
     await putErrorObject(functionThatDoesntExist);
 
