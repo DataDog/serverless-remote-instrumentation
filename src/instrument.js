@@ -86,14 +86,15 @@ async function instrumentWithDatadogCi(
   logger.log(`Sending datadog-ci command: ${JSON.stringify(command)}`);
 
   let out = "";
-  const context = {
+  const commandExitCode = await cli.run(command, {
+    // Override stdout to capture the output of the command
     stdout: {
       write: (data) => {
         out += data;
       },
     },
-  };
-  const commandExitCode = await cli.run(command, context);
+  });
+
   let outcome = SUCCEEDED;
   let reason, reasonCode;
   if (commandExitCode !== 0) {
