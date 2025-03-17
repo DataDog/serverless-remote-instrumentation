@@ -35,6 +35,7 @@ ci image:
 deploy self monitoring apps:
   stage: deploy
   image: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
+  tags: ["arch:arm64"]
   allow_failure: false
   needs: []
   rules:
