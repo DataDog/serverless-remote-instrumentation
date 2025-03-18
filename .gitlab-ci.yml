@@ -47,8 +47,8 @@ deploy self monitoring apps:
     - gh auth status
     - git config --global user.name "gitlab-actions[bot]"
     - git config --global user.email "gitlab-actions[bot]@users.noreply.github.com"
-    - git pull origin main
     - ls -a
+    - git pull origin main
 
 # deploy self monitoring apps:
 #   stage: deploy
