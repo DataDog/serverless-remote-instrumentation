@@ -8,8 +8,6 @@ RUN mkdir -p /etc/apt/keyrings && curl -fsSL https://deb.nodesource.com/gpgkey/n
 # We are explicitly setting the node_20.x version for the installation
 RUN echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
 RUN apt-get update && apt-get install nodejs -y
-RUN apt-get install gh -y
-
 
 # Install Yarn and Typescript globally
 RUN npm install --global yarn typescript
@@ -19,14 +17,4 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip" -o "awscliv
 RUN unzip awscliv2.zip && ./aws/install
 
 # Install gh
-RUN brew install gh
-# RUN type -p wget >/dev/null || (sudo apt update && sudo apt-get install wget -y)
-# RUN mkdir -p -m 755 /etc/apt/keyrings
-# RUN out=$(mktemp)
-# RUN wget -nv -O$out https://cli.github.com/packages/githubcli-archive-keyring.gpg
-# RUN cat $out | tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null 
-# RUN chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg 
-# RUN echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null 
-# RUN apt update 
-# RUN apt install gh -y
-
+RUN apt-get install gh -y
