@@ -40,6 +40,8 @@ deploy self monitoring apps:
   needs: []
   rules:
     - !reference [.defined_rules, merge_into_prod]
+  before_script:
+    - EXTERNAL_ID_NAME=sandbox-publish-externalid ROLE_TO_ASSUME=sandbox-layer-deployer AWS_ACCOUNT=425362996713 source .gitlab/scripts/get_secrets.sh
   script:
     - git remote set-url origin https://github.com/DataDog/serverless-remote-instrumentation.git
     - gh auth status
