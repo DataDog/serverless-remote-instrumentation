@@ -52,6 +52,12 @@ if [ "$ACCOUNT" = "prod" ]; then
         --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers
     TEMPLATE_URL="https://${BUCKET}.s3.amazonaws.com/${OBJECT_PREFIX}latest.yaml"
 
+    # Create a release
+    git remote set-url origin https://github.com/DataDog/serverless-remote-instrumentation.git
+    gh auth status
+    git config --global user.name "gitlab-actions[bot]"
+    git config --global user.email "gitlab-actions[bot]@users.noreply.github.com"
+    gh release create -d "v$(jq -r .version ./integration-tests/config.json)" --generate-notes
 else
     aws s3 cp dist/template.yaml s3://${BUCKET}/${OBJECT_PREFIX}${TEMPLATE_VERSION}.yaml
     aws s3 cp dist/template.yaml s3://${BUCKET}/${OBJECT_PREFIX}latest.yaml
