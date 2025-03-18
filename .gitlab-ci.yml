@@ -48,7 +48,8 @@ deploy self monitoring apps:
     - git config --global user.name "gitlab-actions[bot]"
     - git config --global user.email "gitlab-actions[bot]@users.noreply.github.com"
     - ls -a
-    - git pull origin main
+    - node -e "require('./scripts/test_setup').generateTestConfig()"
+    - gh release create -d "v$(jq -r .version ./integration-tests/config.json)"" --generate-notes
 
 # deploy self monitoring apps:
 #   stage: deploy
