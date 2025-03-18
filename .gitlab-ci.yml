@@ -50,7 +50,7 @@ deploy self monitoring apps:
     - ls -a
     - yarn install
     - node -e "require('./scripts/test_setup').generateTestConfig()"
-    - gh release create -d "v$(jq -r .version ./integration-tests/config.json)"" --generate-notes
+    - gh release create -d "v$(jq -r .version ./integration-tests/config.json)" --generate-notes
 
 # deploy self monitoring apps:
 #   stage: deploy
