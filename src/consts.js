@@ -41,6 +41,7 @@ exports.NOT_SATISFYING_TARGETING_RULES = "not-satisfying-targeting-rules";
 exports.ALREADY_MANUALLY_INSTRUMENTED = "already-manually-instrumented";
 exports.REMOTE_INSTRUMENTER_FUNCTION = "remote-instrumenter-function";
 exports.FUNCTION_NOT_FOUND = "function-not-found";
+exports.DATADOG_CI_ERROR = "datadog-ci-error";
 
 // Remote instrumentation tag values
 exports.VERSION = process.env.DD_INSTRUMENTER_VERSION;

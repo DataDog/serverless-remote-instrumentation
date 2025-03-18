@@ -9,6 +9,7 @@ const {
   FAILED,
   LAMBDA_EVENT,
   CLOUDFORMATION_DELETE_EVENT,
+  DATADOG_CI_ERROR,
 } = require("./consts");
 const { logger } = require("./logger");
 const {
@@ -84,8 +85,23 @@ async function instrumentWithDatadogCi(
   });
   logger.log(`Sending datadog-ci command: ${JSON.stringify(command)}`);
 
-  const commandExitCode = await cli.run(command);
-  const outcome = commandExitCode === 0 ? SUCCEEDED : FAILED;
+  let out = "";
+  const commandExitCode = await cli.run(command, {
+    // Override stdout to capture the output of the command
+    stdout: {
+      write: (data) => {
+        out += data;
+      },
+    },
+  });
+
+  let outcome = SUCCEEDED;
+  let reason, reasonCode;
+  if (commandExitCode !== 0) {
+    outcome = FAILED;
+    reason = out?.split("[Error] ")[1]?.replace(/\n$/, "");
+    reasonCode = DATADOG_CI_ERROR;
+  }
 
   logger.logInstrumentOutcome({
     ddSlsEventName: operationName,
@@ -94,12 +110,14 @@ async function instrumentWithDatadogCi(
     targetFunctionArn: functionArn,
     expectedExtensionVersion: layerVersionObj.extensionVersion?.toString(),
     runtime: runtime,
+    reason: reason,
+    reasonCode: reasonCode,
   });
-  if (instrument) {
-    instrumentOutcome.instrument[outcome][functionName] = { functionArn };
-  } else {
-    instrumentOutcome.uninstrument[outcome][functionName] = { functionArn };
-  }
+  instrumentOutcome[operation][outcome][functionName] = {
+    functionArn,
+    ...(reason ? { reason } : {}),
+    ...(reasonCode ? { reasonCode } : {}),
+  };
 }
 exports.instrumentWithDatadogCi = instrumentWithDatadogCi;
 
