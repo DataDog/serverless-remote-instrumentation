@@ -3,6 +3,7 @@ const {
   CreateFunctionCommand,
   DeleteFunctionCommand,
   GetFunctionConfigurationCommand,
+  InvokeCommand,
   ResourceNotFoundException,
   Runtime,
   TagResourceCommand,
@@ -26,9 +27,16 @@ const createFunction = async (lambdaProps) => {
       /\W/g,
       "",
     );
-  if (functionName.length > 64) {
-    functionName = functionName.slice(functionName.length - 64);
+
+  const prefix = "ri-test-";
+  const maxLengthWithoutPrefix = 64 - prefix.length;
+  if (functionName.length > maxLengthWithoutPrefix) {
+    functionName = functionName.slice(
+      functionName.length - maxLengthWithoutPrefix,
+    );
   }
+
+  functionName = `${prefix}${functionName}`;
 
   const zip = new JSZip();
   zip.file(
@@ -48,6 +56,9 @@ const createFunction = async (lambdaProps) => {
     Runtime: Runtime.nodejs20x,
     PackageType: "Zip",
     MemorySize: 512,
+    Tags: {
+      dd_serverless_service: "remote_instrumenter_testing",
+    },
     ...lambdaProps,
   });
 
@@ -112,3 +123,15 @@ const tagFunction = async (functionName, tags) => {
 };
 
 exports.tagFunction = tagFunction;
+
+const isFunctionInvokable = async (functionName) => {
+  const command = new InvokeCommand({
+    FunctionName: functionName,
+    Payload: "{}",
+  });
+  const lambdaClient = await getLambdaClient();
+  const { StatusCode } = await lambdaClient.send(command);
+  return StatusCode === 200;
+};
+
+exports.isFunctionInvokable = isFunctionInvokable;
