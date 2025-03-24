@@ -23,7 +23,10 @@ class TestingStack extends Stack {
 
     assumedRole.addToPolicy(new PolicyStatement({
       actions: ['lambda:InvokeFunction'],
-      resources: [ `arn:aws:lambda:${region}:${account}:function:${functionName}` ],
+      resources: [
+        `arn:aws:lambda:${region}:${account}:function:${functionName}`,
+        `arn:aws:lambda:${region}:${account}:function:ri-test-*`,
+      ],
     }));
 
     assumedRole.addToPolicy(new PolicyStatement({

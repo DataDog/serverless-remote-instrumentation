@@ -1,6 +1,7 @@
 const { GetFunctionConfigurationCommand } = require("@aws-sdk/client-lambda");
 const { getRemoteConfig } = require("./remote-config");
 const { getLambdaClient } = require("./aws-resources");
+const { isFunctionInvokable } = require("./lambda-functions");
 const { ddSite } = require("../config.json");
 
 const hasLayerMatching = (l, matcher, version) =>
@@ -23,6 +24,7 @@ const hasEnvVarMatching = (l, varName, value) =>
 // 1. If the extension layer is configured, there is a Datadog-Extension with matching version
 // 2. If there is a language layer configured, there should is a matching version of the language layer
 // 3. It has the DD_API_KEY and DD_SITE environment variables
+// 4. The function should still be invokable
 const isFunctionInstrumented = async (functionName) => {
   const lambdaClient = await getLambdaClient();
   const funConfig = await lambdaClient.send(
@@ -55,10 +57,16 @@ const isFunctionInstrumented = async (functionName) => {
     }
   }
 
-  return (
-    hasEnvVar(funConfig, "DD_API_KEY") &&
-    hasEnvVarMatching(funConfig, "DD_SITE", ddSite)
-  );
+  if (
+    !(
+      hasEnvVar(funConfig, "DD_API_KEY") &&
+      hasEnvVarMatching(funConfig, "DD_SITE", ddSite)
+    )
+  ) {
+    return false;
+  }
+
+  return isFunctionInvokable(functionName);
 };
 
 exports.isFunctionInstrumented = isFunctionInstrumented;
