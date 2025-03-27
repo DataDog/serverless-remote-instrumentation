@@ -1,6 +1,6 @@
 import { client, v2 } from "@datadog/datadog-api-client";
 import { MetricsAggregator } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2";
-const { account, region, functionName } = require("../integration-tests/config.json");
+const { account, region, functionName, ddSite } = require("../integration-tests/config.json");
 const { getApiKey, getAppKey } = require("../integration-tests/utilities/datadog-keys.js");
 import { get } from "lodash";
 
@@ -16,7 +16,7 @@ const getDDApiMetricsClient = async () => {
     };
     const config = client.createConfiguration(configurationOpts);
     config.setServerVariables({
-      site: "datad0g.com",
+      site: ddSite,
     });
     metricsClient = new v2.MetricsApi(config);
   }

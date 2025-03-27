@@ -1,5 +1,5 @@
 const axios = require("axios");
-const { account, region } = require("../config.json");
+const { account, ddSite, region } = require("../config.json");
 const { getApiKey, getAppKey } = require("./datadog-keys");
 const { sleep } = require("./sleep");
 
@@ -9,16 +9,25 @@ const getRemoteConfig = async () => {
   const [apiKey, appKey] = await Promise.all([getApiKey(), getAppKey()]);
 
   const url =
-    "https://datad0g.com/api/unstable/remote_config/products/serverless_remote_instrumentation/config?filter%5Baws_account_id%5D={AWS_ACCOUNT_SLOT}&filter%5Bregion%5D={REGION_SLOT}"
+    "https://{DD_SITE}/api/unstable/remote_config/products/serverless_remote_instrumentation/config?filter%5Baws_account_id%5D={AWS_ACCOUNT_SLOT}&filter%5Bregion%5D={REGION_SLOT}"
+      .replace("{DD_SITE}", ddSite)
       .replace("{AWS_ACCOUNT_SLOT}", account)
       .replace("{REGION_SLOT}", region);
 
-  const remoteConfig = await axios.get(url, {
-    headers: {
-      "dd-api-key": apiKey,
-      "dd-application-key": appKey,
-    },
-  });
+  let remoteConfig;
+  try {
+    remoteConfig = await axios.get(url, {
+      headers: {
+        "dd-api-key": apiKey,
+        "dd-application-key": appKey,
+      },
+    });
+  } catch (error) {
+    if (error.response && error.response.status === 404) {
+      return { data: [] };
+    }
+    throw error;
+  }
   remoteConfigIds.push(...remoteConfig.data.data.map((item) => item.id));
   return remoteConfig.data;
 };
@@ -65,8 +74,7 @@ const setRemoteConfig = async ({
     },
   };
 
-  const url =
-    "https://datad0g.com/api/unstable/remote_config/products/serverless_remote_instrumentation/config";
+  const url = `https://${ddSite}/api/unstable/remote_config/products/serverless_remote_instrumentation/config`;
 
   let remoteConfig;
   if (id) {
@@ -99,7 +107,7 @@ exports.setRemoteConfig = setRemoteConfig;
 const deleteRemoteConfig = async (id) => {
   const [apiKey, appKey] = await Promise.all([getApiKey(), getAppKey()]);
 
-  const url = `https://datad0g.com/api/unstable/remote_config/products/serverless_remote_instrumentation/config/${id}`;
+  const url = `https://${ddSite}/api/unstable/remote_config/products/serverless_remote_instrumentation/config/${id}`;
 
   return axios.delete(url, {
     headers: {

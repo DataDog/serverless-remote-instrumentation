@@ -57,6 +57,12 @@ const generateTestConfig = () => {
       ([key, val]) => (config[key] = val.slice(0, 63).toLowerCase()),
     );
 
+    config = {
+      ...config,
+      apiSecretName: "Remote_Instrumenter_Test_API_Key_20250226",
+      appSecretName: "Remote_Instrumenter_Test_APPLICATION_Key",
+    };
+
     writeFileSync(configPath, JSON.stringify(config, null, 2));
   }
   return config;
