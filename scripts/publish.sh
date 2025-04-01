@@ -20,9 +20,12 @@ ARCHITECTURE="arm64"
 TEMPLATE_VERSION=$(jq -r .version ./integration-tests/config.json)
 LAYER_NAME="Datadog-Serverless-Remote-Instrumentation-ARM"
 
-if aws s3api get-object --bucket $BUCKET --key $OBJECT_PREFIX$TEMPLATE_VERSION.yaml getresult.yaml &>/dev/null; then
-    echo "Version $TEMPLATE_VERSION is already published, skipping"
-    exit 0
+if [ "$ACCOUNT" == "prod" ]; then
+  echo "Running in prod, checking if version $TEMPLATE_VERSION is already published"
+  if aws s3api get-object --bucket $BUCKET --key $OBJECT_PREFIX$TEMPLATE_VERSION.yaml getresult.yaml &>/dev/null; then
+      echo "Version $TEMPLATE_VERSION is already published, skipping"
+      exit 0
+  fi
 fi
 
 LAST_LAYER_VERSION=$(
