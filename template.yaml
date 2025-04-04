@@ -301,6 +301,7 @@ Resources:
               StringEquals:
                 AWS:SourceArn: !Sub "arn:aws:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/${TrailName}"
                 s3:x-amz-acl: bucket-owner-full-control
+
   LambdaEventRule:
     Type: AWS::Events::Rule
     Properties:
@@ -315,39 +316,7 @@ Resources:
       Targets:
         - Arn: !GetAtt LambdaFunction.Arn
           Id: "DatadogInstrumentingLambdaTarget"
-  LambdaTagResourceEventRule:
-    Type: AWS::Events::Rule
-    Properties:
-      Description: "EventRule for piping lambda TagResource20170331v2 management events to Datadog lambda instrumenter"
-      EventPattern:
-        source:
-          - aws.lambda
-        detail:
-          eventSource:
-            - lambda.amazonaws.com
-      State: "ENABLED"
-      Targets:
-        - Arn: !GetAtt LambdaFunction.Arn
-          Id: "DatadogInstrumentingLambdaTarget"
-  StackUpdateEventRule:
-    Type: AWS::Events::Rule
-    Properties:
-      Description: "EventRule for piping stack update management events to Datadog lambda instrumenter"
-      State: "ENABLED"
-      Targets:
-        - Arn: !GetAtt LambdaFunction.Arn
-          Id: "DatadogInstrumentingLambdaTarget"
-      EventPattern:
-        source:
-          - aws.cloudformation
-        detail-type:
-          - CloudFormation Stack Status Change
-        resources:
-          - wildcard: arn:aws:cloudformation:*:*:stack/datadog-remote-instrument*/*
-        detail:
-          status-details:
-            status:
-              - UPDATE_COMPLETE
+
   LambdaEventRulePermission:
     Type: AWS::Lambda::Permission
     Properties:
@@ -355,13 +324,6 @@ Resources:
       Action: lambda:InvokeFunction
       Principal: events.amazonaws.com
       SourceArn: !GetAtt LambdaEventRule.Arn
-  StackUpdateEventRulePermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref InstrumenterFunctionName
-      Action: lambda:InvokeFunction
-      Principal: events.amazonaws.com
-      SourceArn: !GetAtt StackUpdateEventRule.Arn
 
   LambdaSchedulerRole:
     Type: 'AWS::IAM::Role'
