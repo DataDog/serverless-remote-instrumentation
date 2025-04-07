@@ -5,7 +5,7 @@
     "@aws-sdk/client-resource-groups-tagging-api": "3.477.0",
     "@aws-sdk/client-s3": "^3.713.0",
     "@datadog/datadog-ci": "3.1.0",
-    "axios": "1.6.7",
+    "axios": "1.8.2",
     "yaml-cfn": "^0.3.2"
   },
   "devDependencies": {
@@ -15,8 +15,8 @@
     "@datadog/datadog-api-client": "^1.33.1",
     "@types/jest": "^29.5.14",
     "@types/lodash": "^4.17.16",
-    "aws-cdk": "^2.175.0",
-    "aws-cdk-lib": "^2.175.0",
+    "aws-cdk": "^2.187.0",
+    "aws-cdk-lib": "^2.187.0",
     "cfn-response": "^1.0.1",
     "constructs": "^10.4.2",
     "eslint": "^8.52.0",
