@@ -34,9 +34,9 @@ ci image:
 
 test:
   stage: deploy
-  image: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
+  # image: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
   allow_failure: false
-  tags: ["arch:arm64"]
+  # tags: ["arch:arm64"]
   resource_group: pipeline
   needs: []
   when: manual
