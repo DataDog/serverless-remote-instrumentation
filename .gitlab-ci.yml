@@ -42,12 +42,6 @@ test:
   when: manual
   rules:
     - !reference [.defined_rules, merge_into_prod]
-  variables:
-    ACCOUNT: sandbox
-  before_script:
-    - EXTERNAL_ID_NAME=sandbox-publish-externalid ROLE_TO_ASSUME=sandbox-layer-deployer AWS_ACCOUNT=425362996713 source .gitlab/scripts/get_secrets.sh
-  script:
-    - yarn install
   trigger:
     include:
     - local: .gitlab/test.yml
