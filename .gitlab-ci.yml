@@ -50,6 +50,8 @@ run_local_pipeline:
   stage: publish
   allow_failure: false
   needs: [copy_local_pipeline]
+  dependencies:
+    - copy_local_pipeline
   rules:
     - !reference [.defined_rules, merge_into_prod]
   trigger:
