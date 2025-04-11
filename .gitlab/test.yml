@@ -11,8 +11,6 @@ variables:
 
 stages:
   - build
-  - deploy
-  - test
   - publish
 
 ci image:
@@ -33,9 +31,7 @@ ci image:
 
 inside:
   stage: publish
-  image: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
   allow_failure: false
-  tags: ["arch:arm64"]
   resource_group: pipeline
   needs: []
   rules:
