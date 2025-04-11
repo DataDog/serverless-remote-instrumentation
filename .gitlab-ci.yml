@@ -44,7 +44,7 @@ copy_local_pipeline:
     - cp .gitlab/test.yml .gitlab/test2.yml
 
 run_local_pipeline:
-  stage: deploy
+  stage: publish
   allow_failure: false
   needs: [copy_local_pipeline]
   rules:
