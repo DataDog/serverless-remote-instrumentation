@@ -19,7 +19,6 @@ ci image:
   stage: build
   image: registry.ddbuild.io/images/docker:20.10
   tags: ["arch:arm64"]
-  resource_group: pipeline
   needs: []
   rules:
     - if: '$CI_COMMIT_BRANCH == "prod" && $CI_PIPELINE_SOURCE == "push"'
@@ -35,7 +34,6 @@ ci image:
 run_local_pipeline:
   stage: deploy
   allow_failure: false
-  resource_group: pipeline
   needs: []
   rules:
     - !reference [.defined_rules, merge_into_prod]
