@@ -59,6 +59,7 @@ if [ "$ACCOUNT" = "prod" ]; then
     git config --global user.email "gitlab-actions[bot]@users.noreply.github.com"
     gh release create -d "v$(jq -r .version ./integration-tests/config.json)" --generate-notes
 else
+    sed -i -e "s/Number: 464622532012/Number: 425362996713/g" dist/template.yaml
     aws s3 cp dist/template.yaml s3://${BUCKET}/${OBJECT_PREFIX}${TEMPLATE_VERSION}.yaml
     aws s3 cp dist/template.yaml s3://${BUCKET}/${OBJECT_PREFIX}latest.yaml
     TEMPLATE_URL="https://${BUCKET}.s3.amazonaws.com/${OBJECT_PREFIX}latest.yaml"
