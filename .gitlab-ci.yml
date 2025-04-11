@@ -35,6 +35,8 @@ copy_local_pipeline:
   stage: deploy
   allow_failure: false
   needs: []
+  image: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
+  tags: ["arch:arm64"]
   rules:
     - !reference [.defined_rules, merge_into_prod]
   script:
