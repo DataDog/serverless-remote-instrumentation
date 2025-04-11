@@ -33,6 +33,8 @@ ci image:
 inside:
   stage: publish
   allow_failure: false
+  image: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
+  tags: ["arch:arm64"]
   needs: []
   rules:
     - when: always
