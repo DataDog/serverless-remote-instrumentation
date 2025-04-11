@@ -35,6 +35,6 @@ inside:
   allow_failure: false
   needs: []
   rules:
-    - !reference [.defined_rules, merge_into_prod]
+    - when: always
   script:
     - echo "RUN!"
