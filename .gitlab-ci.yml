@@ -31,15 +31,25 @@ ci image:
   script:
     - docker buildx build --platform linux/amd64,linux/arm64 --no-cache --pull --push --tag ${DOCKER_TARGET} -f .gitlab/Dockerfile .
 
-run_local_pipeline:
+copy_local_pipeline:
   stage: deploy
   allow_failure: false
   needs: []
   rules:
     - !reference [.defined_rules, merge_into_prod]
+  script:
+    - echo "RUN!"
+    - cp .gitlab/test.yml .gitlab/test2.yml
+
+run_local_pipeline:
+  stage: deploy
+  allow_failure: false
+  needs: [copy_local_pipeline]
+  rules:
+    - !reference [.defined_rules, merge_into_prod]
   trigger:
     include:
-    - local: .gitlab/test.yml
+    - local: .gitlab/test2.yml
 
 
 # deploy self monitoring apps:
