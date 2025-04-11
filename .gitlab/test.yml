@@ -26,20 +26,18 @@ ci image:
       changes:
         - .gitlab/Dockerfile
       when: on_success
-  when: manual
   variables:
     DOCKER_TARGET: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
   script:
     - docker buildx build --platform linux/amd64,linux/arm64 --no-cache --pull --push --tag ${DOCKER_TARGET} -f .gitlab/Dockerfile .
 
 inside:
-  stage: deploy
+  stage: publish
   image: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
   allow_failure: false
   tags: ["arch:arm64"]
   resource_group: pipeline
   needs: []
-  when: manual
   rules:
     - !reference [.defined_rules, merge_into_prod]
   script:

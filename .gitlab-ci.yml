@@ -39,7 +39,6 @@ test:
   # tags: ["arch:arm64"]
   resource_group: pipeline
   needs: []
-  when: manual
   rules:
     - !reference [.defined_rules, merge_into_prod]
   trigger:
