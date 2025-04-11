@@ -34,8 +34,6 @@ ci image:
 
 run_local_pipeline:
   stage: deploy
-  image: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
-  tags: ["arch:arm64"]
   allow_failure: false
   resource_group: pipeline
   needs: []
