@@ -34,6 +34,9 @@ ci image:
 copy_local_pipeline:
   stage: deploy
   allow_failure: false
+  artifacts:
+    paths:
+      - .gitlab/test2.yml
   needs: []
   image: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
   tags: ["arch:arm64"]
