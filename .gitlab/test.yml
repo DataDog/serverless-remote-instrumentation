@@ -12,6 +12,8 @@ variables:
 stages:
   - build
   - publish
+  - manual
+  - done
 
 ci image:
   stage: build
@@ -36,6 +38,28 @@ inside:
   image: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
   tags: ["arch:arm64"]
   needs: []
+  rules:
+    - when: always
+  script:
+    - echo "RUN!"
+
+manual:
+  stage: publish
+  allow_failure: false
+  image: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
+  tags: ["arch:arm64"]
+  needs: [inside]
+  rules:
+    - when: manual
+  script:
+    - echo "RUN!"
+
+outside:
+  stage: done
+  allow_failure: false
+  image: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
+  tags: ["arch:arm64"]
+  needs: [manual]
   rules:
     - when: always
   script:
