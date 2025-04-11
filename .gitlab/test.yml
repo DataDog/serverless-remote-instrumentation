@@ -15,8 +15,10 @@ stages:
 
 ci image:
   stage: build
-  image: registry.ddbuild.io/images/docker:20.10
-  tags: ["arch:arm64"]
+  image:
+    name: registry.ddbuild.io/images/docker:20.10
+  tags:
+    - arch:arm64
   resource_group: pipeline
   needs: []
   rules:
@@ -33,8 +35,10 @@ inside:
   stage: publish
   allow_failure: false
   resource_group: pipeline
-  image: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
-  tags: ["arch:arm64"]
+  image:
+    name: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
+  tags:
+    - arch:arm64
   needs: []
   rules:
     - !reference [.defined_rules, merge_into_prod]
