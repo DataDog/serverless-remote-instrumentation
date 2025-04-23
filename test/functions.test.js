@@ -1,7 +1,6 @@
 const {
   satisfiesTargetingRules,
   isRemoteInstrumenter,
-  isBelowMinimumMemorySize,
   isCorrectlyInstrumented,
   needsInstrumentationUpdate,
   filterFunctionsToChangeInstrumentation,
@@ -38,7 +37,6 @@ function createTestConfig({
     priority: priority,
     ruleFilters: ruleFilters,
     instrumenterFunctionName: "datadog-remote-instrumenter",
-    minimumMemorySize: 512,
   };
 }
 
@@ -46,7 +44,6 @@ function createTestConfig({
 function createTestLambdaFunction({
   functionName,
   functionArn,
-  memorySize,
   runtime,
   tags,
   layers,
@@ -56,7 +53,6 @@ function createTestLambdaFunction({
   return {
     FunctionName: functionName,
     FunctionArn: functionArn,
-    MemorySize: memorySize,
     Runtime: runtime,
     Tags: tags,
     Layers: layers,
@@ -245,18 +241,6 @@ describe("isRemoteInstrumenter", () => {
   });
   test("should return false if the function names don't match", () => {
     expect(isRemoteInstrumenter("functionB", "functionA")).toBe(false);
-  });
-});
-
-describe("isBelowMinimumMemorySize", () => {
-  test("should return true if the memory size is below the minimum", () => {
-    expect(isBelowMinimumMemorySize(128, 512)).toBe(true);
-  });
-  test("should return false if the memory size is above the minimum", () => {
-    expect(isBelowMinimumMemorySize(513, 512)).toBe(false);
-  });
-  test("should return false if the memory size is equal to the minimum", () => {
-    expect(isBelowMinimumMemorySize(512, 512)).toBe(false);
   });
 });
 
@@ -726,7 +710,6 @@ describe("needsInstrumentationUpdate", () => {
       const lambdaFunc = createTestLambdaFunction({
         functionName: "functionA",
         functionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionA",
-        memorySize: 512,
         runtime: "nodejs14.x",
         tags: new Set(),
         layers: [],
@@ -750,7 +733,6 @@ describe("needsInstrumentationUpdate", () => {
       const lambdaFunc = createTestLambdaFunction({
         functionName: "functionA",
         functionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionA",
-        memorySize: 512,
         runtime: "nodejs14.x",
         tags: new Set([DD_SLS_REMOTE_INSTRUMENTER_VERSION + ":" + VERSION]),
         layers: [],
@@ -799,41 +781,6 @@ describe("needsInstrumentationUpdate", () => {
         functionName: "datadog-remote-instrumenter",
         functionArn:
           "arn:aws:lambda:us-east-1:123456789012:function:datadog-remote-instrumenter",
-        memorySize: 512,
-        runtime: "nodejs14.x",
-        tags: new Set(["foo:bar"]),
-        layers: [],
-      });
-      const ruleFilters = [
-        {
-          key: "foo",
-          values: ["bar"],
-          allow: true,
-          filterType: "tag",
-        },
-      ];
-      const config = createTestConfig({
-        entityType: "lambda",
-        extensionVersion: 1,
-        nodeLayerVersion: 1,
-        pythonLayerVersion: 1,
-        priority: 1,
-        ruleFilters: ruleFilters,
-      });
-      const { instrument, uninstrument, tag, untag } =
-        needsInstrumentationUpdate(lambdaFunc, config, baseInstrumentOutcome);
-      expect(instrument).toBe(false);
-      expect(uninstrument).toBe(false);
-      expect(tag).toBe(false);
-      expect(untag).toBe(false);
-    });
-  });
-  describe("When the memory size is below the minimum", () => {
-    test("function should not be changed", () => {
-      const lambdaFunc = createTestLambdaFunction({
-        functionName: "functionA",
-        functionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionA",
-        memorySize: 128,
         runtime: "nodejs14.x",
         tags: new Set(["foo:bar"]),
         layers: [],
@@ -867,7 +814,6 @@ describe("needsInstrumentationUpdate", () => {
       const lambdaFunc = createTestLambdaFunction({
         functionName: "functionA",
         functionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionA",
-        memorySize: 512,
         runtime: "go1.x",
         tags: new Set(["foo:bar"]),
         layers: [],
@@ -909,7 +855,6 @@ describe("needsInstrumentationUpdate", () => {
       const lambdaFunc = createTestLambdaFunction({
         functionName: "functionA",
         functionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionA",
-        memorySize: 512,
         runtime: "nodejs14.x",
         tags: new Set([
           "foo:bar",
@@ -954,7 +899,6 @@ describe("needsInstrumentationUpdate", () => {
       const lambdaFunc = createTestLambdaFunction({
         functionName: "functionA",
         functionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionA",
-        memorySize: 512,
         runtime: "nodejs14.x",
         tags: new Set([
           "foo:bar",
@@ -995,7 +939,6 @@ describe("filterFunctionsToChangeInstrumentation", () => {
       createTestLambdaFunction({
         functionName: "functionA",
         functionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionA",
-        memorySize: 512,
         runtime: "nodejs14.x",
         tags: new Set([
           "foo:bar",
@@ -1007,7 +950,6 @@ describe("filterFunctionsToChangeInstrumentation", () => {
       createTestLambdaFunction({
         functionName: "functionB",
         functionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionB",
-        memorySize: 512,
         runtime: "nodejs14.x",
         tags: new Set([
           "foo:baz",
@@ -1157,7 +1099,6 @@ describe("selectFunctionFieldsForLogging", () => {
     const lambdaFunc = createTestLambdaFunction({
       functionName: "functionA",
       functionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionA",
-      memorySize: 512,
       runtime: "go1.x",
       tags: new Set(["foo:bar"]),
       layers: [],
@@ -1171,7 +1112,6 @@ describe("selectFunctionFieldsForLogging", () => {
     expect(lambdaFuncWithSelectedFields).toStrictEqual({
       FunctionName: "functionA",
       FunctionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionA",
-      MemorySize: 512,
       Runtime: "go1.x",
       Architectures: undefined,
       Tags: Array.from(lambdaFunc.Tags),

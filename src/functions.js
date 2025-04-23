@@ -191,11 +191,6 @@ function isRemoteInstrumenter(functionName, instrumenterName) {
 }
 exports.isRemoteInstrumenter = isRemoteInstrumenter;
 
-function isBelowMinimumMemorySize(currentMemorySize, minimumMemorySize) {
-  return currentMemorySize < parseInt(minimumMemorySize, 10);
-}
-exports.isBelowMinimumMemorySize = isBelowMinimumMemorySize;
-
 function filterFunctionsToChangeInstrumentation(
   functions,
   config,
@@ -443,34 +438,6 @@ function needsInstrumentationUpdate(
     return { instrument: false, uninstrument: false, tag: false, untag: false };
   }
 
-  // If it's below the minimum memory size, skip it
-  const currentMemorySize = lambdaFunc.MemorySize;
-  if (isBelowMinimumMemorySize(currentMemorySize, config.minimumMemorySize)) {
-    if (emitProcessingLogs) {
-      logger.frontendLambdaEvents(
-        PROCESSING,
-        functionName,
-        `Skipping function '${functionName}' because it is below the minimum memory size.`,
-      );
-    }
-    const reason = `Function's memory size ${currentMemorySize} MB is below threshold ${config.minimumMemorySize} MB.`;
-    instrumentOutcome.instrument.skipped[functionName] = {
-      functionArn,
-      reason: reason,
-      reasonCode: INSUFFICIENT_MEMORY,
-    };
-    logger.logInstrumentOutcome({
-      ddSlsEventName: INSTRUMENT,
-      outcome: SKIPPED,
-      targetFunctionName: functionName,
-      targetFunctionArn: functionArn,
-      runtime: runtime,
-      reason: reason,
-      reasonCode: INSUFFICIENT_MEMORY,
-    });
-    return { instrument: false, uninstrument: false, tag: false, untag: false };
-  }
-
   // If it's an unsupported runtime, skip it
   let isSupportedRuntime = false;
   for (const supportedRuntime of SUPPORTED_RUNTIMES) {
@@ -570,7 +537,6 @@ function selectFunctionFieldsForLogging(lambdaFunction) {
     FunctionArn: lambdaFunction.FunctionArn,
     Tags: Array.from(lambdaFunction.Tags ?? {}),
     Runtime: lambdaFunction.Runtime,
-    MemorySize: lambdaFunction.MemorySize,
     Layers: lambdaFunction.Layers,
     Architectures: lambdaFunction.Architectures,
   };
