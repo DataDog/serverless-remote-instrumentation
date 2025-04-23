@@ -33,7 +33,6 @@ exports.PROCESSING = "processing";
 exports.SKIPPED = "skipped";
 
 // Instrumentation skipped reasons
-exports.INSUFFICIENT_MEMORY = "insufficient-memory";
 exports.ALREADY_CORRECT_EXTENSION_AND_LAYER =
   "already-correct-extension-and-layer";
 exports.UNSUPPORTED_RUNTIME = "unsupported-runtime";
