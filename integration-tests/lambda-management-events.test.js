@@ -67,7 +67,7 @@ describe("Remote instrumenter lambda management event tests", () => {
     );
     const functionNames = functions.map((lambda) => lambda.FunctionName);
 
-    // For all 20 functions
+    // For each of the 20 functions
     for (const functionName of functionNames) {
       // After some time
       const isInstrumented = await pollUntilTrue(60000, 5000, () =>

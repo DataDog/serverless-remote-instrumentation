@@ -13,7 +13,6 @@ const {
   sampleRcTestJSON,
 } = require("./test-utils");
 
-// Mock axios
 jest.mock("axios", () => ({
   post: jest.fn(),
 }));
@@ -479,7 +478,7 @@ describe("getConfigsFromResponse", () => {
   });
 });
 
-describe("Config Cache", () => {
+describe("Config cache", () => {
   let configCache;
   const sampleRcConfig = new RcConfig(
     sampleRcConfigID,
@@ -495,7 +494,7 @@ describe("Config Cache", () => {
   });
 
   describe("isCacheValid", () => {
-    test("returns false configs and expiration time are null", () => {
+    test("returns false when configs and expiration time are null", () => {
       expect(isCacheValid(configCache)).toBe(false);
     });
 
@@ -549,6 +548,9 @@ describe("Config Cache", () => {
 
       expect(configCache.configs).toEqual(newConfigs);
       expect(configCache.expirationTime).toBeGreaterThan(Date.now());
+      expect(configCache.expirationTime).toBeLessThanOrEqual(
+        Date.now() + CONFIG_CACHE_TTL_MS,
+      );
     });
   });
 });
@@ -572,7 +574,6 @@ describe("getConfigs", () => {
       expirationTime: null,
     };
     mockedAxios = require("axios");
-    // Reset mock call counts
     mockedAxios.post.mockReset();
   });
 
@@ -590,12 +591,12 @@ describe("getConfigs", () => {
     expect(configs).toEqual(cachedConfigs);
     expect(mockedAxios.post).toHaveBeenCalledTimes(0);
 
-    // Check that cached configs and expiration time are the same
+    // Check that cached configs and expiration time are unchanged
     expect(configCache.configs).toEqual(cachedConfigs);
     expect(configCache.expirationTime).toBe(expirationTime);
   });
 
-  test("should fetch configs from RC when cache is empty", async () => {
+  test("should fetch configs from RC when cached configs are null", async () => {
     const path = "datadog/2/SERVERLESS_REMOTE_INSTRUMENTATION/new-id";
     mockedAxios.post.mockResolvedValueOnce({
       data: {
@@ -702,5 +703,8 @@ describe("getConfigs", () => {
     // Check that cache was updated
     expect(configCache.configs).toEqual([]);
     expect(configCache.expirationTime).toBeGreaterThan(Date.now());
+    expect(configCache.expirationTime).toBeLessThanOrEqual(
+      Date.now() + CONFIG_CACHE_TTL_MS,
+    );
   });
 });

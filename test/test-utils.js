@@ -72,3 +72,8 @@ const baseInstrumentOutcome = {
   uninstrument: { succeeded: {}, failed: {}, skipped: {} },
 };
 exports.baseInstrumentOutcome = baseInstrumentOutcome;
+
+exports.baseConfigCache = {
+  configs: null,
+  expirationTime: null,
+};

@@ -268,7 +268,6 @@ async function getConfigs(
   context,
   configCache = { configs: null, expirationTime: null },
 ) {
-  // Check if we have valid cached configs
   if (isCacheValid(configCache)) {
     return configCache.configs;
   }
@@ -298,7 +297,6 @@ async function getConfigs(
     eventName: "getConfigs",
   });
 
-  // Update cache
   updateCache(configCache, configsFromRC);
 
   return configsFromRC;
