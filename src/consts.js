@@ -59,3 +59,6 @@ exports.RC_ERROR = 3;
 exports.REMOTE_CONFIG_URL = "http://localhost:8126/v0.7/config";
 exports.CONFIG_HASH_KEY = "datadog_remote_instrumentation_config.txt";
 exports.APPLY_STATE_KEY = "apply_state.json";
+
+// Config cache constants
+exports.CONFIG_CACHE_TTL_MS = 6000;

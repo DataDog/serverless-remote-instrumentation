@@ -10,6 +10,7 @@ const {
 } = require("./utilities/remote-config");
 const {
   createFunction,
+  createFunctions,
   deleteTestFunctions,
   tagFunction,
 } = require("./utilities/lambda-functions");
@@ -51,6 +52,31 @@ describe("Remote instrumenter lambda management event tests", () => {
 
     // The function is instrumented correctly
     expect(isInstrumented).toStrictEqual(true);
+  });
+
+  it("can instrument many new lambda functions", async () => {
+    // When there is a remote config
+    await setRemoteConfig();
+
+    // And 20 lambdas are created
+    const functions = await createFunctions(
+      {
+        Tags: { foo: "bar" },
+      },
+      20,
+    );
+    const functionNames = functions.map((lambda) => lambda.FunctionName);
+
+    // For all 20 functions
+    for (const functionName of functionNames) {
+      // After some time
+      const isInstrumented = await pollUntilTrue(60000, 5000, () =>
+        isFunctionInstrumented(functionName),
+      );
+
+      // The function is instrumented correctly
+      expect(isInstrumented).toStrictEqual(true);
+    }
   });
 
   it("can instrument an existing lambda function that changes tags", async () => {

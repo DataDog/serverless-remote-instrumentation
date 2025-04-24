@@ -13,6 +13,7 @@ const {
   RC_PRODUCT,
   REMOTE_CONFIG_URL,
   CONFIG_HASH_KEY,
+  CONFIG_CACHE_TTL_MS,
 } = require("./consts");
 const { getApplyState } = require("./apply-state");
 
@@ -262,7 +263,16 @@ function getConfigsFromResponse(response) {
 }
 exports.getConfigsFromResponse = getConfigsFromResponse;
 
-async function getConfigs(s3Client, context) {
+async function getConfigs(
+  s3Client,
+  context,
+  configCache = { configs: null, expirationTime: null },
+) {
+  // Check if we have valid cached configs
+  if (isCacheValid(configCache)) {
+    return configCache.configs;
+  }
+
   const awsAccountId = context.invokedFunctionArn.split(":")[4];
   const awsRegion = process.env.AWS_REGION;
   const instrumenterFunctionName = process.env.AWS_LAMBDA_FUNCTION_NAME;
@@ -287,6 +297,10 @@ async function getConfigs(s3Client, context) {
     }),
     eventName: "getConfigs",
   });
+
+  // Update cache
+  updateCache(configCache, configsFromRC);
+
   return configsFromRC;
 }
 exports.getConfigs = getConfigs;
@@ -356,3 +370,18 @@ async function updateConfigHash(client, configs) {
   }
 }
 exports.updateConfigHash = updateConfigHash;
+
+function isCacheValid(configCache) {
+  return (
+    configCache.configs !== null &&
+    configCache.expirationTime !== null &&
+    Date.now() < configCache.expirationTime
+  );
+}
+exports.isCacheValid = isCacheValid;
+
+function updateCache(configCache, configs) {
+  configCache.configs = configs;
+  configCache.expirationTime = Date.now() + CONFIG_CACHE_TTL_MS;
+}
+exports.updateCache = updateCache;
