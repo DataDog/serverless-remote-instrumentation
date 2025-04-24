@@ -77,7 +77,7 @@ describe("Remote instrumenter lambda management event tests", () => {
       // The function is instrumented correctly
       expect(isInstrumented).toStrictEqual(true);
     }
-  });
+  }, 120000);
 
   it("can instrument an existing lambda function that changes tags", async () => {
     // Create a lambda with tags that do not match the rule
