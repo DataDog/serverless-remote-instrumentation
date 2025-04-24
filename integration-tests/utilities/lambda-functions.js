@@ -50,9 +50,8 @@ const createFunctions = async (lambdaProps, numFunctions = 1) => {
     });
 
     const lambda = await lambdaClient.send(command);
-    const { FunctionName } = lambda;
     createdFunctions.add(lambda);
-    functionNamesToCleanUp.push(FunctionName);
+    functionNamesToCleanUp.push(lambda.FunctionName);
   }
 
   // When new functions are created they are in a pending state for a little bit,
@@ -82,6 +81,28 @@ const createFunction = async (lambdaProps) => {
   return functions[0];
 };
 exports.createFunction = createFunction;
+
+function generateTestFunctionName(suffixNumber) {
+  // Name the function after the test, picking the last 64 characters since
+  // lambda limits function name length and that is probably the most descriptive
+  let functionName =
+    `${expect.getState().currentTestName}${namingSeed.slice(0, 6)}`.replace(
+      /\W/g,
+      "",
+    );
+
+  const prefix = "ri-test-";
+  const suffix = `-${suffixNumber}`;
+  const maxLengthWithoutPrefixAndSuffix = 64 - prefix.length - suffix.length;
+  if (functionName.length > maxLengthWithoutPrefixAndSuffix) {
+    functionName = functionName.slice(
+      functionName.length - maxLengthWithoutPrefixAndSuffix,
+    );
+  }
+
+  functionName = `${prefix}${functionName}${suffix}`;
+  return functionName;
+}
 
 const deleteFunction = async (functionName) => {
   const command = new DeleteFunctionCommand({ FunctionName: functionName });
@@ -131,25 +152,3 @@ const isFunctionInvokable = async (functionName) => {
 };
 
 exports.isFunctionInvokable = isFunctionInvokable;
-
-function generateTestFunctionName(suffixNumber) {
-  // Name the function after the test, picking the last 64 characters since
-  // lambda limits function name length and that is probably the most descriptive
-  let functionName =
-    `${expect.getState().currentTestName}${namingSeed.slice(0, 6)}`.replace(
-      /\W/g,
-      "",
-    );
-
-  const prefix = "ri-test-";
-  const suffix = `-${suffixNumber}`;
-  const maxLengthWithoutPrefixAndSuffix = 64 - prefix.length - suffix.length;
-  if (functionName.length > maxLengthWithoutPrefixAndSuffix) {
-    functionName = functionName.slice(
-      functionName.length - maxLengthWithoutPrefixAndSuffix,
-    );
-  }
-
-  functionName = `${prefix}${functionName}${suffix}`;
-  return functionName;
-}

@@ -54,7 +54,7 @@ describe("Remote instrumenter lambda management event tests", () => {
     expect(isInstrumented).toStrictEqual(true);
   });
 
-  it("can instrument many new lambda functions", async () => {
+  it("can instrument multiple new lambda functions", async () => {
     // When there is a remote config
     await setRemoteConfig();
 

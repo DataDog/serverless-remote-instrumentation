@@ -263,11 +263,7 @@ function getConfigsFromResponse(response) {
 }
 exports.getConfigsFromResponse = getConfigsFromResponse;
 
-async function getConfigs(
-  s3Client,
-  context,
-  configCache = { configs: null, expirationTime: null },
-) {
+async function getConfigs(s3Client, context, configCache) {
   if (isCacheValid(configCache)) {
     return configCache.configs;
   }
