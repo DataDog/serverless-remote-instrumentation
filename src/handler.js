@@ -44,12 +44,6 @@ const taggingClient = new ResourceGroupsTaggingAPIClient({
 });
 const s3Client = new S3Client({ region: awsRegion });
 
-// Initialize config cache
-let configCache = {
-  configs: null,
-  expirationTime: null,
-};
-
 exports.handler = async (event, context) => {
   logger.logObject(selectEventFieldsForLogging(event));
   const instrumentOutcome = {
@@ -60,7 +54,7 @@ exports.handler = async (event, context) => {
   // If it's a stack event, send a response to CloudFormation for custom resource management
   if (isStackCreatedEvent(event)) {
     try {
-      const configs = await getConfigs(s3Client, context, configCache);
+      const configs = await getConfigs(s3Client, context);
       const allFunctions = await getAllFunctions(lambdaClient);
       const functionsToCheck = await enrichFunctionsWithTags(
         lambdaClient,
@@ -125,7 +119,7 @@ exports.handler = async (event, context) => {
 
     let configs;
     try {
-      configs = await getConfigs(s3Client, context, configCache);
+      configs = await getConfigs(s3Client, context);
     } catch (error) {
       // This pulls the reason from the error, just stringifying it does not return the message
       const errorDetails = JSON.parse(
@@ -149,7 +143,7 @@ exports.handler = async (event, context) => {
   else if (isScheduledInvocationEvent(event)) {
     logger.log("Received an invocation from the scheduler.");
     const errors = await listErrors(s3Client);
-    const configs = await getConfigs(s3Client, context, configCache);
+    const configs = await getConfigs(s3Client, context);
     const configChanged = await configHasChanged(s3Client, configs);
     let functionsToCheck = [];
     if (configChanged) {

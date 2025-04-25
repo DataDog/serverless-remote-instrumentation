@@ -6,7 +6,6 @@ const instrument = require("../src/instrument");
 const errorStorage = require("../src/error-storage");
 const { LAMBDA_EVENT } = require("../src/consts");
 const cfnResponse = require("cfn-response");
-const { baseConfigCache } = require("./test-utils");
 jest.mock("../src/lambda-event");
 jest.mock("../src/config");
 jest.mock("../src/functions");
@@ -47,11 +46,7 @@ describe("handler lambda management events", () => {
       expect.anything(),
       [lambdaFunction],
     );
-    expect(config.getConfigs).toHaveBeenCalledWith(
-      expect.anything(),
-      context,
-      baseConfigCache,
-    );
+    expect(config.getConfigs).toHaveBeenCalledWith(expect.anything(), context);
     expect(instrument.instrumentFunctions).toHaveBeenCalledWith(
       expect.anything(),
       configsResult,
@@ -93,11 +88,7 @@ describe("handler lambda management events", () => {
       expect.anything(),
       [lambdaFunction],
     );
-    expect(config.getConfigs).toHaveBeenCalledWith(
-      expect.anything(),
-      context,
-      baseConfigCache,
-    );
+    expect(config.getConfigs).toHaveBeenCalledWith(expect.anything(), context);
     expect(instrument.instrumentFunctions).not.toHaveBeenCalled();
     expect(errorStorage.putError).toHaveBeenCalledWith(
       expect.anything(),

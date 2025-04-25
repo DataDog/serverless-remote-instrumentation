@@ -17,6 +17,13 @@ const {
 } = require("./consts");
 const { getApplyState } = require("./apply-state");
 
+// Initialize config cache
+const CONFIG_CACHE = {
+  configs: null,
+  expirationTime: null,
+};
+exports.CONFIG_CACHE = CONFIG_CACHE;
+
 class RcConfig {
   constructor(configID, configJSON, configMeta) {
     this.setConfigID(configID);
@@ -263,9 +270,9 @@ function getConfigsFromResponse(response) {
 }
 exports.getConfigsFromResponse = getConfigsFromResponse;
 
-async function getConfigs(s3Client, context, configCache) {
-  if (isCacheValid(configCache)) {
-    return configCache.configs;
+async function getConfigs(s3Client, context) {
+  if (isCacheValid()) {
+    return CONFIG_CACHE.configs;
   }
 
   const awsAccountId = context.invokedFunctionArn.split(":")[4];
@@ -293,7 +300,7 @@ async function getConfigs(s3Client, context, configCache) {
     eventName: "getConfigs",
   });
 
-  updateCache(configCache, configsFromRC);
+  updateCache(configsFromRC);
 
   return configsFromRC;
 }
@@ -365,17 +372,17 @@ async function updateConfigHash(client, configs) {
 }
 exports.updateConfigHash = updateConfigHash;
 
-function isCacheValid(configCache) {
+function isCacheValid() {
   return (
-    configCache.configs !== null &&
-    configCache.expirationTime !== null &&
-    Date.now() < configCache.expirationTime
+    CONFIG_CACHE.configs !== null &&
+    CONFIG_CACHE.expirationTime !== null &&
+    Date.now() < CONFIG_CACHE.expirationTime
   );
 }
 exports.isCacheValid = isCacheValid;
 
-function updateCache(configCache, configs) {
-  configCache.configs = configs;
-  configCache.expirationTime = Date.now() + CONFIG_CACHE_TTL_MS;
+function updateCache(configs) {
+  CONFIG_CACHE.configs = configs;
+  CONFIG_CACHE.expirationTime = Date.now() + CONFIG_CACHE_TTL_MS;
 }
 exports.updateCache = updateCache;
