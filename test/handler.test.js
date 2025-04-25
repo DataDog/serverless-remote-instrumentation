@@ -6,6 +6,7 @@ const instrument = require("../src/instrument");
 const errorStorage = require("../src/error-storage");
 const { LAMBDA_EVENT } = require("../src/consts");
 const cfnResponse = require("cfn-response");
+
 jest.mock("../src/lambda-event");
 jest.mock("../src/config");
 jest.mock("../src/functions");
