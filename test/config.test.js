@@ -707,4 +707,23 @@ describe("getConfigs", () => {
       Date.now() + CONFIG_CACHE_TTL_MS,
     );
   });
+
+  test("should not update cache when there is an error", async () => {
+    const oldConfigs = [
+      new RcConfig("old-id", sampleRcTestJSON, sampleRcMetadata),
+    ];
+    const expirationTime = Date.now() - 1000;
+    configCache.configs = oldConfigs;
+    configCache.expirationTime = expirationTime;
+    mockedAxios.post.mockRejectedValueOnce(new Error("Some error"));
+
+    // Check that the error is thrown
+    await expect(
+      getConfigs(mockS3Client, mockContext, configCache),
+    ).rejects.toThrow("Failed to retrieve configs");
+
+    // Check that cache was not updated
+    expect(configCache.configs).toEqual(oldConfigs);
+    expect(configCache.expirationTime).toBe(expirationTime);
+  });
 });
