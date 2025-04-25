@@ -36,6 +36,7 @@ exports.getRemoteConfig = getRemoteConfig;
 
 const setRemoteConfig = async ({
   waitForEventualConsistency = true,
+  waitForCacheInvalidation = true,
   extensionVersion = 67,
   pythonLayerVersion = 99,
   nodeLayerVersion = 112,
@@ -96,9 +97,14 @@ const setRemoteConfig = async ({
 
   remoteConfigIds.push(remoteConfig.data.data.id);
 
-  if (waitForEventualConsistency) {
+  if (waitForCacheInvalidation) {
+    // Wait 6 seconds for the cache to expire
+    await sleep(6000);
+  } else if (waitForEventualConsistency) {
+    // Wait 2.5 seconds for config changes to be available to the instrumenter
     await sleep(2500);
   }
+
   return remoteConfig.data.data;
 };
 
@@ -119,7 +125,10 @@ const deleteRemoteConfig = async (id) => {
 
 exports.deleteRemoteConfig = deleteRemoteConfig;
 
-const clearRemoteConfigs = async (waitForEventualConsistency = false) => {
+const clearRemoteConfigs = async ({
+  waitForEventualConsistency = false,
+  waitForCacheInvalidation = false,
+} = {}) => {
   const rcs = await getRemoteConfig();
   const ids = rcs.data.map((item) => item.id);
   const results = ids.map((id) => deleteRemoteConfig(id));
@@ -127,7 +136,9 @@ const clearRemoteConfigs = async (waitForEventualConsistency = false) => {
   while (remoteConfigIds.length) {
     remoteConfigIds.pop();
   }
-  if (waitForEventualConsistency) {
+  if (waitForCacheInvalidation) {
+    await sleep(6000);
+  } else if (waitForEventualConsistency) {
     await sleep(2500);
   }
 };

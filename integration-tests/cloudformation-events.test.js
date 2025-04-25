@@ -76,9 +76,6 @@ describe("Remote instrumenter cloudformation event tests", () => {
     // And a remote config that should cause that lambda to be instrumented
     await setRemoteConfig();
 
-    // Wait for the instrumenter's cache to become invalid
-    await sleep(6000);
-
     // The remote instrumenter being called like it would be on stack create
     const { s3Key } = await invokeLambdaWithCFNCreateEvent();
     keysToDelete.push(s3Key);
