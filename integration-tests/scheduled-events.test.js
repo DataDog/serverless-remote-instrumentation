@@ -21,6 +21,7 @@ const {
   putErrorObject,
   doesErrorObjectExist,
 } = require("./utilities/s3-error-object");
+const { sleep } = require("./utilities/sleep");
 
 describe("Remote instrumenter scheduled event tests", () => {
   const functionThatDoesntExist = "ThisDoesNotExist";
@@ -47,6 +48,9 @@ describe("Remote instrumenter scheduled event tests", () => {
       Tags: { foo: "baz" },
     });
     await setRemoteConfig();
+
+    // Wait for the instrumenter's cache to become invalid
+    await sleep(6000);
 
     const res = await invokeLambdaWithScheduledEvent();
 
@@ -89,6 +93,9 @@ describe("Remote instrumenter scheduled event tests", () => {
     });
     await setRemoteConfig();
 
+    // Wait for the instrumenter's cache to become invalid
+    await sleep(6000);
+
     const res = await invokeLambdaWithScheduledEvent();
     // Very rarely the instrumenter can run in between setting the config and running the lambda
     expect(
@@ -114,6 +121,9 @@ describe("Remote instrumenter scheduled event tests", () => {
       Runtime: Runtime.java21,
     });
     await setRemoteConfig();
+
+    // Wait for the instrumenter's cache to become invalid
+    await sleep(6000);
 
     const res = await invokeLambdaWithScheduledEvent();
 
@@ -150,6 +160,9 @@ describe("Remote instrumenter scheduled event tests", () => {
       id: rc.id,
     });
 
+    // Wait for the instrumenter's cache to become invalid
+    await sleep(6000);
+
     await invokeLambdaWithScheduledEvent();
 
     // isFunctionInstrumented checks against the RC version, so
@@ -172,6 +185,9 @@ describe("Remote instrumenter scheduled event tests", () => {
 
     // Remove all configs
     await clearRemoteConfigs(true);
+
+    // Wait for the instrumenter's cache to become invalid
+    await sleep(6000);
 
     // After the next scheduled event
     await invokeLambdaWithScheduledEvent();
