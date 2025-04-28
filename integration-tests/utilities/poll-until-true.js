@@ -5,11 +5,11 @@ const { sleep } = require("./sleep");
 const pollUntilTrue = async (timeout, interval, functionToCheck) => {
   const startTime = Date.now();
   while (Date.now() - startTime < timeout) {
-    await sleep(interval);
     const result = await functionToCheck();
     if (result) {
       return true;
     }
+    await sleep(interval);
   }
   return false;
 };

@@ -1,11 +1,22 @@
-const { RcConfig, getConfigsFromResponse } = require("../src/config");
-const { FILTER_TYPES } = require("../src/consts");
+const {
+  isCacheValid,
+  updateCache,
+  RcConfig,
+  getConfigsFromResponse,
+  getConfigs,
+  CONFIG_CACHE,
+} = require("../src/config");
+const { FILTER_TYPES, CONFIG_CACHE_TTL_MS } = require("../src/consts");
 const {
   constructTestJSON,
   sampleRcConfigID,
   sampleRcMetadata,
   sampleRcTestJSON,
 } = require("./test-utils");
+
+jest.mock("axios", () => ({
+  post: jest.fn(),
+}));
 
 describe("Config constructor", () => {
   it("creates an RcConfig object out of well-formed JSON", () => {
@@ -465,5 +476,249 @@ describe("getConfigsFromResponse", () => {
     expect(configs[0].pythonLayerVersion).toBe(30);
     expect(configs[0].priority).toBe(1);
     expect(configs[0].ruleFilters.length).toBe(2);
+  });
+});
+
+describe("Config cache", () => {
+  const sampleRcConfig = new RcConfig(
+    sampleRcConfigID,
+    sampleRcTestJSON,
+    sampleRcMetadata,
+  );
+
+  beforeEach(() => {
+    CONFIG_CACHE.configs = null;
+    CONFIG_CACHE.expirationTime = null;
+  });
+
+  describe("isCacheValid", () => {
+    test("returns false when configs and expiration time are null", () => {
+      expect(isCacheValid()).toBe(false);
+    });
+
+    test("returns false when expiration time is null", () => {
+      CONFIG_CACHE.configs = [sampleRcConfig];
+      expect(isCacheValid()).toBe(false);
+    });
+
+    test("returns false when configs are null", () => {
+      CONFIG_CACHE.expirationTime = Date.now() + CONFIG_CACHE_TTL_MS;
+      expect(isCacheValid()).toBe(false);
+    });
+
+    test("returns false when cache has expired", () => {
+      CONFIG_CACHE.configs = [sampleRcConfig];
+      CONFIG_CACHE.expirationTime = Date.now() - 1000; // Expired 1 second ago
+      expect(isCacheValid()).toBe(false);
+    });
+
+    test("returns true when cache is non-null and not expired", () => {
+      CONFIG_CACHE.configs = [sampleRcConfig];
+      CONFIG_CACHE.expirationTime = Date.now() + CONFIG_CACHE_TTL_MS;
+      expect(isCacheValid()).toBe(true);
+    });
+
+    test("returns true when cache is set to no configs and not expired", () => {
+      CONFIG_CACHE.configs = [];
+      CONFIG_CACHE.expirationTime = Date.now() + CONFIG_CACHE_TTL_MS;
+      expect(isCacheValid()).toBe(true);
+    });
+  });
+
+  describe("updateCache", () => {
+    test("updates cache with new configs and sets expiration time", () => {
+      const newConfigs = [sampleRcConfig, sampleRcConfig];
+      updateCache(newConfigs);
+
+      expect(CONFIG_CACHE.configs).toEqual(newConfigs);
+      expect(CONFIG_CACHE.expirationTime).toBeGreaterThan(Date.now());
+      expect(CONFIG_CACHE.expirationTime).toBeLessThanOrEqual(
+        Date.now() + CONFIG_CACHE_TTL_MS,
+      );
+    });
+
+    test("overwrites existing cache with new configs", () => {
+      CONFIG_CACHE.configs = [sampleRcConfig];
+      CONFIG_CACHE.expirationTime = Date.now() - 1000;
+
+      const newConfigs = [];
+      updateCache(newConfigs);
+
+      expect(CONFIG_CACHE.configs).toEqual(newConfigs);
+      expect(CONFIG_CACHE.expirationTime).toBeGreaterThan(Date.now());
+      expect(CONFIG_CACHE.expirationTime).toBeLessThanOrEqual(
+        Date.now() + CONFIG_CACHE_TTL_MS,
+      );
+    });
+  });
+});
+
+describe("getConfigs", () => {
+  let mockS3Client;
+  let mockContext;
+  let mockedAxios;
+
+  beforeEach(() => {
+    mockS3Client = {
+      send: jest.fn(),
+    };
+    mockContext = {
+      invokedFunctionArn:
+        "arn:aws:lambda:us-east-1:123456789012:function:test-function",
+    };
+    CONFIG_CACHE.configs = null;
+    CONFIG_CACHE.expirationTime = null;
+    mockedAxios = require("axios");
+    mockedAxios.post.mockReset();
+  });
+
+  test("should use cached configs when they are valid", async () => {
+    const cachedConfigs = [
+      new RcConfig(sampleRcConfigID, sampleRcTestJSON, sampleRcMetadata),
+    ];
+    CONFIG_CACHE.configs = cachedConfigs;
+    const expirationTime = Date.now() + CONFIG_CACHE_TTL_MS;
+    CONFIG_CACHE.expirationTime = expirationTime;
+
+    const configs = await getConfigs(mockS3Client, mockContext);
+
+    // Check that configs are returned from the cache
+    expect(configs).toEqual(cachedConfigs);
+    expect(mockedAxios.post).toHaveBeenCalledTimes(0);
+
+    // Check that cached configs and expiration time are unchanged
+    expect(CONFIG_CACHE.configs).toEqual(cachedConfigs);
+    expect(CONFIG_CACHE.expirationTime).toBe(expirationTime);
+  });
+
+  test("should fetch configs from RC when cached configs are null", async () => {
+    const path = "datadog/2/SERVERLESS_REMOTE_INSTRUMENTATION/new-id";
+    mockedAxios.post.mockResolvedValueOnce({
+      data: {
+        target_files: [
+          {
+            path: path,
+            raw: btoa(JSON.stringify(sampleRcTestJSON)),
+          },
+        ],
+        client_configs: [path],
+        targets: btoa(
+          JSON.stringify({
+            signed: {
+              targets: {
+                [path]: sampleRcMetadata,
+              },
+            },
+          }),
+        ),
+      },
+    });
+
+    const configs = await getConfigs(mockS3Client, mockContext);
+
+    // Check that new configs are fetched
+    expect(configs.length).toBe(1);
+    expect(configs[0].configID).toBe("new-id");
+    expect(mockedAxios.post).toHaveBeenCalledTimes(1);
+
+    // Check that cache was updated
+    expect(CONFIG_CACHE.configs.length).toBe(1);
+    expect(CONFIG_CACHE.configs[0].configID).toBe("new-id");
+    expect(CONFIG_CACHE.expirationTime).toBeGreaterThan(Date.now());
+    expect(CONFIG_CACHE.expirationTime).toBeLessThanOrEqual(
+      Date.now() + CONFIG_CACHE_TTL_MS,
+    );
+  });
+
+  test("should fetch new configs when cache is expired", async () => {
+    const oldConfigs = [
+      new RcConfig("old-id", sampleRcTestJSON, sampleRcMetadata),
+    ];
+
+    CONFIG_CACHE.configs = oldConfigs;
+    CONFIG_CACHE.expirationTime = Date.now() - 1000; // Expired 1 second ago
+
+    const path = "datadog/2/SERVERLESS_REMOTE_INSTRUMENTATION/new-id";
+    mockedAxios.post.mockResolvedValueOnce({
+      data: {
+        target_files: [
+          {
+            path: path,
+            raw: btoa(JSON.stringify(sampleRcTestJSON)),
+          },
+        ],
+        client_configs: [path],
+        targets: btoa(
+          JSON.stringify({
+            signed: {
+              targets: {
+                [path]: sampleRcMetadata,
+              },
+            },
+          }),
+        ),
+      },
+    });
+
+    const configs = await getConfigs(mockS3Client, mockContext);
+
+    // Check that new configs are fetched
+    expect(configs.length).toBe(1);
+    expect(configs[0].configID).toBe("new-id");
+    expect(mockedAxios.post).toHaveBeenCalledTimes(1);
+
+    // Check that cache was updated
+    expect(CONFIG_CACHE.configs.length).toBe(1);
+    expect(CONFIG_CACHE.configs[0].configID).toBe("new-id");
+    expect(CONFIG_CACHE.expirationTime).toBeGreaterThan(Date.now());
+    expect(CONFIG_CACHE.expirationTime).toBeLessThanOrEqual(
+      Date.now() + CONFIG_CACHE_TTL_MS,
+    );
+  });
+
+  test("should handle empty configs from RC", async () => {
+    mockedAxios.post.mockResolvedValueOnce({
+      data: {
+        target_files: [],
+        client_configs: [],
+        targets: btoa(
+          JSON.stringify({
+            signed: {
+              targets: {},
+            },
+          }),
+        ),
+      },
+    });
+
+    const configs = await getConfigs(mockS3Client, mockContext);
+    // Check that configs are empty
+    expect(configs).toEqual([]);
+
+    // Check that cache was updated
+    expect(CONFIG_CACHE.configs).toEqual([]);
+    expect(CONFIG_CACHE.expirationTime).toBeGreaterThan(Date.now());
+    expect(CONFIG_CACHE.expirationTime).toBeLessThanOrEqual(
+      Date.now() + CONFIG_CACHE_TTL_MS,
+    );
+  });
+
+  test("should not update cache when there is an error", async () => {
+    const oldConfigs = [
+      new RcConfig("old-id", sampleRcTestJSON, sampleRcMetadata),
+    ];
+    const expirationTime = Date.now() - 1000;
+    CONFIG_CACHE.configs = oldConfigs;
+    CONFIG_CACHE.expirationTime = expirationTime;
+    mockedAxios.post.mockRejectedValueOnce(new Error("Some error"));
+
+    // Check that the error is thrown
+    await expect(getConfigs(mockS3Client, mockContext)).rejects.toThrow(
+      "Failed to retrieve configs",
+    );
+
+    // Check that cache was not updated
+    expect(CONFIG_CACHE.configs).toEqual(oldConfigs);
+    expect(CONFIG_CACHE.expirationTime).toBe(expirationTime);
   });
 });
