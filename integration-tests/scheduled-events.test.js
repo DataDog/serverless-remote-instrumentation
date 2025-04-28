@@ -171,7 +171,7 @@ describe("Remote instrumenter scheduled event tests", () => {
     expect(isInstrumented).toStrictEqual(true);
 
     // Remove all configs
-    await clearRemoteConfigs(true);
+    await clearRemoteConfigs({ waitForCacheInvalidation: true });
 
     // After the next scheduled event
     await invokeLambdaWithScheduledEvent();

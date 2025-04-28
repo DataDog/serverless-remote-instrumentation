@@ -17,9 +17,72 @@ const {
 const { getLambdaClient } = require("./aws-resources");
 const { sleep } = require("./sleep");
 
-const functionNames = [];
+const functionNamesToCleanUp = [];
+
+const createFunctions = async (lambdaProps, numFunctions = 1) => {
+  const lambdaClient = await getLambdaClient();
+  const createdFunctions = new Set();
+  for (let i = 0; i < numFunctions; i++) {
+    const functionName = generateTestFunctionName(i);
+
+    const zip = new JSZip();
+    zip.file(
+      "index.js",
+      "const handler = async () => { return 1 }; exports.handler=handler;",
+    );
+    const zippedHandler = await zip
+      .generateAsync({ type: "blob" })
+      .then(async (content) => new Uint8Array(await content.arrayBuffer()));
+    const command = new CreateFunctionCommand({
+      Code: {
+        ZipFile: zippedHandler,
+      },
+      FunctionName: functionName,
+      Handler: "index.handler",
+      Role: `arn:aws:iam::${account}:role/${testLambdaRole}`,
+      Runtime: Runtime.nodejs20x,
+      PackageType: "Zip",
+      MemorySize: 512,
+      Tags: {
+        dd_serverless_service: "remote_instrumenter_testing",
+      },
+      ...lambdaProps,
+    });
+
+    const lambda = await lambdaClient.send(command);
+    createdFunctions.add(lambda);
+    functionNamesToCleanUp.push(lambda.FunctionName);
+  }
+
+  // When new functions are created they are in a pending state for a little bit,
+  // wait until they are active since they cannot be modified in this pending state
+  const readyFunctions = [];
+  while (createdFunctions.size > 0) {
+    const lambda = createdFunctions.values().next().value;
+    const functionStatus = await lambdaClient.send(
+      new GetFunctionConfigurationCommand({
+        FunctionName: lambda.FunctionName,
+      }),
+    );
+    const { State } = functionStatus;
+    if (State === "Pending") {
+      await sleep(1000);
+    } else {
+      readyFunctions.push(lambda);
+      createdFunctions.delete(lambda);
+    }
+  }
+  return readyFunctions;
+};
+exports.createFunctions = createFunctions;
 
 const createFunction = async (lambdaProps) => {
+  const functions = await createFunctions(lambdaProps);
+  return functions[0];
+};
+exports.createFunction = createFunction;
+
+function generateTestFunctionName(suffixNumber) {
   // Name the function after the test, picking the last 64 characters since
   // lambda limits function name length and that is probably the most descriptive
   let functionName =
@@ -29,63 +92,17 @@ const createFunction = async (lambdaProps) => {
     );
 
   const prefix = "ri-test-";
-  const maxLengthWithoutPrefix = 64 - prefix.length;
-  if (functionName.length > maxLengthWithoutPrefix) {
+  const suffix = `-${suffixNumber}`;
+  const maxLengthWithoutPrefixAndSuffix = 64 - prefix.length - suffix.length;
+  if (functionName.length > maxLengthWithoutPrefixAndSuffix) {
     functionName = functionName.slice(
-      functionName.length - maxLengthWithoutPrefix,
+      functionName.length - maxLengthWithoutPrefixAndSuffix,
     );
   }
 
-  functionName = `${prefix}${functionName}`;
-
-  const zip = new JSZip();
-  zip.file(
-    "index.js",
-    "const handler = async () => { return 1 }; exports.handler=handler;",
-  );
-  const zippedHandler = await zip
-    .generateAsync({ type: "blob" })
-    .then(async (content) => new Uint8Array(await content.arrayBuffer()));
-  const command = new CreateFunctionCommand({
-    Code: {
-      ZipFile: zippedHandler,
-    },
-    FunctionName: functionName,
-    Handler: "index.handler",
-    Role: `arn:aws:iam::${account}:role/${testLambdaRole}`,
-    Runtime: Runtime.nodejs20x,
-    PackageType: "Zip",
-    MemorySize: 512,
-    Tags: {
-      dd_serverless_service: "remote_instrumenter_testing",
-    },
-    ...lambdaProps,
-  });
-
-  const lambdaClient = await getLambdaClient();
-  const lambda = await lambdaClient.send(command);
-  const { FunctionName } = lambda;
-  functionNames.push(FunctionName);
-
-  // When a new function is created it is in a pending state for a little bit,
-  // wait until it is active since it cannot be modified in this pending state
-  let isFunctionReady = false;
-  while (!isFunctionReady) {
-    await sleep(1000);
-    const functionStatus = await lambdaClient.send(
-      new GetFunctionConfigurationCommand({
-        FunctionName,
-      }),
-    );
-    const { State } = functionStatus;
-    if (State !== "Pending") {
-      isFunctionReady = true;
-    }
-  }
-  return lambda;
-};
-
-exports.createFunction = createFunction;
+  functionName = `${prefix}${functionName}${suffix}`;
+  return functionName;
+}
 
 const deleteFunction = async (functionName) => {
   const command = new DeleteFunctionCommand({ FunctionName: functionName });
@@ -104,9 +121,9 @@ const deleteFunction = async (functionName) => {
 exports.deleteFunction = deleteFunction;
 
 const deleteTestFunctions = async () => {
-  await Promise.all(functionNames.map((name) => deleteFunction(name)));
-  while (functionNames.length) {
-    functionNames.pop();
+  await Promise.all(functionNamesToCleanUp.map((name) => deleteFunction(name)));
+  while (functionNamesToCleanUp.length) {
+    functionNamesToCleanUp.pop();
   }
 };
 
