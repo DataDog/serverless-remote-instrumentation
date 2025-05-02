@@ -118,21 +118,23 @@ do
         elif [ $latest_version -lt $((VERSION-1)) ]; then
             echo "WARNING: The latest version of layer $layer_name in region $region is $latest_version, publishing all the missing versions including $VERSION"
         fi
+
+        # If the region is more than 1 version behind, publish all the missing versions
+        while [ $latest_version -lt $((VERSION-1)) ]; do
+            # Download the layer from us-east-1.  This can be any region we've always published to
+            URL=$(aws lambda get-layer-version --layer-name $layer_name  --version-number $latest_version --query Content.Location --output text --region us-east-1)
+            curl $URL -o "./temp_layer.zip"
+            # Publish the layer in the new region
+            latest_version=$(publish_layer $region $layer_name "./temp_layer.zip")
+            echo "Published version $latest_version for layer $layer_name in region $region"
+            rm "./temp_layer.zip"
+        done
+
+        # Now publish the current version
         index=$(index_of_layer $layer_name)
         layer_path="${LAYER_PATHS[$index]}"
-        while [ $latest_version -lt $VERSION ]; do
-            latest_version=$(publish_layer $region $layer_name $layer_path)
-            echo "Published version $latest_version for layer $layer_name in region $region"
-
-            # This shouldn't happen unless someone manually deleted the latest version, say 28, and
-            # then tries to republish 28 again. The published version would actually be 29, because
-            # Lambda layers are immutable and AWS will skip deleted version and use the next number.
-            if [ $latest_version -gt $VERSION ]; then
-                echo "ERROR: Published version $latest_version is greater than the desired version $VERSION!"
-                echo "Exiting"
-                exit 1
-            fi
-        done
+        latest_version=$(publish_layer $region $layer_name $layer_path)
+        echo "Published version $latest_version for layer $layer_name in region $region"
     done
 done
 
