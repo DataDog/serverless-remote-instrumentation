@@ -27,7 +27,6 @@ Metadata:
           default: Additional Configs
         Parameters:
           - DdSite
-          - MinimumMemorySize
           - BucketPrefix
           - BucketName
           - InstrumenterFunctionName
@@ -77,11 +76,6 @@ Parameters:
   TrailName:
     Type: String
     Default: datadog-serverless-instrumentation-trail
-  MinimumMemorySize:
-    Type: String
-    Default: '512'
-    Description: >-
-      The minimum lambda function memory size that will be instrumented.  Can be set to ensure that functions with limited memory do not encounter out of memory errors.
   DdInstrumenterFunctionEnv:
     Type: String
     Default: 'dev'
@@ -130,7 +124,6 @@ Resources:
           DATADOG_SITE: !Ref DdSite
           DD_CI_BYPASS_SITE_VALIDATION: !FindInMap [ Constants, DdCIBypassSiteValidation, Bypass ]
           DD_AWS_ACCOUNT_NUMBER: !Sub '${AWS::AccountId}'
-          DD_MinimumMemorySize: !Ref MinimumMemorySize
           DD_S3_BUCKET: !Ref S3Bucket
           DD_REMOTE_CONFIGURATION_ENABLED: true
           DD_APM_ENABLED: true

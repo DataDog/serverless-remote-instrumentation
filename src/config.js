@@ -278,7 +278,6 @@ async function getConfigs(s3Client, context) {
   const awsAccountId = context.invokedFunctionArn.split(":")[4];
   const awsRegion = process.env.AWS_REGION;
   const instrumenterFunctionName = process.env.AWS_LAMBDA_FUNCTION_NAME;
-  const minimumMemorySize = process.env.DD_MinimumMemorySize;
   const configsFromRC = await getConfigsFromRC(
     s3Client,
     awsAccountId,
@@ -288,7 +287,6 @@ async function getConfigs(s3Client, context) {
     config.awsAccountId = awsAccountId;
     config.awsRegion = awsRegion;
     config.instrumenterFunctionName = instrumenterFunctionName;
-    config.minimumMemorySize = minimumMemorySize;
   }
   logger.logObject({
     ...configsFromRC.map((config) => {
