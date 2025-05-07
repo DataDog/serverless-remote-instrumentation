@@ -6,6 +6,7 @@ const {
   GetFunctionCommand,
   GetFunctionConfigurationCommand,
   ListFunctionsCommand,
+  GetAccountSettingsCommand,
 } = require("@aws-sdk/client-lambda");
 const { getLambdaClient } = require("./aws-resources");
 const { logger } = require("./logger");
@@ -20,7 +21,6 @@ const {
   SUPPORTED_RUNTIMES,
   NODE,
   PYTHON,
-  PROCESSING,
   INSTRUMENT,
   TAG,
   FUNCTION_NAME,
@@ -329,8 +329,7 @@ function needsInstrumentationUpdate(
   // If it is instrumented but not by the remote instrumenter
   if (isCurrentlyInstrumented && !isCurrentlyRemotelyInstrumented) {
     if (emitProcessingLogs) {
-      logger.frontendLambdaEvents(
-        PROCESSING,
+      logger.emitFrontendProcessingEvent(
         functionName,
         `Skipping function '${functionName}' because it is manually instrumented.`,
       );
@@ -364,8 +363,7 @@ function needsInstrumentationUpdate(
     // ... and isn't instrumented, skip it
     if (!isCurrentlyRemotelyInstrumented) {
       if (emitProcessingLogs) {
-        logger.frontendLambdaEvents(
-          PROCESSING,
+        logger.emitFrontendProcessingEvent(
           functionName,
           `Skipping function '${functionName}' because it does not satisfy targeting rules.`,
         );
@@ -395,8 +393,7 @@ function needsInstrumentationUpdate(
     } // ...and it is instrumented, uninstrument it
     else {
       if (emitProcessingLogs) {
-        logger.frontendLambdaEvents(
-          PROCESSING,
+        logger.emitFrontendProcessingEvent(
           functionName,
           `Uninstrumenting function '${functionName}' because it does not satisfy targeting rules.`,
         );
@@ -413,8 +410,7 @@ function needsInstrumentationUpdate(
   // If it's the remote instrumenter lambda itself, skip it
   if (isRemoteInstrumenter(functionName, config.instrumenterFunctionName)) {
     if (emitProcessingLogs) {
-      logger.frontendLambdaEvents(
-        PROCESSING,
+      logger.emitFrontendProcessingEvent(
         functionName,
         `Skipping function '${functionName}' because it is the remote instrumenter function.`,
       );
@@ -447,8 +443,7 @@ function needsInstrumentationUpdate(
   }
   if (!isSupportedRuntime) {
     if (emitProcessingLogs) {
-      logger.frontendLambdaEvents(
-        PROCESSING,
+      logger.emitFrontendProcessingEvent(
         functionName,
         `Skipping function '${functionName}' because it has an unsupported runtime.`,
       );
@@ -475,8 +470,7 @@ function needsInstrumentationUpdate(
   const layers = lambdaFunc.Layers || [];
   if (isCorrectlyInstrumented(layers, config, runtime)) {
     if (emitProcessingLogs) {
-      logger.frontendLambdaEvents(
-        PROCESSING,
+      logger.emitFrontendProcessingEvent(
         functionName,
         `Skipping function '${functionName}' because it is already correctly instrumented.`,
       );
@@ -541,3 +535,10 @@ function selectFunctionFieldsForLogging(lambdaFunction) {
   };
 }
 exports.selectFunctionFieldsForLogging = selectFunctionFieldsForLogging;
+
+async function getFunctionCount(client) {
+  const command = new GetAccountSettingsCommand({});
+  const response = await client.send(command);
+  return response.AccountUsage.FunctionCount;
+}
+exports.getFunctionCount = getFunctionCount;

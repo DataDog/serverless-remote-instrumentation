@@ -1,4 +1,8 @@
-const { LAMBDA_EVENT } = require("./consts");
+const {
+  LAMBDA_EVENT,
+  SCHEDULED_INVOCATION_EVENT,
+  PROCESSING,
+} = require("./consts");
 const LOG_LEVEL = process.env.DD_LOG_LEVEL;
 
 const LOG_INFO = ["TRACE", "DEBUG", "INFO"].includes(LOG_LEVEL);
@@ -31,9 +35,14 @@ class Logger {
     );
   }
 
-  // Emit events for the frontend to use to display instrumentation statuses RemoteInstrumentationStarted and RemoteInstrumentationEnded.
+  // Emit RemoteInstrumentationStarted and RemoteInstrumentationEnded events for the frontend to use to display instrumentation statuses.
   // Used for both lambda management and scheduled instrumentation events.
-  emitFrontEndEvent(ddSlsEventName, triggeredBy, instrumentOutcome, configs) {
+  emitFrontendStartOrEndEvent(
+    ddSlsEventName,
+    triggeredBy,
+    instrumentOutcome,
+    configs,
+  ) {
     console.log(
       JSON.stringify({
         ddSlsEventName,
@@ -49,15 +58,26 @@ class Logger {
     );
   }
 
-  // Emit events for the frontend to use to display instrumentation status.
+  // Emit 'processing' events for the frontend to use to display instrumentation statuses.
   // Used for lambda management events.
-  frontendLambdaEvents(status, targetFunctionName, message = null) {
+  emitFrontendProcessingEvent(targetFunctionName, message = null) {
     console.log(
       JSON.stringify({
         ddSlsEventName: LAMBDA_EVENT,
-        status,
+        status: PROCESSING,
         targetFunctionName: targetFunctionName,
         message,
+      }),
+    );
+  }
+
+  // Emit an event containing the account state for the frontend.
+  // Used for scheduled invocation events.
+  async emitFrontendAccountStateEvent(functionCount) {
+    console.log(
+      JSON.stringify({
+        ddSlsEventName: SCHEDULED_INVOCATION_EVENT,
+        functionCount,
       }),
     );
   }
