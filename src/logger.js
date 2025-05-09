@@ -73,7 +73,7 @@ class Logger {
 
   // Emit an event containing the account state for the frontend.
   // Used for scheduled invocation events.
-  async emitFrontendAccountStateEvent(functionCount) {
+  async emitFrontendAccountStateEvent({ functionCount }) {
     console.log(
       JSON.stringify({
         ddSlsEventName: SCHEDULED_INVOCATION_EVENT,

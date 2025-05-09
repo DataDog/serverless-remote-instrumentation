@@ -261,7 +261,7 @@ exports.handler = async (event, context) => {
     );
 
     const functionCount = await getFunctionCount(lambdaClient);
-    logger.emitFrontendAccountStateEvent(functionCount);
+    logger.emitFrontendAccountStateEvent({ functionCount });
   }
 
   // If it's a different event type, log an error
