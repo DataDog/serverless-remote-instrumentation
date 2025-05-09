@@ -2,7 +2,6 @@ const { getLambdaFunction } = require("./functions");
 const { DD_SLS_REMOTE_INSTRUMENTER_CHECK } = require("./tag");
 const { DD_SLS_REMOTE_INSTRUMENTER_VERSION } = require("./consts");
 const { logger } = require("./logger");
-const { PROCESSING } = require("./consts");
 
 const { ResourceNotFoundException } = require("@aws-sdk/client-lambda");
 
@@ -156,8 +155,7 @@ async function getFunctionFromLambdaEvent(lambdaClient, event) {
     }
   }
 
-  logger.frontendLambdaEvents(
-    PROCESSING,
+  logger.emitFrontendProcessingEvent(
     functionName,
     `Received function name '${functionName}' from event '${event.detail.eventName}'`,
   );
