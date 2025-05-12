@@ -42,7 +42,7 @@ const createFunctions = async (lambdaProps, numFunctions = 1) => {
       Role: `arn:aws:iam::${account}:role/${testLambdaRole}`,
       Runtime: Runtime.nodejs20x,
       PackageType: "Zip",
-      MemorySize: 512,
+      MemorySize: 128,
       Tags: {
         dd_serverless_service: "remote_instrumenter_testing",
       },

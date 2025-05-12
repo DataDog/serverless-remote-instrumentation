@@ -9,7 +9,7 @@ const getRemoteConfig = async () => {
   const [apiKey, appKey] = await Promise.all([getApiKey(), getAppKey()]);
 
   const url =
-    "https://{DD_SITE}/api/unstable/remote_config/products/serverless_remote_instrumentation/config?filter%5Baws_account_id%5D={AWS_ACCOUNT_SLOT}&filter%5Bregion%5D={REGION_SLOT}"
+    "https://{DD_SITE}/api/v2/remote_config/products/serverless_remote_instrumentation/config?filter%5Baws_account_id%5D={AWS_ACCOUNT_SLOT}&filter%5Bregion%5D={REGION_SLOT}"
       .replace("{DD_SITE}", ddSite)
       .replace("{AWS_ACCOUNT_SLOT}", account)
       .replace("{REGION_SLOT}", region);
@@ -75,7 +75,7 @@ const setRemoteConfig = async ({
     },
   };
 
-  const url = `https://${ddSite}/api/unstable/remote_config/products/serverless_remote_instrumentation/config`;
+  const url = `https://${ddSite}/api/v2/remote_config/products/serverless_remote_instrumentation/config`;
 
   let remoteConfig;
   if (id) {
@@ -113,7 +113,7 @@ exports.setRemoteConfig = setRemoteConfig;
 const deleteRemoteConfig = async (id) => {
   const [apiKey, appKey] = await Promise.all([getApiKey(), getAppKey()]);
 
-  const url = `https://${ddSite}/api/unstable/remote_config/products/serverless_remote_instrumentation/config/${id}`;
+  const url = `https://${ddSite}/api/v2/remote_config/products/serverless_remote_instrumentation/config/${id}`;
 
   return axios.delete(url, {
     headers: {

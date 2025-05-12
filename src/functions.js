@@ -6,6 +6,7 @@ const {
   GetFunctionCommand,
   GetFunctionConfigurationCommand,
   ListFunctionsCommand,
+  GetAccountSettingsCommand,
 } = require("@aws-sdk/client-lambda");
 const { getLambdaClient } = require("./aws-resources");
 const { logger } = require("./logger");
@@ -20,14 +21,12 @@ const {
   SUPPORTED_RUNTIMES,
   NODE,
   PYTHON,
-  PROCESSING,
   INSTRUMENT,
   TAG,
   FUNCTION_NAME,
   NOT_SATISFYING_TARGETING_RULES,
   SKIPPED,
   REMOTE_INSTRUMENTER_FUNCTION,
-  INSUFFICIENT_MEMORY,
   UNSUPPORTED_RUNTIME,
   ALREADY_CORRECT_EXTENSION_AND_LAYER,
 } = require("./consts");
@@ -191,11 +190,6 @@ function isRemoteInstrumenter(functionName, instrumenterName) {
 }
 exports.isRemoteInstrumenter = isRemoteInstrumenter;
 
-function isBelowMinimumMemorySize(currentMemorySize, minimumMemorySize) {
-  return currentMemorySize < parseInt(minimumMemorySize, 10);
-}
-exports.isBelowMinimumMemorySize = isBelowMinimumMemorySize;
-
 function filterFunctionsToChangeInstrumentation(
   functions,
   config,
@@ -335,8 +329,7 @@ function needsInstrumentationUpdate(
   // If it is instrumented but not by the remote instrumenter
   if (isCurrentlyInstrumented && !isCurrentlyRemotelyInstrumented) {
     if (emitProcessingLogs) {
-      logger.frontendLambdaEvents(
-        PROCESSING,
+      logger.emitFrontendProcessingEvent(
         functionName,
         `Skipping function '${functionName}' because it is manually instrumented.`,
       );
@@ -370,8 +363,7 @@ function needsInstrumentationUpdate(
     // ... and isn't instrumented, skip it
     if (!isCurrentlyRemotelyInstrumented) {
       if (emitProcessingLogs) {
-        logger.frontendLambdaEvents(
-          PROCESSING,
+        logger.emitFrontendProcessingEvent(
           functionName,
           `Skipping function '${functionName}' because it does not satisfy targeting rules.`,
         );
@@ -401,8 +393,7 @@ function needsInstrumentationUpdate(
     } // ...and it is instrumented, uninstrument it
     else {
       if (emitProcessingLogs) {
-        logger.frontendLambdaEvents(
-          PROCESSING,
+        logger.emitFrontendProcessingEvent(
           functionName,
           `Uninstrumenting function '${functionName}' because it does not satisfy targeting rules.`,
         );
@@ -419,8 +410,7 @@ function needsInstrumentationUpdate(
   // If it's the remote instrumenter lambda itself, skip it
   if (isRemoteInstrumenter(functionName, config.instrumenterFunctionName)) {
     if (emitProcessingLogs) {
-      logger.frontendLambdaEvents(
-        PROCESSING,
+      logger.emitFrontendProcessingEvent(
         functionName,
         `Skipping function '${functionName}' because it is the remote instrumenter function.`,
       );
@@ -443,34 +433,6 @@ function needsInstrumentationUpdate(
     return { instrument: false, uninstrument: false, tag: false, untag: false };
   }
 
-  // If it's below the minimum memory size, skip it
-  const currentMemorySize = lambdaFunc.MemorySize;
-  if (isBelowMinimumMemorySize(currentMemorySize, config.minimumMemorySize)) {
-    if (emitProcessingLogs) {
-      logger.frontendLambdaEvents(
-        PROCESSING,
-        functionName,
-        `Skipping function '${functionName}' because it is below the minimum memory size.`,
-      );
-    }
-    const reason = `Function's memory size ${currentMemorySize} MB is below threshold ${config.minimumMemorySize} MB.`;
-    instrumentOutcome.instrument.skipped[functionName] = {
-      functionArn,
-      reason: reason,
-      reasonCode: INSUFFICIENT_MEMORY,
-    };
-    logger.logInstrumentOutcome({
-      ddSlsEventName: INSTRUMENT,
-      outcome: SKIPPED,
-      targetFunctionName: functionName,
-      targetFunctionArn: functionArn,
-      runtime: runtime,
-      reason: reason,
-      reasonCode: INSUFFICIENT_MEMORY,
-    });
-    return { instrument: false, uninstrument: false, tag: false, untag: false };
-  }
-
   // If it's an unsupported runtime, skip it
   let isSupportedRuntime = false;
   for (const supportedRuntime of SUPPORTED_RUNTIMES) {
@@ -481,8 +443,7 @@ function needsInstrumentationUpdate(
   }
   if (!isSupportedRuntime) {
     if (emitProcessingLogs) {
-      logger.frontendLambdaEvents(
-        PROCESSING,
+      logger.emitFrontendProcessingEvent(
         functionName,
         `Skipping function '${functionName}' because it has an unsupported runtime.`,
       );
@@ -509,8 +470,7 @@ function needsInstrumentationUpdate(
   const layers = lambdaFunc.Layers || [];
   if (isCorrectlyInstrumented(layers, config, runtime)) {
     if (emitProcessingLogs) {
-      logger.frontendLambdaEvents(
-        PROCESSING,
+      logger.emitFrontendProcessingEvent(
         functionName,
         `Skipping function '${functionName}' because it is already correctly instrumented.`,
       );
@@ -570,9 +530,15 @@ function selectFunctionFieldsForLogging(lambdaFunction) {
     FunctionArn: lambdaFunction.FunctionArn,
     Tags: Array.from(lambdaFunction.Tags ?? {}),
     Runtime: lambdaFunction.Runtime,
-    MemorySize: lambdaFunction.MemorySize,
     Layers: lambdaFunction.Layers,
     Architectures: lambdaFunction.Architectures,
   };
 }
 exports.selectFunctionFieldsForLogging = selectFunctionFieldsForLogging;
+
+async function getFunctionCount(client) {
+  const command = new GetAccountSettingsCommand({});
+  const response = await client.send(command);
+  return response.AccountUsage.FunctionCount;
+}
+exports.getFunctionCount = getFunctionCount;

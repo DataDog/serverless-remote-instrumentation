@@ -88,7 +88,6 @@ describe("instrumentFunctions", () => {
     FunctionArn: "arn:aws:lambda:us-east-2:123456789:function:foo",
     Runtime: "nodejs18.x",
     Tags: new Set(["env:prod"]),
-    MemorySize: 512,
   };
   const functionBar = {
     FunctionName: "bar",
@@ -98,7 +97,6 @@ describe("instrumentFunctions", () => {
       "foo:bar",
       `${DD_SLS_REMOTE_INSTRUMENTER_VERSION}:${VERSION}`,
     ]),
-    MemorySize: 512,
   };
 
   // Sample config object
@@ -284,7 +282,6 @@ describe("removeRemoteInstrumentation", () => {
         "foo:bar",
         `${DD_SLS_REMOTE_INSTRUMENTER_VERSION}:${VERSION}`,
       ]),
-      MemorySize: 512,
     };
     process.env.AWS_REGION = "us-east-2";
     await instrument.removeRemoteInstrumentation(
@@ -317,7 +314,6 @@ describe("removeRemoteInstrumentation", () => {
       FunctionArn: "arn:aws:lambda:us-east-2:123456789:function:foo",
       Runtime: "nodejs18.x",
       Tags: new Set(["env:prod"]),
-      MemorySize: 512,
     };
     await instrument.removeRemoteInstrumentation(
       mockClient,

@@ -24,6 +24,7 @@ const {
   getLambdaFunction,
   getAllFunctions,
   enrichFunctionsWithTags,
+  getFunctionCount,
 } = require("./functions");
 const { getLambdaClient } = require("./aws-resources");
 const { instrumentFunctions } = require("./instrument");
@@ -258,6 +259,9 @@ exports.handler = async (event, context) => {
         ),
       ].flat(),
     );
+
+    const functionCount = await getFunctionCount(lambdaClient);
+    logger.emitFrontendAccountStateEvent({ functionCount });
   }
 
   // If it's a different event type, log an error

@@ -129,7 +129,7 @@ async function instrumentFunctions(
   taggingClient,
   triggeredBy,
 ) {
-  logger.emitFrontEndEvent(
+  logger.emitFrontendStartOrEndEvent(
     REMOTE_INSTRUMENTATION_STARTED,
     triggeredBy,
     null,
@@ -213,7 +213,7 @@ async function instrumentFunctions(
   if (![LAMBDA_EVENT, CLOUDFORMATION_DELETE_EVENT].includes(triggeredBy)) {
     await putApplyState(s3Client, configApplyStates);
   }
-  logger.emitFrontEndEvent(
+  logger.emitFrontendStartOrEndEvent(
     REMOTE_INSTRUMENTATION_ENDED,
     triggeredBy,
     instrumentOutcome,
