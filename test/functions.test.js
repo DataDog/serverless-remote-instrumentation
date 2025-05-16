@@ -233,6 +233,54 @@ describe("satisfiesTargetingRules", () => {
       ).toBe(false);
     });
   });
+  test("should return true if the function name is allowed by a wildcard filter", () => {
+    expect(
+      satisfiesTargetingRules("functionA", new Set(["foo:bar"]), [
+        {
+          key: "functionName",
+          values: ["*"],
+          allow: true,
+          filterType: "function_name",
+        },
+      ]),
+    ).toBe(true);
+  });
+  test("should return false if function name is included by wildcard and explicitly denied by name", () => {
+    expect(
+      satisfiesTargetingRules("functionA", new Set(["foo:bar"]), [
+        {
+          key: "functionName",
+          values: ["*"],
+          allow: true,
+          filterType: "function_name",
+        },
+        {
+          key: "functionName",
+          values: ["functionA"],
+          allow: false,
+          filterType: "function_name",
+        },
+      ]),
+    ).toBe(false);
+  });
+  test("should return false if function name is included by wildcard and explicitly denied by tag", () => {
+    expect(
+      satisfiesTargetingRules("functionA", new Set(["foo:bar"]), [
+        {
+          key: "functionName",
+          values: ["*"],
+          allow: true,
+          filterType: "function_name",
+        },
+        {
+          key: "foo",
+          values: ["bar"],
+          allow: false,
+          filterType: "tag",
+        },
+      ]),
+    ).toBe(false);
+  });
 });
 
 describe("isRemoteInstrumenter", () => {
