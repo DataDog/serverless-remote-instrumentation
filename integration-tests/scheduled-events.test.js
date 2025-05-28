@@ -183,6 +183,38 @@ describe("Remote instrumenter scheduled event tests", () => {
     expect(isUninstrumented).toStrictEqual(true);
   });
 
+  describe("set DD_TRACE_ENABLED and DD_SERVERLESS_LOGS_ENABLED correctly", async () => {
+    it("sets variables to true when undefined in config", async () => {
+      const { FunctionName: functionName } = await createFunction({
+        Tags: { foo: "bar" },
+      });
+      await setRemoteConfig({
+        ddTraceEnabled: undefined,
+        ddServerlessLogsEnabled: undefined,
+      });
+      await invokeLambdaWithScheduledEvent();
+      let isInstrumented = await pollUntilTrue(60000, 5000, () =>
+        isFunctionInstrumented(functionName),
+      );
+      expect(isInstrumented).toStrictEqual(true);
+    });
+
+    it("sets variables to config value when set in config", async () => {
+      const { FunctionName: functionName } = await createFunction({
+        Tags: { foo: "bar" },
+      });
+      await setRemoteConfig({
+        ddTraceEnabled: true,
+        ddServerlessLogsEnabled: false,
+      });
+      await invokeLambdaWithScheduledEvent();
+      const isInstrumented = await pollUntilTrue(60000, 5000, () =>
+        isFunctionInstrumented(functionName),
+      );
+      expect(isInstrumented).toStrictEqual(true);
+    });
+  });
+
   it("adds an appropriate reason code when datadog-ci fails", async () => {
     // Set the extension version to a version that doesn't exist
     await setRemoteConfig({
