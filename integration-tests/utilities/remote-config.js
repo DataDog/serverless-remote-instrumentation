@@ -40,6 +40,14 @@ const setRemoteConfig = async ({
   extensionVersion = 67,
   pythonLayerVersion = 99,
   nodeLayerVersion = 112,
+  ruleFilters = [
+    {
+      key: "foo",
+      values: ["bar"],
+      filter_type: "tag",
+      allow: true,
+    },
+  ],
   ddTraceEnabled = true,
   ddServerlessLogsEnabled = true,
   id,
@@ -59,14 +67,7 @@ const setRemoteConfig = async ({
           dd_serverless_logs_enabled: ddServerlessLogsEnabled,
         },
         priority: 1,
-        rule_filters: [
-          {
-            key: "foo",
-            values: ["bar"],
-            filter_type: "tag",
-            allow: true,
-          },
-        ],
+        rule_filters: ruleFilters,
       },
       meta: {
         scopes: [

@@ -14,6 +14,7 @@ const {
 const {
   createFunction,
   deleteTestFunctions,
+  createFunctions,
 } = require("./utilities/lambda-functions");
 const { Runtime } = require("@aws-sdk/client-lambda");
 const {
@@ -183,7 +184,39 @@ describe("Remote instrumenter scheduled event tests", () => {
     expect(isUninstrumented).toStrictEqual(true);
   });
 
-  describe("set DD_TRACE_ENABLED and DD_SERVERLESS_LOGS_ENABLED correctly", async () => {
+  it("instruments all functions when using wildcard rule filter", async () => {
+    await setRemoteConfig({
+      ruleFilters: [
+        {
+          key: "function_name",
+          values: ["*"],
+          filter_type: "function_name",
+          allow: true,
+        },
+      ],
+    });
+
+    const functions = await createFunctions({}, 3);
+    const functionNames = functions.map((lambda) => lambda.FunctionName);
+    const res = await invokeLambdaWithScheduledEvent();
+
+    // For each of the 3 functions
+    for (const functionName of functionNames) {
+      // After some time
+      const isInstrumented = await pollUntilTrue(60000, 5000, () =>
+        isFunctionInstrumented(functionName),
+      );
+
+      // The function is instrumented correctly
+      expect(isInstrumented).toStrictEqual(true);
+    }
+
+    expect(Object.keys(res.instrument.succeeded)).toEqual(
+      expect.arrayContaining(functionNames),
+    );
+  });
+
+  describe("set DD_TRACE_ENABLED and DD_SERVERLESS_LOGS_ENABLED correctly", () => {
     it("sets variables to true when undefined in config", async () => {
       const { FunctionName: functionName } = await createFunction({
         Tags: { foo: "bar" },
