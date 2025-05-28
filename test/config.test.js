@@ -30,6 +30,8 @@ describe("Config constructor", () => {
     expect(rcConfig.extensionVersion).toBe(10);
     expect(rcConfig.nodeLayerVersion).toBe(20);
     expect(rcConfig.pythonLayerVersion).toBe(30);
+    expect(rcConfig.ddTraceEnabled).toBe(true);
+    expect(rcConfig.ddServerlessLogsEnabled).toBe(false);
     expect(rcConfig.priority).toBe(1);
     expect(rcConfig.ruleFilters.length).toBe(2);
     expect(rcConfig.rcConfigVersion).toBe(3);
@@ -43,6 +45,8 @@ describe("Config constructor", () => {
       extensionVersion: undefined,
       nodeLayerVersion: undefined,
       pythonLayerVersion: undefined,
+      ddTraceEnabled: undefined,
+      ddServerlessLogsEnabled: undefined,
       priority: 1,
       ruleFilters: [],
     });
@@ -52,6 +56,8 @@ describe("Config constructor", () => {
     expect(rcConfig.extensionVersion).toBe(undefined);
     expect(rcConfig.nodeLayerVersion).toBe(undefined);
     expect(rcConfig.pythonLayerVersion).toBe(undefined);
+    expect(rcConfig.ddTraceEnabled).toBe(undefined);
+    expect(rcConfig.ddServerlessLogsEnabled).toBe(undefined);
     expect(rcConfig.priority).toBe(1);
     expect(rcConfig.ruleFilters.length).toBe(0);
   });
@@ -63,6 +69,8 @@ describe("Config constructor", () => {
       extensionVersion: 10,
       nodeLayerVersion: 20,
       pythonLayerVersion: 30,
+      ddTraceEnabled: true,
+      ddServerlessLogsEnabled: false,
       priority: 1,
       ruleFilters: [],
     });
@@ -80,6 +88,8 @@ describe("Config constructor", () => {
       extensionVersion: 10,
       nodeLayerVersion: 20,
       pythonLayerVersion: 30,
+      ddTraceEnabled: true,
+      ddServerlessLogsEnabled: false,
       priority: 1,
       ruleFilters: [],
     });
@@ -97,6 +107,8 @@ describe("Config constructor", () => {
       extensionVersion: "invalid",
       nodeLayerVersion: 20,
       pythonLayerVersion: 30,
+      ddTraceEnabled: true,
+      ddServerlessLogsEnabled: false,
       priority: 1,
       ruleFilters: [],
     });
@@ -114,6 +126,8 @@ describe("Config constructor", () => {
       extensionVersion: 10,
       nodeLayerVersion: 20,
       pythonLayerVersion: "invalid",
+      ddTraceEnabled: true,
+      ddServerlessLogsEnabled: false,
       priority: 1,
       ruleFilters: [],
     });
@@ -131,6 +145,8 @@ describe("Config constructor", () => {
       extensionVersion: 10,
       nodeLayerVersion: "invalid",
       pythonLayerVersion: 30,
+      ddTraceEnabled: true,
+      ddServerlessLogsEnabled: false,
       priority: 1,
       ruleFilters: [],
     });
@@ -141,6 +157,44 @@ describe("Config constructor", () => {
     );
   });
 
+  it("rejects invalid ddTraceEnabled", () => {
+    const testJSON = constructTestJSON({
+      configVersion: 1,
+      entityType: "lambda",
+      extensionVersion: 10,
+      nodeLayerVersion: 20,
+      pythonLayerVersion: 30,
+      ddTraceEnabled: "invalid",
+      ddServerlessLogsEnabled: false,
+      priority: 1,
+      ruleFilters: [],
+    });
+    expect(
+      () => new RcConfig(sampleRcConfigID, testJSON, sampleRcMetadata),
+    ).toThrow(
+      "Received invalid configuration: ddTraceEnabled must be a boolean",
+    );
+  });
+
+  it("rejects invalid ddServerlessLogsEnabled", () => {
+    const testJSON = constructTestJSON({
+      configVersion: 1,
+      entityType: "lambda",
+      extensionVersion: 10,
+      nodeLayerVersion: 20,
+      pythonLayerVersion: 30,
+      ddTraceEnabled: true,
+      ddServerlessLogsEnabled: "invalid",
+      priority: 1,
+      ruleFilters: [],
+    });
+    expect(
+      () => new RcConfig(sampleRcConfigID, testJSON, sampleRcMetadata),
+    ).toThrow(
+      "Received invalid configuration: ddServerlessLogsEnabled must be a boolean",
+    );
+  });
+
   it("rejects invalid priority", () => {
     const testJSON = constructTestJSON({
       configVersion: 1,
@@ -148,6 +202,8 @@ describe("Config constructor", () => {
       extensionVersion: 10,
       nodeLayerVersion: 20,
       pythonLayerVersion: 30,
+      ddTraceEnabled: true,
+      ddServerlessLogsEnabled: false,
       priority: "invalid",
       ruleFilters: [],
     });
@@ -163,6 +219,8 @@ describe("Config constructor", () => {
       extensionVersion: 10,
       nodeLayerVersion: 20,
       pythonLayerVersion: 30,
+      ddTraceEnabled: true,
+      ddServerlessLogsEnabled: false,
       priority: 1,
       ruleFilters: "invalid",
     });
@@ -178,6 +236,8 @@ describe("Config constructor", () => {
       extensionVersion: 10,
       nodeLayerVersion: 20,
       pythonLayerVersion: 30,
+      ddTraceEnabled: true,
+      ddServerlessLogsEnabled: false,
       priority: 1,
       ruleFilters: [
         {
@@ -202,6 +262,8 @@ describe("Config constructor", () => {
       extensionVersion: 10,
       nodeLayerVersion: 20,
       pythonLayerVersion: 30,
+      ddTraceEnabled: true,
+      ddServerlessLogsEnabled: false,
       priority: 1,
       ruleFilters: [
         {
@@ -406,6 +468,8 @@ describe("getConfigsFromResponse", () => {
                   extension_version: 10,
                   node_layer_version: 20,
                   python_layer_version: 30,
+                  dd_trace_enabled: true,
+                  dd_serverless_logs_enabled: false,
                 },
                 priority: 1,
                 rule_filters: [

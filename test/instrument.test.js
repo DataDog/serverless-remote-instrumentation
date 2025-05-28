@@ -148,6 +148,10 @@ describe("instrumentFunctions", () => {
         "20",
         "-e",
         "10",
+        "--tracing",
+        "true",
+        "--logging",
+        "false",
       ],
       expect.anything(),
     );
@@ -253,6 +257,10 @@ describe("instrumentFunctions", () => {
         "20",
         "-e",
         "10",
+        "--tracing",
+        "true",
+        "--logging",
+        "false",
       ],
       expect.anything(),
     );
