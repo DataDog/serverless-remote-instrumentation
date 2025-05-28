@@ -14,6 +14,7 @@ const {
 const {
   createFunction,
   deleteTestFunctions,
+  createFunctions,
 } = require("./utilities/lambda-functions");
 const { Runtime } = require("@aws-sdk/client-lambda");
 const {
@@ -181,6 +182,38 @@ describe("Remote instrumenter scheduled event tests", () => {
       isFunctionUninstrumented(functionName),
     );
     expect(isUninstrumented).toStrictEqual(true);
+  });
+
+  it("instruments all functions when using wildcard rule filter", async () => {
+    await setRemoteConfig({
+      ruleFilters: [
+        {
+          key: "function_name",
+          values: ["*"],
+          filter_type: "function_name",
+          allow: true,
+        },
+      ],
+    });
+
+    const functions = await createFunctions({}, 3);
+    const functionNames = functions.map((lambda) => lambda.FunctionName);
+    const res = await invokeLambdaWithScheduledEvent();
+
+    // For each of the 3 functions
+    for (const functionName of functionNames) {
+      // After some time
+      const isInstrumented = await pollUntilTrue(60000, 5000, () =>
+        isFunctionInstrumented(functionName),
+      );
+
+      // The function is instrumented correctly
+      expect(isInstrumented).toStrictEqual(true);
+    }
+
+    expect(Object.keys(res.instrument.succeeded)).toEqual(
+      expect.arrayContaining(functionNames),
+    );
   });
 
   it("adds an appropriate reason code when datadog-ci fails", async () => {

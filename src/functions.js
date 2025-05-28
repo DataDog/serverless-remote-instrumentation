@@ -173,7 +173,10 @@ function satisfiesTargetingRules(functionName, functionTags, ruleFilters) {
     } else if (ruleFilter.filterType === FUNCTION_NAME) {
       const ruleFilterFunctionNames = new Set(ruleFilter.values);
       if (ruleFilter.allow) {
-        if (!ruleFilterFunctionNames.has(functionName)) {
+        if (
+          !ruleFilterFunctionNames.has(functionName) &&
+          !ruleFilterFunctionNames.has("*")
+        ) {
           return false;
         }
       } else if (ruleFilterFunctionNames.has(functionName)) {
