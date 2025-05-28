@@ -200,12 +200,16 @@ describe("Remote instrumenter scheduled event tests", () => {
     const functionNames = functions.map((lambda) => lambda.FunctionName);
     const res = await invokeLambdaWithScheduledEvent();
 
-    const isInstrumented = await pollUntilTrue(60000, 5000, () =>
-      functionNames.every((functionName) =>
+    // For each of the 3 functions
+    for (const functionName of functionNames) {
+      // After some time
+      const isInstrumented = await pollUntilTrue(60000, 5000, () =>
         isFunctionInstrumented(functionName),
-      ),
-    );
-    expect(isInstrumented).toStrictEqual(true);
+      );
+
+      // The function is instrumented correctly
+      expect(isInstrumented).toStrictEqual(true);
+    }
 
     expect(Object.keys(res.instrument.succeeded)).toEqual(
       expect.arrayContaining(functionNames),
