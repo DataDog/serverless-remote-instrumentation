@@ -11,6 +11,8 @@ const {
 const {
   DD_SLS_REMOTE_INSTRUMENTER_VERSION,
   VERSION,
+  DD_TRACE_ENABLED,
+  DD_SERVERLESS_LOGS_ENABLED,
 } = require("../src/consts");
 const awsClients = require("../src/aws-resources");
 const sleep = require("../src/sleep");
@@ -25,6 +27,8 @@ function createTestConfig({
   extensionVersion,
   nodeLayerVersion,
   pythonLayerVersion,
+  ddTraceEnabled,
+  ddServerlessLogsEnabled,
   priority,
   ruleFilters,
 }) {
@@ -34,6 +38,8 @@ function createTestConfig({
     extensionVersion: extensionVersion,
     nodeLayerVersion: nodeLayerVersion,
     pythonLayerVersion: pythonLayerVersion,
+    ddTraceEnabled: ddTraceEnabled,
+    ddServerlessLogsEnabled: ddServerlessLogsEnabled,
     priority: priority,
     ruleFilters: ruleFilters,
     instrumenterFunctionName: "datadog-remote-instrumenter",
@@ -294,10 +300,10 @@ describe("isRemoteInstrumenter", () => {
 
 describe("isCorrectlyInstrumented", () => {
   describe("When the extension and runtime layer versions are defined", () => {
-    test("should return true if both layers have the correct versions", () => {
+    test("should return true if both layer versions and tracing/logging are correct", () => {
       expect(
-        isCorrectlyInstrumented(
-          [
+        isCorrectlyInstrumented({
+          layers: [
             {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Extension:1",
             },
@@ -305,22 +311,26 @@ describe("isCorrectlyInstrumented", () => {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Node:2",
             },
           ],
-          createTestConfig({
+          config: createTestConfig({
             entityType: "lambda",
             extensionVersion: 1,
             nodeLayerVersion: 2,
             pythonLayerVersion: 3,
+            ddTraceEnabled: true,
+            ddServerlessLogsEnabled: false,
             priority: 1,
             ruleFilters: [],
           }),
-          "nodejs14.x",
-        ),
+          targetLambdaRuntime: "nodejs14.x",
+          tracingEnabled: true,
+          loggingEnabled: false,
+        }),
       ).toBe(true);
     });
     test("should return false if the node layer has the wrong version", () => {
       expect(
-        isCorrectlyInstrumented(
-          [
+        isCorrectlyInstrumented({
+          layers: [
             {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Extension:1",
             },
@@ -328,42 +338,50 @@ describe("isCorrectlyInstrumented", () => {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Node:5",
             },
           ],
-          createTestConfig({
+          config: createTestConfig({
             entityType: "lambda",
             extensionVersion: 1,
             nodeLayerVersion: 2,
             pythonLayerVersion: 3,
+            ddTraceEnabled: true,
+            ddServerlessLogsEnabled: false,
             priority: 1,
             ruleFilters: [],
           }),
-          "nodejs14.x",
-        ),
+          targetLambdaRuntime: "nodejs14.x",
+          tracingEnabled: true,
+          loggingEnabled: false,
+        }),
       ).toBe(false);
     });
     test("should return false if the node layer is missing", () => {
       expect(
-        isCorrectlyInstrumented(
-          [
+        isCorrectlyInstrumented({
+          layers: [
             {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Extension:1",
             },
           ],
-          createTestConfig({
+          config: createTestConfig({
             entityType: "lambda",
             extensionVersion: 1,
             nodeLayerVersion: 2,
             pythonLayerVersion: 3,
+            ddTraceEnabled: true,
+            ddServerlessLogsEnabled: false,
             priority: 1,
             ruleFilters: [],
           }),
-          "nodejs14.x",
-        ),
+          targetLambdaRuntime: "nodejs14.x",
+          tracingEnabled: true,
+          loggingEnabled: false,
+        }),
       ).toBe(false);
     });
     test("should return false if the python layer has the wrong version", () => {
       expect(
-        isCorrectlyInstrumented(
-          [
+        isCorrectlyInstrumented({
+          layers: [
             {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Extension:1",
             },
@@ -371,42 +389,50 @@ describe("isCorrectlyInstrumented", () => {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Python:5",
             },
           ],
-          createTestConfig({
+          config: createTestConfig({
             entityType: "lambda",
             extensionVersion: 1,
             nodeLayerVersion: 2,
             pythonLayerVersion: 3,
+            ddTraceEnabled: true,
+            ddServerlessLogsEnabled: false,
             priority: 1,
             ruleFilters: [],
           }),
-          "python3.8",
-        ),
+          targetLambdaRuntime: "python3.8",
+          tracingEnabled: true,
+          loggingEnabled: false,
+        }),
       ).toBe(false);
     });
     test("should return false if the python layer is missing", () => {
       expect(
-        isCorrectlyInstrumented(
-          [
+        isCorrectlyInstrumented({
+          layers: [
             {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Extension:1",
             },
           ],
-          createTestConfig({
+          config: createTestConfig({
             entityType: "lambda",
             extensionVersion: 1,
             nodeLayerVersion: 2,
             pythonLayerVersion: 3,
+            ddTraceEnabled: true,
+            ddServerlessLogsEnabled: false,
             priority: 1,
             ruleFilters: [],
           }),
-          "python3.8",
-        ),
+          targetLambdaRuntime: "python3.8",
+          tracingEnabled: true,
+          loggingEnabled: false,
+        }),
       ).toBe(false);
     });
     test("should return false if the extension layer has the wrong version", () => {
       expect(
-        isCorrectlyInstrumented(
-          [
+        isCorrectlyInstrumented({
+          layers: [
             {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Extension:3",
             },
@@ -414,27 +440,31 @@ describe("isCorrectlyInstrumented", () => {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Node:2",
             },
           ],
-          createTestConfig({
+          config: createTestConfig({
             entityType: "lambda",
             extensionVersion: 1,
             nodeLayerVersion: 2,
             pythonLayerVersion: 3,
+            ddTraceEnabled: true,
+            ddServerlessLogsEnabled: false,
             priority: 1,
             ruleFilters: [],
           }),
-          "nodejs14.x",
-        ),
+          targetLambdaRuntime: "nodejs14.x",
+          tracingEnabled: true,
+          loggingEnabled: false,
+        }),
       ).toBe(false);
     });
     test("should return false if the extension layer is missing", () => {
       expect(
-        isCorrectlyInstrumented(
-          [
+        isCorrectlyInstrumented({
+          layers: [
             {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Node:2",
             },
           ],
-          createTestConfig({
+          config: createTestConfig({
             entityType: "lambda",
             extensionVersion: 1,
             nodeLayerVersion: 2,
@@ -442,36 +472,42 @@ describe("isCorrectlyInstrumented", () => {
             priority: 1,
             ruleFilters: [],
           }),
-          "nodejs14.x",
-        ),
+          targetLambdaRuntime: "nodejs14.x",
+          tracingEnabled: true,
+          loggingEnabled: false,
+        }),
       ).toBe(false);
     });
   });
   describe("When the extension layer is undefined", () => {
     test("should return true if extension layer is omitted and runtime layer is correct", () => {
       expect(
-        isCorrectlyInstrumented(
-          [
+        isCorrectlyInstrumented({
+          layers: [
             {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Node:2",
             },
           ],
-          createTestConfig({
+          config: createTestConfig({
             entityType: "lambda",
             extensionVersion: undefined,
             nodeLayerVersion: 2,
             pythonLayerVersion: 3,
+            ddTraceEnabled: true,
+            ddServerlessLogsEnabled: false,
             priority: 1,
             ruleFilters: [],
           }),
-          "nodejs14.x",
-        ),
+          targetLambdaRuntime: "nodejs14.x",
+          tracingEnabled: true,
+          loggingEnabled: false,
+        }),
       ).toBe(true);
     });
     test("should return false if extension layer is present", () => {
       expect(
-        isCorrectlyInstrumented(
-          [
+        isCorrectlyInstrumented({
+          layers: [
             {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Extension:1",
             },
@@ -479,116 +515,140 @@ describe("isCorrectlyInstrumented", () => {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Node:2",
             },
           ],
-          createTestConfig({
+          config: createTestConfig({
             entityType: "lambda",
             extensionVersion: undefined,
             nodeLayerVersion: 2,
             pythonLayerVersion: 3,
+            ddTraceEnabled: true,
+            ddServerlessLogsEnabled: false,
             priority: 1,
             ruleFilters: [],
           }),
-          "nodejs14.x",
-        ),
+          targetLambdaRuntime: "nodejs14.x",
+          tracingEnabled: true,
+          loggingEnabled: false,
+        }),
       ).toBe(false);
     });
     test("should return false if the node layer has the wrong version", () => {
       expect(
-        isCorrectlyInstrumented(
-          [
+        isCorrectlyInstrumented({
+          layers: [
             {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Node:5",
             },
           ],
-          createTestConfig({
+          config: createTestConfig({
             entityType: "lambda",
             extensionVersion: undefined,
             nodeLayerVersion: 2,
             pythonLayerVersion: 3,
+            ddTraceEnabled: true,
+            ddServerlessLogsEnabled: false,
             priority: 1,
             ruleFilters: [],
           }),
-          "nodejs14.x",
-        ),
+          targetLambdaRuntime: "nodejs14.x",
+          tracingEnabled: true,
+          loggingEnabled: false,
+        }),
       ).toBe(false);
     });
     test("should return false if the node layer is missing", () => {
       expect(
-        isCorrectlyInstrumented(
-          [],
-          createTestConfig({
+        isCorrectlyInstrumented({
+          layers: [],
+          config: createTestConfig({
             entityType: "lambda",
             extensionVersion: undefined,
             nodeLayerVersion: 2,
             pythonLayerVersion: 3,
+            ddTraceEnabled: true,
+            ddServerlessLogsEnabled: false,
             priority: 1,
             ruleFilters: [],
           }),
-          "nodejs14.x",
-        ),
+          targetLambdaRuntime: "nodejs14.x",
+          tracingEnabled: true,
+          loggingEnabled: false,
+        }),
       ).toBe(false);
     });
     test("should return false if the python layer has the wrong version", () => {
       expect(
-        isCorrectlyInstrumented(
-          [
+        isCorrectlyInstrumented({
+          layers: [
             {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Python:5",
             },
           ],
-          createTestConfig({
+          config: createTestConfig({
             entityType: "lambda",
             extensionVersion: undefined,
             nodeLayerVersion: 2,
             pythonLayerVersion: 3,
+            ddTraceEnabled: true,
+            ddServerlessLogsEnabled: false,
             priority: 1,
             ruleFilters: [],
           }),
-          "nodejs14.x",
-        ),
+          targetLambdaRuntime: "nodejs14.x",
+          tracingEnabled: true,
+          loggingEnabled: false,
+        }),
       ).toBe(false);
     });
     test("should return false if the python layer is missing", () => {
       expect(
-        isCorrectlyInstrumented(
-          [],
-          createTestConfig({
+        isCorrectlyInstrumented({
+          layers: [],
+          config: createTestConfig({
             entityType: "lambda",
             extensionVersion: undefined,
             nodeLayerVersion: 2,
             pythonLayerVersion: 3,
+            ddTraceEnabled: true,
+            ddServerlessLogsEnabled: false,
             priority: 1,
             ruleFilters: [],
           }),
-          "nodejs14.x",
-        ),
+          targetLambdaRuntime: "nodejs14.x",
+          tracingEnabled: true,
+          loggingEnabled: false,
+        }),
       ).toBe(false);
     });
   });
   describe("When the runtime layer is undefined", () => {
     test("should return true if the runtime layer is omitted and extension layer is correct", () => {
       expect(
-        isCorrectlyInstrumented(
-          [
+        isCorrectlyInstrumented({
+          layers: [
             {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Extension:1",
             },
           ],
-          createTestConfig({
+          config: createTestConfig({
             entityType: "lambda",
             extensionVersion: 1,
             nodeLayerVersion: undefined,
             pythonLayerVersion: undefined,
+            ddTraceEnabled: true,
+            ddServerlessLogsEnabled: false,
             priority: 1,
             ruleFilters: [],
           }),
-          "nodejs14.x",
-        ),
+          targetLambdaRuntime: "nodejs14.x",
+          tracingEnabled: true,
+          loggingEnabled: false,
+        }),
       ).toBe(true);
     });
     test("should return false if the node layer is present", () => {
       expect(
-        isCorrectlyInstrumented(
-          [
+        isCorrectlyInstrumented({
+          layers: [
             {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Extension:1",
             },
@@ -596,23 +656,26 @@ describe("isCorrectlyInstrumented", () => {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Node:2",
             },
           ],
-          createTestConfig({
+          config: createTestConfig({
             entityType: "lambda",
             extensionVersion: 1,
             nodeLayerVersion: undefined,
             pythonLayerVersion: undefined,
+            ddTraceEnabled: true,
+            ddServerlessLogsEnabled: false,
             priority: 1,
             ruleFilters: [],
           }),
-
-          "nodejs14.x",
-        ),
+          targetLambdaRuntime: "nodejs14.x",
+          tracingEnabled: true,
+          loggingEnabled: false,
+        }),
       ).toBe(false);
     });
     test("should return false if the python layer is present", () => {
       expect(
-        isCorrectlyInstrumented(
-          [
+        isCorrectlyInstrumented({
+          layers: [
             {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Extension:1",
             },
@@ -620,138 +683,291 @@ describe("isCorrectlyInstrumented", () => {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Python:2",
             },
           ],
-          createTestConfig({
+          config: createTestConfig({
             entityType: "lambda",
             extensionVersion: 1,
             nodeLayerVersion: undefined,
             pythonLayerVersion: undefined,
+            ddTraceEnabled: true,
+            ddServerlessLogsEnabled: false,
             priority: 1,
             ruleFilters: [],
           }),
 
-          "python3.8",
-        ),
+          targetLambdaRuntime: "python3.8",
+          tracingEnabled: true,
+          loggingEnabled: false,
+        }),
       ).toBe(false);
     });
     test("should return false if the extension layer has the wrong version", () => {
       expect(
-        isCorrectlyInstrumented(
-          [
+        isCorrectlyInstrumented({
+          layers: [
             {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Extension:3",
             },
           ],
-          createTestConfig({
+          config: createTestConfig({
             entityType: "lambda",
             extensionVersion: 1,
             nodeLayerVersion: undefined,
             pythonLayerVersion: undefined,
+            ddTraceEnabled: true,
+            ddServerlessLogsEnabled: false,
             priority: 1,
             ruleFilters: [],
           }),
 
-          "nodejs14.x",
-        ),
+          targetLambdaRuntime: "nodejs14.x",
+          tracingEnabled: true,
+          loggingEnabled: false,
+        }),
       ).toBe(false);
     });
     test("should return false if the extension layer is missing", () => {
       expect(
-        isCorrectlyInstrumented(
-          [],
-          createTestConfig({
+        isCorrectlyInstrumented({
+          layers: [],
+          config: createTestConfig({
             entityType: "lambda",
             extensionVersion: 1,
             nodeLayerVersion: undefined,
             pythonLayerVersion: undefined,
+            ddTraceEnabled: true,
+            ddServerlessLogsEnabled: false,
             priority: 1,
             ruleFilters: [],
           }),
 
-          "nodejs14.x",
-        ),
+          targetLambdaRuntime: "nodejs14.x",
+          tracingEnabled: true,
+          loggingEnabled: false,
+        }),
       ).toBe(false);
     });
   });
   describe("When both layers are undefined", () => {
     test("should return true if both layers are omitted", () => {
       expect(
-        isCorrectlyInstrumented(
-          [],
-          createTestConfig({
+        isCorrectlyInstrumented({
+          layers: [],
+          config: createTestConfig({
             entityType: "lambda",
             extensionVersion: undefined,
             nodeLayerVersion: undefined,
             pythonLayerVersion: undefined,
+            ddTraceEnabled: true,
+            ddServerlessLogsEnabled: false,
             priority: 1,
             ruleFilters: [],
           }),
-          "nodejs14.x",
-        ),
+          targetLambdaRuntime: "nodejs14.x",
+          tracingEnabled: true,
+          loggingEnabled: false,
+        }),
       ).toBe(true);
     });
     test("should return false if the node layer is present", () => {
       expect(
-        isCorrectlyInstrumented(
-          [
+        isCorrectlyInstrumented({
+          layers: [
             {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Node:2",
             },
           ],
-          createTestConfig({
+          config: createTestConfig({
             entityType: "lambda",
             extensionVersion: undefined,
             nodeLayerVersion: undefined,
             pythonLayerVersion: undefined,
+            ddTraceEnabled: true,
+            ddServerlessLogsEnabled: false,
             priority: 1,
             ruleFilters: [],
           }),
-          "nodejs14.x",
-        ),
+          targetLambdaRuntime: "nodejs14.x",
+          tracingEnabled: true,
+          loggingEnabled: false,
+        }),
       ).toBe(false);
     });
     test("should return false if the python layer is present", () => {
       expect(
-        isCorrectlyInstrumented(
-          [
+        isCorrectlyInstrumented({
+          layers: [
             {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Python:2",
             },
           ],
-          createTestConfig({
+          config: createTestConfig({
             entityType: "lambda",
             extensionVersion: undefined,
             nodeLayerVersion: undefined,
             pythonLayerVersion: undefined,
+            ddTraceEnabled: true,
+            ddServerlessLogsEnabled: false,
             priority: 1,
             ruleFilters: [],
           }),
-          "python3.8",
-        ),
+          targetLambdaRuntime: "python3.8",
+          tracingEnabled: true,
+          loggingEnabled: false,
+        }),
       ).toBe(false);
     });
     test("should return false if the extension layer is present", () => {
       expect(
-        isCorrectlyInstrumented(
-          [
+        isCorrectlyInstrumented({
+          layers: [
             {
               Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Extension:1",
             },
           ],
-          createTestConfig({
+          config: createTestConfig({
             entityType: "lambda",
             extensionVersion: undefined,
             nodeLayerVersion: undefined,
             pythonLayerVersion: undefined,
+            ddTraceEnabled: true,
+            ddServerlessLogsEnabled: false,
             priority: 1,
             ruleFilters: [],
           }),
-          "nodejs14.x",
-        ),
+          targetLambdaRuntime: "nodejs14.x",
+          tracingEnabled: true,
+          loggingEnabled: false,
+        }),
+      ).toBe(false);
+    });
+  });
+  describe("When the tracing and logging settings are not defined", () => {
+    test("should return true if the tracing and logging environment variables are set to true", () => {
+      expect(
+        isCorrectlyInstrumented({
+          layers: [],
+          config: createTestConfig({
+            entityType: "lambda",
+            extensionVersion: undefined,
+            nodeLayerVersion: undefined,
+            pythonLayerVersion: undefined,
+            ddTraceEnabled: undefined,
+            ddServerlessLogsEnabled: undefined,
+            priority: 1,
+            ruleFilters: [],
+          }),
+          targetLambdaRuntime: "nodejs14.x",
+          tracingEnabled: true,
+          loggingEnabled: true,
+        }),
+      ).toBe(true);
+    });
+    test("should return false if the tracing and logging environment variables are set to false", () => {
+      expect(
+        isCorrectlyInstrumented({
+          layers: [],
+          config: createTestConfig({
+            entityType: "lambda",
+            extensionVersion: undefined,
+            nodeLayerVersion: undefined,
+            pythonLayerVersion: undefined,
+            ddTraceEnabled: undefined,
+            ddServerlessLogsEnabled: undefined,
+            priority: 1,
+            ruleFilters: [],
+          }),
+          targetLambdaRuntime: "nodejs14.x",
+          tracingEnabled: false,
+          loggingEnabled: false,
+        }),
+      ).toBe(false);
+    });
+  });
+  describe("When the tracing and logging settings are set to false", () => {
+    test("should return true if the tracing and logging environment variables are set to false", () => {
+      expect(
+        isCorrectlyInstrumented({
+          layers: [],
+          config: createTestConfig({
+            entityType: "lambda",
+            extensionVersion: undefined,
+            nodeLayerVersion: undefined,
+            pythonLayerVersion: undefined,
+            ddTraceEnabled: false,
+            ddServerlessLogsEnabled: false,
+            priority: 1,
+            ruleFilters: [],
+          }),
+          targetLambdaRuntime: "nodejs14.x",
+          tracingEnabled: false,
+          loggingEnabled: false,
+        }),
+      ).toBe(true);
+    });
+    test("should return false if the tracing and logging environment variables are set to true", () => {
+      expect(
+        isCorrectlyInstrumented({
+          layers: [],
+          config: createTestConfig({
+            entityType: "lambda",
+            extensionVersion: undefined,
+            nodeLayerVersion: undefined,
+            pythonLayerVersion: undefined,
+            ddTraceEnabled: false,
+            ddServerlessLogsEnabled: false,
+            priority: 1,
+            ruleFilters: [],
+          }),
+          targetLambdaRuntime: "nodejs14.x",
+          tracingEnabled: true,
+          loggingEnabled: true,
+        }),
+      ).toBe(false);
+    });
+  });
+  describe("When the tracing and logging settings are set to true", () => {
+    test("should return true if the tracing and logging environment variables are set to true", () => {
+      expect(
+        isCorrectlyInstrumented({
+          layers: [],
+          config: createTestConfig({
+            entityType: "lambda",
+            extensionVersion: undefined,
+            nodeLayerVersion: undefined,
+            pythonLayerVersion: undefined,
+            ddTraceEnabled: true,
+            ddServerlessLogsEnabled: true,
+            priority: 1,
+            ruleFilters: [],
+          }),
+          targetLambdaRuntime: "nodejs14.x",
+          tracingEnabled: true,
+          loggingEnabled: true,
+        }),
+      ).toBe(true);
+    });
+    test("should return false if the tracing and logging environment variables are set to false", () => {
+      expect(
+        isCorrectlyInstrumented({
+          layers: [],
+          config: createTestConfig({
+            entityType: "lambda",
+            extensionVersion: undefined,
+            nodeLayerVersion: undefined,
+            pythonLayerVersion: undefined,
+            ddTraceEnabled: true,
+            ddServerlessLogsEnabled: true,
+            priority: 1,
+            ruleFilters: [],
+          }),
+          targetLambdaRuntime: "nodejs14.x",
+          tracingEnabled: false,
+          loggingEnabled: false,
+        }),
       ).toBe(false);
     });
   });
 });
-
 describe("needsInstrumentationUpdate", () => {
   describe("When targeting rules are not satisfied", () => {
     test("not instrumented function should not be changed", () => {
@@ -909,6 +1125,10 @@ describe("needsInstrumentationUpdate", () => {
           DD_SLS_REMOTE_INSTRUMENTER_VERSION + ":" + VERSION,
         ]),
         layers: layers,
+        envVars: {
+          [DD_TRACE_ENABLED]: "true",
+          [DD_SERVERLESS_LOGS_ENABLED]: "false",
+        },
       });
       const ruleFilters = [
         {
@@ -923,6 +1143,8 @@ describe("needsInstrumentationUpdate", () => {
         extensionVersion: 1,
         nodeLayerVersion: 1,
         pythonLayerVersion: 1,
+        ddTraceEnabled: true,
+        ddServerlessLogsEnabled: false,
         priority: 1,
         ruleFilters: ruleFilters,
       });
@@ -967,8 +1189,11 @@ describe("needsInstrumentationUpdate", () => {
         extensionVersion: 1,
         nodeLayerVersion: 1,
         pythonLayerVersion: 1,
+        ddTraceEnabled: true,
+        ddServerlessLogsEnabled: false,
         priority: 1,
         ruleFilters: ruleFilters,
+        instrumenterFunctionName: "datadog-remote-instrumenter",
       });
       const { instrument, uninstrument, tag, untag } =
         needsInstrumentationUpdate(lambdaFunc, config, baseInstrumentOutcome);

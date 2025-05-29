@@ -216,36 +216,29 @@ describe("Remote instrumenter scheduled event tests", () => {
     );
   });
 
-  describe("set DD_TRACE_ENABLED and DD_SERVERLESS_LOGS_ENABLED correctly", () => {
-    it("sets variables to true when undefined in config", async () => {
-      const { FunctionName: functionName } = await createFunction({
-        Tags: { foo: "bar" },
-      });
-      await setRemoteConfig({
-        ddTraceEnabled: undefined,
-        ddServerlessLogsEnabled: undefined,
-      });
-      await invokeLambdaWithScheduledEvent();
-      let isInstrumented = await pollUntilTrue(60000, 5000, () =>
-        isFunctionInstrumented(functionName),
-      );
-      expect(isInstrumented).toStrictEqual(true);
+  it("sets DD_TRACE_ENABLED and DD_SERVERLESS_LOGS_ENABLED correctly", async () => {
+    const { FunctionName: functionName } = await createFunction({
+      Tags: { foo: "bar" },
     });
+    await setRemoteConfig({
+      ddTraceEnabled: undefined,
+      ddServerlessLogsEnabled: undefined,
+    });
+    await invokeLambdaWithScheduledEvent();
+    let isInstrumented = await pollUntilTrue(60000, 5000, () =>
+      isFunctionInstrumented(functionName),
+    );
+    expect(isInstrumented).toStrictEqual(true);
 
-    it("sets variables to config value when set in config", async () => {
-      const { FunctionName: functionName } = await createFunction({
-        Tags: { foo: "bar" },
-      });
-      await setRemoteConfig({
-        ddTraceEnabled: true,
-        ddServerlessLogsEnabled: false,
-      });
-      await invokeLambdaWithScheduledEvent();
-      const isInstrumented = await pollUntilTrue(60000, 5000, () =>
-        isFunctionInstrumented(functionName),
-      );
-      expect(isInstrumented).toStrictEqual(true);
+    await setRemoteConfig({
+      ddTraceEnabled: true,
+      ddServerlessLogsEnabled: false,
     });
+    await invokeLambdaWithScheduledEvent();
+    isInstrumented = await pollUntilTrue(60000, 5000, () =>
+      isFunctionInstrumented(functionName),
+    );
+    expect(isInstrumented).toStrictEqual(true);
   });
 
   it("adds an appropriate reason code when datadog-ci fails", async () => {
