@@ -29,8 +29,6 @@ const {
   REMOTE_INSTRUMENTER_FUNCTION,
   UNSUPPORTED_RUNTIME,
   ALREADY_CORRECT_EXTENSION_AND_LAYER,
-  DD_TRACE_ENABLED,
-  DD_SERVERLESS_LOGS_ENABLED,
 } = require("./consts");
 
 /**
@@ -276,8 +274,8 @@ function isCorrectlyInstrumented({
   layers,
   config,
   targetLambdaRuntime,
-  tracingEnabled,
-  loggingEnabled,
+  ddTraceEnabledValue,
+  ddServerlessLogsEnabledValue,
 }) {
   // Check if the extension is correct
   let targetLambdaExtensionLayerVersion = -1;
@@ -313,24 +311,34 @@ function isCorrectlyInstrumented({
     expectedLayerName = "Datadog-Node";
     expectedLayerVersion = config.nodeLayerVersion;
   }
+
+  let foundLayerVersion;
   for (const layer of layers) {
     logger.log(`Checking runtime layer: ${JSON.stringify(layer)}`);
     if (layer?.Arn?.includes(`464622532012:layer:${expectedLayerName}`)) {
-      return parseInt(layer.Arn.split(":").at(-1), 10) === expectedLayerVersion;
+      foundLayerVersion = parseInt(layer.Arn.split(":").at(-1), 10);
+      break;
     }
   }
-
-  if (expectedLayerVersion !== undefined) {
+  if (expectedLayerVersion !== foundLayerVersion) {
     return false;
   }
 
   // Check the tracing and logging settings
-  const expectedTracingEnabled = config.ddTraceEnabled !== false;
-  const expectedLoggingEnabled = config.ddServerlessLogsEnabled !== false;
-  if (tracingEnabled !== expectedTracingEnabled) {
+  const newTracingEnabled = (config.ddTraceEnabled !== false).toString();
+  const newLoggingEnabled = (
+    config.ddServerlessLogsEnabled !== false
+  ).toString();
+  logger.error(
+    `ddTraceEnabledValue: ${ddTraceEnabledValue}, newTracingEnabled: ${newTracingEnabled}`,
+  );
+  logger.error(
+    `ddServerlessLogsEnabledValue: ${ddServerlessLogsEnabledValue}, newLoggingEnabled: ${newLoggingEnabled}`,
+  );
+  if (ddTraceEnabledValue !== newTracingEnabled) {
     return false;
   }
-  if (loggingEnabled !== expectedLoggingEnabled) {
+  if (ddServerlessLogsEnabledValue !== newLoggingEnabled) {
     return false;
   }
   return true;
@@ -492,17 +500,14 @@ function needsInstrumentationUpdate(
 
   // If it's already instrumented correctly, don't reinstrument but tag if necessary
   const layers = lambdaFunc.Layers || [];
-  const tracingEnabled =
-    lambdaFunc.Environment?.Variables?.[DD_TRACE_ENABLED] === "true";
-  const loggingEnabled =
-    lambdaFunc.Environment?.Variables?.[DD_SERVERLESS_LOGS_ENABLED] === "true";
   if (
     isCorrectlyInstrumented({
       layers: layers,
       config: config,
       targetLambdaRuntime: runtime,
-      tracingEnabled: tracingEnabled,
-      loggingEnabled: loggingEnabled,
+      ddTraceEnabledValue: lambdaFunc.Environment?.Variables?.DD_TRACE_ENABLED,
+      ddServerlessLogsEnabledValue:
+        lambdaFunc.Environment?.Variables?.DD_SERVERLESS_LOGS_ENABLED,
     })
   ) {
     if (emitProcessingLogs) {

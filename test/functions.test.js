@@ -322,8 +322,8 @@ describe("isCorrectlyInstrumented", () => {
             ruleFilters: [],
           }),
           targetLambdaRuntime: "nodejs14.x",
-          tracingEnabled: true,
-          loggingEnabled: false,
+          ddTraceEnabledValue: "true",
+          ddServerlessLogsEnabledValue: "false",
         }),
       ).toBe(true);
     });
@@ -349,8 +349,8 @@ describe("isCorrectlyInstrumented", () => {
             ruleFilters: [],
           }),
           targetLambdaRuntime: "nodejs14.x",
-          tracingEnabled: true,
-          loggingEnabled: false,
+          ddTraceEnabledValue: "true",
+          ddServerlessLogsEnabledValue: "false",
         }),
       ).toBe(false);
     });
@@ -400,8 +400,8 @@ describe("isCorrectlyInstrumented", () => {
             ruleFilters: [],
           }),
           targetLambdaRuntime: "python3.8",
-          tracingEnabled: true,
-          loggingEnabled: false,
+          ddTraceEnabledValue: "true",
+          ddServerlessLogsEnabledValue: "false",
         }),
       ).toBe(false);
     });
@@ -424,8 +424,8 @@ describe("isCorrectlyInstrumented", () => {
             ruleFilters: [],
           }),
           targetLambdaRuntime: "python3.8",
-          tracingEnabled: true,
-          loggingEnabled: false,
+          ddTraceEnabledValue: "true",
+          ddServerlessLogsEnabledValue: "false",
         }),
       ).toBe(false);
     });
@@ -451,8 +451,8 @@ describe("isCorrectlyInstrumented", () => {
             ruleFilters: [],
           }),
           targetLambdaRuntime: "nodejs14.x",
-          tracingEnabled: true,
-          loggingEnabled: false,
+          ddTraceEnabledValue: "true",
+          ddServerlessLogsEnabledValue: "false",
         }),
       ).toBe(false);
     });
@@ -473,8 +473,8 @@ describe("isCorrectlyInstrumented", () => {
             ruleFilters: [],
           }),
           targetLambdaRuntime: "nodejs14.x",
-          tracingEnabled: true,
-          loggingEnabled: false,
+          ddTraceEnabledValue: "true",
+          ddServerlessLogsEnabledValue: "false",
         }),
       ).toBe(false);
     });
@@ -499,8 +499,8 @@ describe("isCorrectlyInstrumented", () => {
             ruleFilters: [],
           }),
           targetLambdaRuntime: "nodejs14.x",
-          tracingEnabled: true,
-          loggingEnabled: false,
+          ddTraceEnabledValue: "true",
+          ddServerlessLogsEnabledValue: "false",
         }),
       ).toBe(true);
     });
@@ -526,8 +526,8 @@ describe("isCorrectlyInstrumented", () => {
             ruleFilters: [],
           }),
           targetLambdaRuntime: "nodejs14.x",
-          tracingEnabled: true,
-          loggingEnabled: false,
+          ddTraceEnabledValue: "true",
+          ddServerlessLogsEnabledValue: "false",
         }),
       ).toBe(false);
     });
@@ -550,8 +550,8 @@ describe("isCorrectlyInstrumented", () => {
             ruleFilters: [],
           }),
           targetLambdaRuntime: "nodejs14.x",
-          tracingEnabled: true,
-          loggingEnabled: false,
+          ddTraceEnabledValue: "true",
+          ddServerlessLogsEnabledValue: "false",
         }),
       ).toBe(false);
     });
@@ -570,8 +570,8 @@ describe("isCorrectlyInstrumented", () => {
             ruleFilters: [],
           }),
           targetLambdaRuntime: "nodejs14.x",
-          tracingEnabled: true,
-          loggingEnabled: false,
+          ddTraceEnabledValue: "true",
+          ddServerlessLogsEnabledValue: "false",
         }),
       ).toBe(false);
     });
@@ -594,8 +594,8 @@ describe("isCorrectlyInstrumented", () => {
             ruleFilters: [],
           }),
           targetLambdaRuntime: "nodejs14.x",
-          tracingEnabled: true,
-          loggingEnabled: false,
+          ddTraceEnabledValue: "true",
+          ddServerlessLogsEnabledValue: "false",
         }),
       ).toBe(false);
     });
@@ -614,8 +614,8 @@ describe("isCorrectlyInstrumented", () => {
             ruleFilters: [],
           }),
           targetLambdaRuntime: "nodejs14.x",
-          tracingEnabled: true,
-          loggingEnabled: false,
+          ddTraceEnabledValue: "true",
+          ddServerlessLogsEnabledValue: "false",
         }),
       ).toBe(false);
     });
@@ -640,8 +640,8 @@ describe("isCorrectlyInstrumented", () => {
             ruleFilters: [],
           }),
           targetLambdaRuntime: "nodejs14.x",
-          tracingEnabled: true,
-          loggingEnabled: false,
+          ddTraceEnabledValue: "true",
+          ddServerlessLogsEnabledValue: "false",
         }),
       ).toBe(true);
     });
@@ -667,8 +667,8 @@ describe("isCorrectlyInstrumented", () => {
             ruleFilters: [],
           }),
           targetLambdaRuntime: "nodejs14.x",
-          tracingEnabled: true,
-          loggingEnabled: false,
+          ddTraceEnabledValue: "true",
+          ddServerlessLogsEnabledValue: "false",
         }),
       ).toBe(false);
     });
@@ -695,8 +695,8 @@ describe("isCorrectlyInstrumented", () => {
           }),
 
           targetLambdaRuntime: "python3.8",
-          tracingEnabled: true,
-          loggingEnabled: false,
+          ddTraceEnabledValue: "true",
+          ddServerlessLogsEnabledValue: "false",
         }),
       ).toBe(false);
     });
@@ -720,8 +720,8 @@ describe("isCorrectlyInstrumented", () => {
           }),
 
           targetLambdaRuntime: "nodejs14.x",
-          tracingEnabled: true,
-          loggingEnabled: false,
+          ddTraceEnabledValue: "true",
+          ddServerlessLogsEnabledValue: "false",
         }),
       ).toBe(false);
     });
@@ -741,8 +741,8 @@ describe("isCorrectlyInstrumented", () => {
           }),
 
           targetLambdaRuntime: "nodejs14.x",
-          tracingEnabled: true,
-          loggingEnabled: false,
+          ddTraceEnabledValue: "true",
+          ddServerlessLogsEnabledValue: "false",
         }),
       ).toBe(false);
     });
@@ -763,8 +763,8 @@ describe("isCorrectlyInstrumented", () => {
             ruleFilters: [],
           }),
           targetLambdaRuntime: "nodejs14.x",
-          tracingEnabled: true,
-          loggingEnabled: false,
+          ddTraceEnabledValue: "true",
+          ddServerlessLogsEnabledValue: "false",
         }),
       ).toBe(true);
     });
@@ -787,8 +787,8 @@ describe("isCorrectlyInstrumented", () => {
             ruleFilters: [],
           }),
           targetLambdaRuntime: "nodejs14.x",
-          tracingEnabled: true,
-          loggingEnabled: false,
+          ddTraceEnabledValue: "true",
+          ddServerlessLogsEnabledValue: "false",
         }),
       ).toBe(false);
     });
@@ -811,8 +811,8 @@ describe("isCorrectlyInstrumented", () => {
             ruleFilters: [],
           }),
           targetLambdaRuntime: "python3.8",
-          tracingEnabled: true,
-          loggingEnabled: false,
+          ddTraceEnabledValue: "true",
+          ddServerlessLogsEnabledValue: "false",
         }),
       ).toBe(false);
     });
@@ -835,8 +835,8 @@ describe("isCorrectlyInstrumented", () => {
             ruleFilters: [],
           }),
           targetLambdaRuntime: "nodejs14.x",
-          tracingEnabled: true,
-          loggingEnabled: false,
+          ddTraceEnabledValue: "true",
+          ddServerlessLogsEnabledValue: "false",
         }),
       ).toBe(false);
     });
@@ -857,8 +857,8 @@ describe("isCorrectlyInstrumented", () => {
             ruleFilters: [],
           }),
           targetLambdaRuntime: "nodejs14.x",
-          tracingEnabled: true,
-          loggingEnabled: true,
+          ddTraceEnabledValue: "true",
+          ddServerlessLogsEnabledValue: "true",
         }),
       ).toBe(true);
     });
@@ -877,8 +877,8 @@ describe("isCorrectlyInstrumented", () => {
             ruleFilters: [],
           }),
           targetLambdaRuntime: "nodejs14.x",
-          tracingEnabled: false,
-          loggingEnabled: false,
+          ddTraceEnabledValue: "false",
+          ddServerlessLogsEnabledValue: "false",
         }),
       ).toBe(false);
     });
@@ -899,8 +899,8 @@ describe("isCorrectlyInstrumented", () => {
             ruleFilters: [],
           }),
           targetLambdaRuntime: "nodejs14.x",
-          tracingEnabled: false,
-          loggingEnabled: false,
+          ddTraceEnabledValue: "false",
+          ddServerlessLogsEnabledValue: "false",
         }),
       ).toBe(true);
     });
@@ -919,8 +919,8 @@ describe("isCorrectlyInstrumented", () => {
             ruleFilters: [],
           }),
           targetLambdaRuntime: "nodejs14.x",
-          tracingEnabled: true,
-          loggingEnabled: true,
+          ddTraceEnabledValue: "true",
+          ddServerlessLogsEnabledValue: "true",
         }),
       ).toBe(false);
     });
@@ -941,8 +941,8 @@ describe("isCorrectlyInstrumented", () => {
             ruleFilters: [],
           }),
           targetLambdaRuntime: "nodejs14.x",
-          tracingEnabled: true,
-          loggingEnabled: true,
+          ddTraceEnabledValue: "true",
+          ddServerlessLogsEnabledValue: "true",
         }),
       ).toBe(true);
     });
@@ -961,8 +961,8 @@ describe("isCorrectlyInstrumented", () => {
             ruleFilters: [],
           }),
           targetLambdaRuntime: "nodejs14.x",
-          tracingEnabled: false,
-          loggingEnabled: false,
+          ddTraceEnabledValue: "false",
+          ddServerlessLogsEnabledValue: "false",
         }),
       ).toBe(false);
     });
@@ -1190,6 +1190,44 @@ describe("needsInstrumentationUpdate", () => {
         nodeLayerVersion: 1,
         pythonLayerVersion: 1,
         ddTraceEnabled: true,
+        ddServerlessLogsEnabled: false,
+        priority: 1,
+        ruleFilters: ruleFilters,
+        instrumenterFunctionName: "datadog-remote-instrumenter",
+      });
+      const { instrument, uninstrument, tag, untag } =
+        needsInstrumentationUpdate(lambdaFunc, config, baseInstrumentOutcome);
+      expect(instrument).toBe(true);
+      expect(uninstrument).toBe(false);
+      expect(tag).toBe(true);
+      expect(untag).toBe(false);
+    });
+    test("function with different tracing and logging settings should be instrumented and tagged", () => {
+      const lambdaFunc = createTestLambdaFunction({
+        functionName: "functionA",
+        functionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionA",
+        runtime: "nodejs14.x",
+        tags: new Set([
+          "foo:bar",
+          DD_SLS_REMOTE_INSTRUMENTER_VERSION + ":" + VERSION,
+        ]),
+        layers: [],
+        envVars: {},
+      });
+      const ruleFilters = [
+        {
+          key: "foo",
+          values: ["bar"],
+          allow: true,
+          filterType: "tag",
+        },
+      ];
+      const config = createTestConfig({
+        entityType: "lambda",
+        extensionVersion: undefined,
+        nodeLayerVersion: undefined,
+        pythonLayerVersion: undefined,
+        ddTraceEnabled: false,
         ddServerlessLogsEnabled: false,
         priority: 1,
         ruleFilters: ruleFilters,
