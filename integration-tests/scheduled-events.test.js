@@ -220,7 +220,7 @@ describe("Remote instrumenter scheduled event tests", () => {
     const { FunctionName: functionName } = await createFunction({
       Tags: { foo: "bar" },
     });
-    await setRemoteConfig({
+    const rc = await setRemoteConfig({
       ddTraceEnabled: true,
       ddServerlessLogsEnabled: true,
     });
@@ -233,6 +233,7 @@ describe("Remote instrumenter scheduled event tests", () => {
     await setRemoteConfig({
       ddTraceEnabled: false,
       ddServerlessLogsEnabled: false,
+      id: rc.id,
     });
     await invokeLambdaWithScheduledEvent();
     isInstrumented = await pollUntilTrue(60000, 5000, () =>
