@@ -317,15 +317,6 @@ async function getConfigs(s3Client, context) {
     config.awsRegion = awsRegion;
     config.instrumenterFunctionName = instrumenterFunctionName;
   }
-  logger.logObject({
-    ...configsFromRC.map((config) => {
-      return {
-        configID: config.configID,
-        rcConfigVersion: config.rcConfigVersion,
-      };
-    }),
-    eventName: "getConfigs",
-  });
 
   updateCache(configsFromRC);
 
@@ -348,9 +339,6 @@ async function configHasChanged(client, configs) {
     );
     const oldConfigHash = await response.Body.transformToString();
     const configChanged = oldConfigHash !== newConfigHash;
-    logger.log(
-      `Instrumentation configuration ${configChanged ? "has" : "has not"} changed since last scheduled invocation.`,
-    );
     return configChanged;
   } catch (caught) {
     if (caught instanceof NoSuchKey) {
@@ -385,7 +373,6 @@ async function updateConfigHash(client, configs) {
 
   try {
     await client.send(command);
-    logger.log(`Updated config hash with new instrumentation config.`);
   } catch (caught) {
     if (caught instanceof S3ServiceException) {
       logger.error(

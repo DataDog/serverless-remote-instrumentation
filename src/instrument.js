@@ -139,7 +139,6 @@ async function instrumentFunctions(
     REMOTE_INSTRUMENTATION_STARTED,
     triggeredBy,
     null,
-    configs,
   );
   const configApplyStates = [];
 
@@ -223,7 +222,6 @@ async function instrumentFunctions(
     REMOTE_INSTRUMENTATION_ENDED,
     triggeredBy,
     instrumentOutcome,
-    configs,
   );
 }
 exports.instrumentFunctions = instrumentFunctions;

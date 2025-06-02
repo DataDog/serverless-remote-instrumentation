@@ -239,8 +239,6 @@ exports.handler = async (event, context) => {
         instrumentOutcome,
         taggingClient,
       );
-    } else {
-      logger.log("Configuration has not changed. Skipping instrumentation.");
     }
 
     // Clear the errors that have been handled, including skipped functions that no longer exist

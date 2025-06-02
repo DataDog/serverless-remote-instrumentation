@@ -37,23 +37,12 @@ class Logger {
 
   // Emit RemoteInstrumentationStarted and RemoteInstrumentationEnded events for the frontend to use to display instrumentation statuses.
   // Used for both lambda management and scheduled instrumentation events.
-  emitFrontendStartOrEndEvent(
-    ddSlsEventName,
-    triggeredBy,
-    instrumentOutcome,
-    configs,
-  ) {
+  emitFrontendStartOrEndEvent(ddSlsEventName, triggeredBy, instrumentOutcome) {
     console.log(
       JSON.stringify({
         ddSlsEventName,
         triggeredBy,
         outcome: instrumentOutcome,
-        config: configs.map((config) => {
-          return {
-            configID: config.configID,
-            rcConfigVersion: config.rcConfigVersion,
-          };
-        }),
       }),
     );
   }
