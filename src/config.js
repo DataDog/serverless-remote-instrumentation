@@ -221,7 +221,7 @@ async function getConfigsFromRC(s3Client, accountID, region) {
       is_tracer: true,
       client_tracer: {
         runtime_id: "",
-        language: "javascript",
+        language: "node",
         tracer_version: "1.0.0",
         service: "dd-remote-instrumenter-lambda",
         env: "",
