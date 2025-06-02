@@ -221,8 +221,8 @@ describe("Remote instrumenter scheduled event tests", () => {
       Tags: { foo: "bar" },
     });
     await setRemoteConfig({
-      ddTraceEnabled: undefined,
-      ddServerlessLogsEnabled: undefined,
+      ddTraceEnabled: true,
+      ddServerlessLogsEnabled: true,
     });
     await invokeLambdaWithScheduledEvent();
     let isInstrumented = await pollUntilTrue(60000, 5000, () =>
@@ -231,7 +231,7 @@ describe("Remote instrumenter scheduled event tests", () => {
     expect(isInstrumented).toStrictEqual(true);
 
     await setRemoteConfig({
-      ddTraceEnabled: true,
+      ddTraceEnabled: false,
       ddServerlessLogsEnabled: false,
     });
     await invokeLambdaWithScheduledEvent();

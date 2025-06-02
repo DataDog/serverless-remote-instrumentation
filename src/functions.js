@@ -329,12 +329,6 @@ function isCorrectlyInstrumented({
   const newLoggingEnabled = (
     config.ddServerlessLogsEnabled !== false
   ).toString();
-  logger.error(
-    `ddTraceEnabledValue: ${ddTraceEnabledValue}, newTracingEnabled: ${newTracingEnabled}`,
-  );
-  logger.error(
-    `ddServerlessLogsEnabledValue: ${ddServerlessLogsEnabledValue}, newLoggingEnabled: ${newLoggingEnabled}`,
-  );
   if (ddTraceEnabledValue !== newTracingEnabled) {
     return false;
   }
