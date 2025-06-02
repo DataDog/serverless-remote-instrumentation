@@ -270,7 +270,13 @@ function isInstrumented(lambdaFunc) {
 }
 exports.isInstrumented = isInstrumented;
 
-function isCorrectlyInstrumented(layers, config, targetLambdaRuntime) {
+function isCorrectlyInstrumented({
+  layers,
+  config,
+  targetLambdaRuntime,
+  ddTraceEnabledValue,
+  ddServerlessLogsEnabledValue,
+}) {
   // Check if the extension is correct
   let targetLambdaExtensionLayerVersion = -1;
   for (const layer of layers) {
@@ -305,14 +311,31 @@ function isCorrectlyInstrumented(layers, config, targetLambdaRuntime) {
     expectedLayerName = "Datadog-Node";
     expectedLayerVersion = config.nodeLayerVersion;
   }
+
+  let foundLayerVersion;
   for (const layer of layers) {
     logger.log(`Checking runtime layer: ${JSON.stringify(layer)}`);
     if (layer?.Arn?.includes(`464622532012:layer:${expectedLayerName}`)) {
-      return parseInt(layer.Arn.split(":").at(-1), 10) === expectedLayerVersion;
+      foundLayerVersion = parseInt(layer.Arn.split(":").at(-1), 10);
+      break;
     }
   }
+  if (expectedLayerVersion !== foundLayerVersion) {
+    return false;
+  }
 
-  return !expectedLayerVersion;
+  // Check the tracing and logging settings
+  const newTracingEnabled = (config.ddTraceEnabled !== false).toString();
+  const newLoggingEnabled = (
+    config.ddServerlessLogsEnabled !== false
+  ).toString();
+  if (ddTraceEnabledValue !== newTracingEnabled) {
+    return false;
+  }
+  if (ddServerlessLogsEnabledValue !== newLoggingEnabled) {
+    return false;
+  }
+  return true;
 }
 exports.isCorrectlyInstrumented = isCorrectlyInstrumented;
 
@@ -471,7 +494,16 @@ function needsInstrumentationUpdate(
 
   // If it's already instrumented correctly, don't reinstrument but tag if necessary
   const layers = lambdaFunc.Layers || [];
-  if (isCorrectlyInstrumented(layers, config, runtime)) {
+  if (
+    isCorrectlyInstrumented({
+      layers: layers,
+      config: config,
+      targetLambdaRuntime: runtime,
+      ddTraceEnabledValue: lambdaFunc.Environment?.Variables?.DD_TRACE_ENABLED,
+      ddServerlessLogsEnabledValue:
+        lambdaFunc.Environment?.Variables?.DD_SERVERLESS_LOGS_ENABLED,
+    })
+  ) {
     if (emitProcessingLogs) {
       logger.emitFrontendProcessingEvent(
         functionName,

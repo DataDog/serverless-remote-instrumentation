@@ -39,6 +39,12 @@ class RcConfig {
     this.setPythonLayerVersion(
       configJSON.instrumentation_settings?.python_layer_version,
     );
+    this.setDDTraceEnabled(
+      configJSON.instrumentation_settings?.dd_trace_enabled,
+    );
+    this.setDDServerlessLogsEnabled(
+      configJSON.instrumentation_settings?.dd_serverless_logs_enabled,
+    );
     this.setPriority(configJSON.priority);
     this.setRuleFilters(configJSON.rule_filters);
   }
@@ -123,6 +129,29 @@ class RcConfig {
     } else {
       throw this.configurationError(
         `python layer version must be a number, but received '${pythonLayerVersion}'`,
+      );
+    }
+  }
+
+  setDDTraceEnabled(ddTraceEnabled) {
+    if (ddTraceEnabled === undefined || typeof ddTraceEnabled === "boolean") {
+      this.ddTraceEnabled = ddTraceEnabled;
+    } else {
+      throw this.configurationError(
+        `ddTraceEnabled must be a boolean, but received '${ddTraceEnabled}'`,
+      );
+    }
+  }
+
+  setDDServerlessLogsEnabled(ddServerlessLogsEnabled) {
+    if (
+      ddServerlessLogsEnabled === undefined ||
+      typeof ddServerlessLogsEnabled === "boolean"
+    ) {
+      this.ddServerlessLogsEnabled = ddServerlessLogsEnabled;
+    } else {
+      throw this.configurationError(
+        `ddServerlessLogsEnabled must be a boolean, but received '${ddServerlessLogsEnabled}'`,
       );
     }
   }

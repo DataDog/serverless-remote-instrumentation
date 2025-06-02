@@ -4,8 +4,8 @@
     "@aws-sdk/client-lambda": "3.476.0",
     "@aws-sdk/client-resource-groups-tagging-api": "3.477.0",
     "@aws-sdk/client-s3": "^3.713.0",
-    "@datadog/datadog-ci": "3.1.0",
-    "axios": "1.8.2",
+    "@datadog/datadog-ci": "3.7.0",
+    "axios": "^1.8.4",
     "yaml-cfn": "^0.3.2"
   },
   "devDependencies": {

@@ -69,6 +69,12 @@ async function instrumentWithDatadogCi(
     if (layerVersionObj.extensionVersion) {
       command.push("-e", layerVersionObj.extensionVersion.toString());
     }
+    if (config.ddTraceEnabled !== undefined) {
+      command.push("--tracing", config.ddTraceEnabled.toString());
+    }
+    if (config.ddServerlessLogsEnabled !== undefined) {
+      command.push("--logging", config.ddServerlessLogsEnabled.toString());
+    }
   } else {
     command.push("-r", config.awsRegion);
   }

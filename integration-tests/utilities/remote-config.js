@@ -48,6 +48,8 @@ const setRemoteConfig = async ({
       allow: true,
     },
   ],
+  ddTraceEnabled = true,
+  ddServerlessLogsEnabled = true,
   id,
 } = {}) => {
   const [apiKey, appKey] = await Promise.all([getApiKey(), getAppKey()]);
@@ -61,6 +63,8 @@ const setRemoteConfig = async ({
           extension_version: extensionVersion,
           python_layer_version: pythonLayerVersion,
           node_layer_version: nodeLayerVersion,
+          dd_trace_enabled: ddTraceEnabled,
+          dd_serverless_logs_enabled: ddServerlessLogsEnabled,
         },
         priority: 1,
         rule_filters: ruleFilters,

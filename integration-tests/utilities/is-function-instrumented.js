@@ -33,8 +33,13 @@ const isFunctionInstrumented = async (functionName) => {
     }),
   );
   const rc = await getRemoteConfig();
-  const { extension_version, node_layer_version, python_layer_version } =
-    rc.data[0].attributes.instrumentation_settings;
+  const {
+    extension_version,
+    node_layer_version,
+    python_layer_version,
+    dd_trace_enabled,
+    dd_serverless_logs_enabled,
+  } = rc.data[0].attributes.instrumentation_settings;
 
   if (
     funConfig.Runtime.toLowerCase().includes("python") &&
@@ -55,6 +60,26 @@ const isFunctionInstrumented = async (functionName) => {
     if (!hasLayerMatching(funConfig, "Datadog-Extension", extension_version)) {
       return false;
     }
+  }
+
+  if (
+    !hasEnvVarMatching(
+      funConfig,
+      "DD_TRACE_ENABLED",
+      dd_trace_enabled?.toString() ?? "true",
+    )
+  ) {
+    return false;
+  }
+
+  if (
+    !hasEnvVarMatching(
+      funConfig,
+      "DD_SERVERLESS_LOGS_ENABLED",
+      dd_serverless_logs_enabled?.toString() ?? "true",
+    )
+  ) {
+    return false;
   }
 
   if (

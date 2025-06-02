@@ -4,6 +4,8 @@ function constructTestJSON({
   extensionVersion,
   nodeLayerVersion,
   pythonLayerVersion,
+  ddTraceEnabled,
+  ddServerlessLogsEnabled,
   priority,
   ruleFilters,
 }) {
@@ -14,6 +16,8 @@ function constructTestJSON({
       extension_version: extensionVersion,
       node_layer_version: nodeLayerVersion,
       python_layer_version: pythonLayerVersion,
+      dd_trace_enabled: ddTraceEnabled,
+      dd_serverless_logs_enabled: ddServerlessLogsEnabled,
     },
     priority: priority,
     rule_filters: ruleFilters,
@@ -27,6 +31,8 @@ const sampleRcTestJSON = constructTestJSON({
   extensionVersion: 10,
   nodeLayerVersion: 20,
   pythonLayerVersion: 30,
+  ddTraceEnabled: true,
+  ddServerlessLogsEnabled: false,
   priority: 1,
   ruleFilters: [
     {

@@ -42,10 +42,12 @@ exports.REMOTE_INSTRUMENTER_FUNCTION = "remote-instrumenter-function";
 exports.FUNCTION_NOT_FOUND = "function-not-found";
 exports.DATADOG_CI_ERROR = "datadog-ci-error";
 
-// Remote instrumentation tag values
+// Remote instrumentation tag values and environment variable key names
 exports.VERSION = process.env.DD_INSTRUMENTER_VERSION;
 exports.DD_SLS_REMOTE_INSTRUMENTER_VERSION =
   "dd_sls_remote_instrumenter_version";
+exports.DD_TRACE_ENABLED = "DD_TRACE_ENABLED";
+exports.DD_SERVERLESS_LOGS_ENABLED = "DD_SERVERLESS_LOGS_ENABLED";
 exports.DD_API_KEY = "DD_API_KEY";
 exports.DD_KMS_API_KEY = "DD_KMS_API_KEY";
 exports.DD_API_KEY_SECRET_ARN = "DD_API_KEY_SECRET_ARN";

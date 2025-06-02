@@ -216,6 +216,32 @@ describe("Remote instrumenter scheduled event tests", () => {
     );
   });
 
+  it("sets DD_TRACE_ENABLED and DD_SERVERLESS_LOGS_ENABLED correctly", async () => {
+    const { FunctionName: functionName } = await createFunction({
+      Tags: { foo: "bar" },
+    });
+    const rc = await setRemoteConfig({
+      ddTraceEnabled: true,
+      ddServerlessLogsEnabled: true,
+    });
+    await invokeLambdaWithScheduledEvent();
+    let isInstrumented = await pollUntilTrue(60000, 5000, () =>
+      isFunctionInstrumented(functionName),
+    );
+    expect(isInstrumented).toStrictEqual(true);
+
+    await setRemoteConfig({
+      ddTraceEnabled: false,
+      ddServerlessLogsEnabled: false,
+      id: rc.id,
+    });
+    await invokeLambdaWithScheduledEvent();
+    isInstrumented = await pollUntilTrue(60000, 5000, () =>
+      isFunctionInstrumented(functionName),
+    );
+    expect(isInstrumented).toStrictEqual(true);
+  });
+
   it("adds an appropriate reason code when datadog-ci fails", async () => {
     // Set the extension version to a version that doesn't exist
     await setRemoteConfig({
