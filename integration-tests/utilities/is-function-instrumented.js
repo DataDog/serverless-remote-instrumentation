@@ -63,8 +63,7 @@ const isFunctionInstrumented = async (functionName) => {
   }
 
   if (
-    !hasEnvVar(funConfig, "DD_TRACE_ENABLED") &&
-    hasEnvVarMatching(
+    !hasEnvVarMatching(
       funConfig,
       "DD_TRACE_ENABLED",
       dd_trace_enabled?.toString() ?? "true",
@@ -74,8 +73,7 @@ const isFunctionInstrumented = async (functionName) => {
   }
 
   if (
-    !hasEnvVar(funConfig, "DD_SERVERLESS_LOGS_ENABLED") &&
-    hasEnvVarMatching(
+    !hasEnvVarMatching(
       funConfig,
       "DD_SERVERLESS_LOGS_ENABLED",
       dd_serverless_logs_enabled?.toString() ?? "true",
