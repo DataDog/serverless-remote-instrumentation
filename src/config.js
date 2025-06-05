@@ -14,6 +14,7 @@ const {
   REMOTE_CONFIG_URL,
   CONFIG_HASH_KEY,
   CONFIG_CACHE_TTL_MS,
+  CONFIG_STATUS_EXPIRED,
 } = require("./consts");
 const { getApplyState } = require("./apply-state");
 
@@ -251,6 +252,11 @@ function getConfigsFromResponse(response) {
   if (!response.data) {
     throw new Error("Failed to retrieve configs");
   }
+  // If the config is expired, throw an error
+  if (response.data.config_status === CONFIG_STATUS_EXPIRED) {
+    throw new Error("Config is expired");
+  }
+
   // Map path to config for each target file
   const targetFiles = response.data.target_files ?? [];
   const targetFileMapping = targetFiles.reduce(
