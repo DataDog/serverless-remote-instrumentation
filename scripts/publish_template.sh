@@ -75,4 +75,4 @@ echo
 echo "Here is the CloudFormation quick launch URL:"
 echo "https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?stackName=datadog-remote-instrument&templateURL=${TEMPLATE_URL}"
 echo
-echo "Serverless Sample App release process complete!"
+echo "Serverless Remote Instrumentation release process complete!"
