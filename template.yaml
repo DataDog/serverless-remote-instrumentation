@@ -103,7 +103,7 @@ Resources:
       Role: !GetAtt LambdaExecutionRole.Arn
       Handler: /opt/nodejs/node_modules/datadog-remote-instrument/handler.handler
       Layers:
-        - !Sub 'arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Extension-ARM:80'
+        - !Sub 'arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Extension-ARM:81'
         - !Join
           - ''
           - - 'arn:aws:lambda:'
