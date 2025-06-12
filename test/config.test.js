@@ -6,7 +6,12 @@ const {
   getConfigs,
   CONFIG_CACHE,
 } = require("../src/config");
-const { FILTER_TYPES, CONFIG_CACHE_TTL_MS } = require("../src/consts");
+const {
+  FILTER_TYPES,
+  CONFIG_CACHE_TTL_MS,
+  CONFIG_STATUS_EXPIRED,
+  CONFIG_STATUS_OK,
+} = require("../src/consts");
 const {
   constructTestJSON,
   sampleRcConfigID,
@@ -289,6 +294,27 @@ describe("getConfigsFromResponse", () => {
     expect(() => getConfigsFromResponse({})).toThrow(
       "Failed to retrieve configs",
     );
+  });
+  test("should error when config is expired", () => {
+    expect(() =>
+      getConfigsFromResponse({
+        data: { config_status: CONFIG_STATUS_EXPIRED },
+      }),
+    ).toThrow("Config is expired");
+  });
+  test("should not error when config status is not expired", () => {
+    expect(() =>
+      getConfigsFromResponse({
+        data: { config_status: CONFIG_STATUS_OK },
+      }),
+    ).not.toThrow();
+  });
+  test("should not error when config status is not present", () => {
+    expect(() =>
+      getConfigsFromResponse({
+        data: {},
+      }),
+    ).not.toThrow();
   });
   test("should error when target file is not found", () => {
     expect(() =>
