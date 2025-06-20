@@ -1,14 +1,13 @@
 {
   "version": "1.0.0",
   "dependencies": {
+    "@datadog/datadog-ci": "3.7.0",
+    "axios": "^1.8.4"
+  },
+  "devDependencies": {
     "@aws-sdk/client-lambda": "3.476.0",
     "@aws-sdk/client-resource-groups-tagging-api": "3.477.0",
     "@aws-sdk/client-s3": "^3.713.0",
-    "@datadog/datadog-ci": "3.7.0",
-    "axios": "^1.8.4",
-    "yaml-cfn": "^0.3.2"
-  },
-  "devDependencies": {
     "@aws-sdk/client-cloudwatch-logs": "^3.758.0",
     "@aws-sdk/client-secrets-manager": "^3.726.1",
     "@aws-sdk/s3-request-presigner": "^3.741.0",
@@ -30,7 +29,8 @@
     "prettier": "^3.1.0",
     "prettier-eslint": "^16.1.2",
     "ts-jest": "^29.2.6",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "yaml-cfn": "^0.3.2"
   },
   "engines": {
     "node": ">=20.0.0 <21.0.0"
