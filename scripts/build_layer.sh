@@ -25,10 +25,6 @@ mkdir -p nodejs
 cp -r node_modules nodejs/
 mkdir -p nodejs/node_modules/datadog-remote-instrument
 
-# Remove the aws sdk since it is bundled into lambda by
-# default, it is a dependency of the datadog-ci package
-rm -rf nodejs/node_modules/@aws-sdk
-
 # put src/* into node_modules/package-name/ as a package without copy src directory itself
 cp -a src/. nodejs/node_modules/datadog-remote-instrument/
 zip -r -q scripts/.layers/datadog_serverless_remote_instrumentation_arm64.zip nodejs
