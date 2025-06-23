@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "dependencies": {
-    "@datadog/datadog-ci": "3.7.0",
+    "@datadog/datadog-ci": "3.11.0",
     "axios": "^1.8.4"
   },
   "devDependencies": {
