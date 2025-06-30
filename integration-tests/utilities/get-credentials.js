@@ -5,7 +5,7 @@ const creds = {};
 const getCredentials = (arn) => {
   if (!creds[arn]) {
     let command = `aws sts assume-role --role-arn ${arn} --role-session-name testing`;
-    if (!process.env.RUNNING_IN_GITHUB_ACTION) {
+    if (!process.env.RUNNING_IN_CI) {
       command = `aws-vault exec sso-serverless-sandbox-account-admin -- ${command}`;
     }
 

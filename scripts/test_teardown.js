@@ -9,7 +9,7 @@ if (require.main === module) {
     stdio: "inherit",
   });
 
-  const prefix = process.env.RUNNING_IN_GITHUB_ACTION
+  const prefix = process.env.RUNNING_IN_CI
     ? ""
     : "aws-vault exec sso-serverless-sandbox-account-admin -- ";
 
