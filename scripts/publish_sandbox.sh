@@ -32,7 +32,7 @@ REGION=$REGION
 if [ -z $VERSION ]; then
     echo "No version specified, automatically incrementing version number"
 
-    if [ $RUNNING_IN_GITHUB_ACTION ]; then
+    if [ $GITLAB_CI ]; then
         LAST_LAYER_VERSION=$(
             aws lambda list-layer-versions \
                 --layer-name $LAYER_NAME \
@@ -64,7 +64,7 @@ cd $SCRIPTS_DIR/..
 VERSION=$VERSION ARCHITECTURE=$ARCHITECTURE ./scripts/build_layer.sh
 
 echo "Publishing layers to sandbox"
-if [ $RUNNING_IN_GITHUB_ACTION ]; then
+if [ $GITLAB_CI ]; then
     VERSION=$VERSION ARCHITECTURE=$ARCHITECTURE REGIONS=$REGION ./scripts/publish_layers.sh
 else
     VERSION=$VERSION ARCHITECTURE=$ARCHITECTURE REGIONS=$REGION aws-vault exec sso-serverless-sandbox-account-admin -- ./scripts/publish_layers.sh
