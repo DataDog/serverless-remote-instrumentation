@@ -126,7 +126,6 @@ integration test teardown:
   tags: ["arch:arm64"]
   needs: [integration tests, integration test setup]
   dependencies: [integration test setup]
-  when: manual
   rules:
     - !reference [.defined_rules, feature_branch]
   before_script:
