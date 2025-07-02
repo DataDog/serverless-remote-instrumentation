@@ -24,7 +24,6 @@ lint:
   stage: test
   image: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
   tags: ["arch:arm64"]
-  needs: []
   rules:
     - !reference [.defined_rules, feature_branch]
   before_script:
@@ -37,7 +36,6 @@ unit tests:
   stage: test
   image: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
   tags: ["arch:arm64"]
-  needs: []
   rules:
     - !reference [.defined_rules, feature_branch]
   before_script:
@@ -50,7 +48,6 @@ ci image:
   image: registry.ddbuild.io/images/docker:20.10
   tags: ["arch:arm64"]
   resource_group: pipeline
-  needs: []
   rules:
     - if: '$CI_COMMIT_BRANCH == "prod" && $CI_PIPELINE_SOURCE == "push"'
       changes:
@@ -68,7 +65,6 @@ integration test setup:
   allow_failure: false
   tags: ["arch:arm64"]
   resource_group: pipeline
-  needs: []
   when: manual
   rules:
     - !reference [.defined_rules, merge_into_prod]
@@ -89,7 +85,6 @@ integration tests:
   allow_failure: false
   tags: ["arch:arm64"]
   resource_group: pipeline
-  needs: []
   when: manual
   rules:
     - !reference [.defined_rules, merge_into_prod]
