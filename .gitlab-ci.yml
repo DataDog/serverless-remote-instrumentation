@@ -2,8 +2,6 @@ variables:
   DOCKER_TARGET_IMAGE: registry.ddbuild.io/ci/serverless-remote-instrumentation
   DOCKER_TARGET_VERSION: latest
   SELF_MONITORING: true
-  RUNNING_IN_CI: true
-  BRANCH_NAME: $CI_COMMIT_REF_NAME
 
 .defined_rules:
   merge_into_prod:

@@ -26,12 +26,12 @@ const generateTestConfig = () => {
       namingSeed = process.env.USER;
     }
 
-    if (process.env.RUNNING_IN_CI) {
+    if (process.env.GITLAB_CI) {
       if (process.env.SELF_MONITORING === "true") {
         namingSeed = "self-monitoring";
         region = "ap-south-1";
       } else {
-        namingSeed = process.env.BRANCH_NAME;
+        namingSeed = process.env.CI_COMMIT_REF_NAME;
         region = "eu-south-1";
       }
     }
@@ -93,7 +93,7 @@ if (require.main === module) {
     stdio: "inherit",
   });
 
-  const prefix = process.env.RUNNING_IN_CI
+  const prefix = process.env.GITLAB_CI
     ? ""
     : "aws-vault exec sso-serverless-sandbox-account-admin -- ";
 
