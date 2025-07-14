@@ -6,6 +6,7 @@ const {
 const LOG_LEVEL = process.env.DD_LOG_LEVEL;
 
 const LOG_INFO = ["TRACE", "DEBUG", "INFO"].includes(LOG_LEVEL);
+const LOG_WARN = ["TRACE", "DEBUG", "INFO", "WARN"].includes(LOG_LEVEL);
 const LOG_ERROR = ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"].includes(
   LOG_LEVEL,
 );
@@ -91,6 +92,12 @@ class Logger {
   log(message) {
     if (LOG_INFO) {
       console.log(this.redact("[Datadog Remote Instrumenter] " + message));
+    }
+  }
+
+  warn(message) {
+    if (LOG_WARN) {
+      console.warn(this.redact("[Datadog Remote Instrumenter] " + message));
     }
   }
 

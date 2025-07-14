@@ -145,6 +145,11 @@ async function instrumentFunctions(
 
   // If there are no configs, uninstrument anything that is remotely instrumented
   if (configs.length === 0) {
+    logger.warn(
+      `No configs found on '${triggeredBy}' event. Uninstrumenting functions '${functionsToCheck
+        .map((f) => f.FunctionName)
+        .join(", ")}'`,
+    );
     await removeRemoteInstrumentation(
       s3Client,
       functionsToCheck,

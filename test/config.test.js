@@ -660,6 +660,7 @@ describe("getConfigs", () => {
     CONFIG_CACHE.expirationTime = null;
     mockedAxios = require("axios");
     mockedAxios.post.mockReset();
+    process.env.AWS_REGION = "us-east-1";
   });
 
   test("should use cached configs when they are valid", async () => {
@@ -763,6 +764,38 @@ describe("getConfigs", () => {
     expect(CONFIG_CACHE.expirationTime).toBeGreaterThan(Date.now());
     expect(CONFIG_CACHE.expirationTime).toBeLessThanOrEqual(
       Date.now() + CONFIG_CACHE_TTL_MS,
+    );
+  });
+
+  test("should throw error when region is missing", async () => {
+    delete process.env.AWS_REGION;
+    const context = {
+      invokedFunctionArn:
+        "arn:aws:lambda:us-east-1:123456789012:function:test-function",
+    };
+    await expect(getConfigs(mockS3Client, context)).rejects.toThrow(
+      "Failed to retrieve configs.",
+    );
+  });
+
+  test("should throw error when account ID is missing", async () => {
+    let mockContext = {
+      invokedFunctionArn: "",
+    };
+    await expect(getConfigs(mockS3Client, mockContext)).rejects.toThrow(
+      "Failed to retrieve configs.",
+    );
+
+    mockContext = {
+      invokedFunctionArn: undefined,
+    };
+    await expect(getConfigs(mockS3Client, mockContext)).rejects.toThrow(
+      "Failed to retrieve configs.",
+    );
+
+    mockContext = {};
+    await expect(getConfigs(mockS3Client, mockContext)).rejects.toThrow(
+      "Failed to retrieve configs.",
     );
   });
 

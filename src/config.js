@@ -301,6 +301,11 @@ function getConfigsFromResponse(response) {
       throw new Error("Error parsing configs: " + e.message);
     }
   }
+  if (parsedConfigFiles.length === 0) {
+    logger.warn(
+      `No configs found in response '${JSON.stringify(response.data)}'`,
+    );
+  }
   return parsedConfigFiles;
 }
 exports.getConfigsFromResponse = getConfigsFromResponse;
@@ -310,8 +315,14 @@ async function getConfigs(s3Client, context) {
     return CONFIG_CACHE.configs;
   }
 
-  const awsAccountId = context.invokedFunctionArn.split(":")[4];
+  const awsAccountId = context.invokedFunctionArn?.split(":")[4];
   const awsRegion = process.env.AWS_REGION;
+  if (!awsAccountId || !awsRegion) {
+    logger.error(
+      `AWS account ID and/or region is missing. awsAccountId: ${awsAccountId}, awsRegion: ${awsRegion}`,
+    );
+    throw new Error("Failed to retrieve configs.");
+  }
   const instrumenterFunctionName = process.env.AWS_LAMBDA_FUNCTION_NAME;
   const configsFromRC = await getConfigsFromRC(
     s3Client,
@@ -357,6 +368,11 @@ async function configHasChanged(client, configs) {
     logger.log(
       `Instrumentation configuration ${configChanged ? "has" : "has not"} changed since last scheduled invocation.`,
     );
+    if (configChanged && configs.length === 0) {
+      logger.warn(
+        `Instrumentation configuration has been fully removed since the last scheduled invocation.`,
+      );
+    }
     return configChanged;
   } catch (caught) {
     if (caught instanceof NoSuchKey) {
