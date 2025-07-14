@@ -3,7 +3,13 @@ const NODE = "node";
 exports.NODE = NODE;
 const PYTHON = "python";
 exports.PYTHON = PYTHON;
-exports.SUPPORTED_RUNTIMES = [NODE, PYTHON];
+const JAVA = "java";
+exports.JAVA = JAVA;
+const DOTNET = "dotnet";
+exports.DOTNET = DOTNET;
+const RUBY = "ruby";
+exports.RUBY = RUBY;
+exports.SUPPORTED_RUNTIMES = [NODE, PYTHON, JAVA, DOTNET, RUBY];
 
 // Event Types
 exports.LAMBDA_EVENT = "LambdaEvent";

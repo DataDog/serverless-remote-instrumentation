@@ -21,6 +21,9 @@ const {
   SUPPORTED_RUNTIMES,
   NODE,
   PYTHON,
+  JAVA,
+  DOTNET,
+  RUBY,
   INSTRUMENT,
   TAG,
   FUNCTION_NAME,
@@ -261,6 +264,9 @@ function isInstrumented(lambdaFunc) {
   const hasDatadogLayer =
     hasLayerMatching(lambdaFunc, "Datadog-Python") ||
     hasLayerMatching(lambdaFunc, "Datadog-Node") ||
+    hasLayerMatching(lambdaFunc, "dd-trace-java") ||
+    hasLayerMatching(lambdaFunc, "dd-trace-dotnet") ||
+    hasLayerMatching(lambdaFunc, "Datadog-Ruby") ||
     hasLayerMatching(lambdaFunc, "Datadog-Extension");
 
   if (hasDatadogLayer) {
@@ -310,6 +316,15 @@ function isCorrectlyInstrumented({
   } else if (targetLambdaRuntime.toLowerCase().includes(NODE)) {
     expectedLayerName = "Datadog-Node";
     expectedLayerVersion = config.nodeLayerVersion;
+  } else if (targetLambdaRuntime.toLowerCase().includes(JAVA)) {
+    expectedLayerName = "dd-trace-java";
+    expectedLayerVersion = config.javaLayerVersion;
+  } else if (targetLambdaRuntime.toLowerCase().includes(DOTNET)) {
+    expectedLayerName = "dd-trace-dotnet";
+    expectedLayerVersion = config.dotnetLayerVersion;
+  } else if (targetLambdaRuntime.toLowerCase().includes(RUBY)) {
+    expectedLayerName = "Datadog-Ruby";
+    expectedLayerVersion = config.rubyLayerVersion;
   }
 
   let foundLayerVersion;

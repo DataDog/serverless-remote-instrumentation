@@ -40,6 +40,9 @@ const setRemoteConfig = async ({
   extensionVersion = 67,
   pythonLayerVersion = 99,
   nodeLayerVersion = 112,
+  javaLayerVersion = 23,
+  dotnetLayerVersion = 20,
+  rubyLayerVersion = 25,
   ruleFilters = [
     {
       key: "foo",
@@ -65,6 +68,9 @@ const setRemoteConfig = async ({
           node_layer_version: nodeLayerVersion,
           dd_trace_enabled: ddTraceEnabled,
           dd_serverless_logs_enabled: ddServerlessLogsEnabled,
+          java_layer_version: javaLayerVersion,
+          dotnet_layer_version: dotnetLayerVersion,
+          ruby_layer_version: rubyLayerVersion,
         },
         priority: 1,
         rule_filters: ruleFilters,

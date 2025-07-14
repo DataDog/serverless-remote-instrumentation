@@ -37,6 +37,9 @@ const isFunctionInstrumented = async (functionName) => {
     extension_version,
     node_layer_version,
     python_layer_version,
+    java_layer_version,
+    dotnet_layer_version,
+    ruby_layer_version,
     dd_trace_enabled,
     dd_serverless_logs_enabled,
   } = rc.data[0].attributes.instrumentation_settings;
@@ -52,6 +55,27 @@ const isFunctionInstrumented = async (functionName) => {
 
   if (funConfig.Runtime.toLowerCase().includes("node") && node_layer_version) {
     if (!hasLayerMatching(funConfig, "Datadog-Node", node_layer_version)) {
+      return false;
+    }
+  }
+
+  if (funConfig.Runtime.toLowerCase().includes("java") && java_layer_version) {
+    if (!hasLayerMatching(funConfig, "dd-trace-java", java_layer_version)) {
+      return false;
+    }
+  }
+
+  if (
+    funConfig.Runtime.toLowerCase().includes("dotnet") &&
+    dotnet_layer_version
+  ) {
+    if (!hasLayerMatching(funConfig, "dd-trace-dotnet", dotnet_layer_version)) {
+      return false;
+    }
+  }
+
+  if (funConfig.Runtime.toLowerCase().includes("ruby") && ruby_layer_version) {
+    if (!hasLayerMatching(funConfig, "Datadog-Ruby", ruby_layer_version)) {
       return false;
     }
   }
@@ -107,6 +131,9 @@ const isFunctionUninstrumented = async (functionName) => {
   return (
     !hasLayer(funConfig, "Datadog-Python") &&
     !hasLayer(funConfig, "Datadog-Node") &&
+    !hasLayer(funConfig, "dd-trace-java") &&
+    !hasLayer(funConfig, "dd-trace-dotnet") &&
+    !hasLayer(funConfig, "Datadog-Ruby") &&
     !hasLayer(funConfig, "Datadog-Extension") &&
     !hasEnvVar(funConfig, "DD_API_KEY") &&
     !hasEnvVar(funConfig, "DD_SITE")

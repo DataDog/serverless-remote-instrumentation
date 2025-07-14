@@ -40,6 +40,15 @@ class RcConfig {
     this.setPythonLayerVersion(
       configJSON.instrumentation_settings?.python_layer_version,
     );
+    this.setJavaLayerVersion(
+      configJSON.instrumentation_settings?.java_layer_version,
+    );
+    this.setDotnetLayerVersion(
+      configJSON.instrumentation_settings?.dotnet_layer_version,
+    );
+    this.setRubyLayerVersion(
+      configJSON.instrumentation_settings?.ruby_layer_version,
+    );
     this.setDDTraceEnabled(
       configJSON.instrumentation_settings?.dd_trace_enabled,
     );
@@ -130,6 +139,45 @@ class RcConfig {
     } else {
       throw this.configurationError(
         `python layer version must be a number, but received '${pythonLayerVersion}'`,
+      );
+    }
+  }
+
+  setJavaLayerVersion(javaLayerVersion) {
+    if (
+      javaLayerVersion === undefined ||
+      typeof javaLayerVersion === "number"
+    ) {
+      this.javaLayerVersion = javaLayerVersion;
+    } else {
+      throw this.configurationError(
+        `java layer version must be a number, but received '${javaLayerVersion}'`,
+      );
+    }
+  }
+
+  setDotnetLayerVersion(dotnetLayerVersion) {
+    if (
+      dotnetLayerVersion === undefined ||
+      typeof dotnetLayerVersion === "number"
+    ) {
+      this.dotnetLayerVersion = dotnetLayerVersion;
+    } else {
+      throw this.configurationError(
+        `dotnet layer version must be a number, but received '${dotnetLayerVersion}'`,
+      );
+    }
+  }
+
+  setRubyLayerVersion(rubyLayerVersion) {
+    if (
+      rubyLayerVersion === undefined ||
+      typeof rubyLayerVersion === "number"
+    ) {
+      this.rubyLayerVersion = rubyLayerVersion;
+    } else {
+      throw this.configurationError(
+        `ruby layer version must be a number, but received '${rubyLayerVersion}'`,
       );
     }
   }

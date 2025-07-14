@@ -3,6 +3,9 @@ const {
   INSTRUMENT,
   PYTHON,
   NODE,
+  JAVA,
+  DOTNET,
+  RUBY,
   UNINSTRUMENT,
   IN_PROGRESS,
   SUCCEEDED,
@@ -38,6 +41,12 @@ function getExtensionAndRuntimeLayerVersion(runtime, config) {
     result.runtimeLayerVersion = config.nodeLayerVersion;
   } else if (runtime.includes(PYTHON)) {
     result.runtimeLayerVersion = config.pythonLayerVersion;
+  } else if (runtime.includes(JAVA)) {
+    result.runtimeLayerVersion = config.javaLayerVersion;
+  } else if (runtime.includes(DOTNET)) {
+    result.runtimeLayerVersion = config.dotnetLayerVersion;
+  } else if (runtime.includes(RUBY)) {
+    result.runtimeLayerVersion = config.rubyLayerVersion;
   }
 
   return result;
