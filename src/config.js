@@ -266,7 +266,6 @@ function getConfigsFromResponse(response) {
     }),
     {},
   );
-
   const configPaths = response.data.client_configs ?? [];
   let parsedConfigFiles = [];
   // For each config path, find the config data and signed target metadata
@@ -282,7 +281,6 @@ function getConfigsFromResponse(response) {
     if (!response.data.targets) {
       throw new Error("Error parsing configs: targets not found");
     }
-
     const signedTargets = JSON.parse(atob(response.data.targets)).signed
       ?.targets;
     if (!(configPath in signedTargets)) {
