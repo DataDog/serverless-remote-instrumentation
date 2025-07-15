@@ -2,7 +2,7 @@ variables:
   DOCKER_TARGET_IMAGE: registry.ddbuild.io/ci/serverless-remote-instrumentation
   DOCKER_TARGET_VERSION: latest
   SELF_MONITORING: true
-  SCRIPTS_PATH: /etc/serverless-remote-instrumentation/scripts/
+  SCRIPTS_PATH: /etc/serverless-remote-instrumentation/scripts
 
 .defined_rules:
   merge_into_prod:
