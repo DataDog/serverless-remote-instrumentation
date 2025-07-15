@@ -44,7 +44,7 @@
     "test": "jest --config test/jest.config.js",
     "integ": "jest -i --config integration-tests/jest.config.js",
     "metrics-validations": "jest -i --config metrics-validations/jest.config.js",
-    "integ-test-setup": "node scripts/test_setup.js",
-    "integ-test-teardown": "node scripts/test_teardown.js"
+    "integ-test-setup": "node ${SCRIPTS_PATH}/test_setup.js",
+    "integ-test-teardown": "node ${SCRIPTS_PATH}/test_teardown.js"
   }
 }
