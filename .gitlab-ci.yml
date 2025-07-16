@@ -55,6 +55,8 @@ integration test setup:
     - !reference [.defined_rules, feature_branch]
   artifacts:
     untracked: true
+    paths:
+      - /etc/serverless-remote-instrumentation/scripts/
   variables:
     ACCOUNT: sandbox
   before_script:
