@@ -249,15 +249,15 @@ async function removeRemoteInstrumentation(
       { awsRegion: process.env.AWS_REGION },
       instrumentOutcome,
     );
-    await untagResourcesOfSlsTag(
-      taggingClient,
-      remotelyInstrumentedFunctions.flatMap((f) =>
-        !(f.FunctionName in instrumentOutcome.uninstrument[FAILED])
-          ? f.FunctionArn
-          : [],
-      ),
-    );
   }
+  await untagResourcesOfSlsTag(
+    taggingClient,
+    remotelyInstrumentedFunctions.flatMap((f) =>
+      !(f.FunctionName in instrumentOutcome.uninstrument[FAILED])
+        ? f.FunctionArn
+        : [],
+    ),
+  );
   await deleteApplyState(s3Client);
 }
 exports.removeRemoteInstrumentation = removeRemoteInstrumentation;
