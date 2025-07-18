@@ -1,6 +1,5 @@
 const instrument = require("../src/instrument");
 const applyState = require("../src/apply-state");
-const tag = require("../src/tag");
 const { RcConfig } = require("../src/config");
 const datadogCi = require("@datadog/datadog-ci/dist/cli.js");
 const {
@@ -77,7 +76,6 @@ describe("getExtensionAndRuntimeLayerVersion", () => {
   });
 });
 
-jest.mock("../src/tag");
 jest.mock("../src/apply-state");
 jest.mock("@datadog/datadog-ci/dist/cli.js");
 
@@ -108,7 +106,11 @@ describe("instrumentFunctions", () => {
   rcConfig.awsRegion = "us-east-2";
 
   // Mock client
-  const mockClient = {
+  const mockTaggingClient = {
+    send: jest.fn(),
+  };
+
+  const mockS3Client = {
     send: jest.fn(),
   };
 
@@ -131,11 +133,11 @@ describe("instrumentFunctions", () => {
 
   test("should instrument and tag functions that need it", async () => {
     await instrument.instrumentFunctions(
-      mockClient,
+      mockS3Client,
       [rcConfig],
       [functionFoo],
       baseInstrumentOutcome,
-      mockClient,
+      mockTaggingClient,
     );
     expect(datadogCi.cli.run).toHaveBeenCalledTimes(1);
     expect(datadogCi.cli.run).toHaveBeenCalledWith(
@@ -155,18 +157,23 @@ describe("instrumentFunctions", () => {
       ],
       expect.anything(),
     );
-    expect(tag.tagResourcesWithSlsTag).toHaveBeenCalledTimes(1);
-    expect(tag.tagResourcesWithSlsTag).toHaveBeenCalledWith(mockClient, [
-      functionFoo.FunctionArn,
-    ]);
+    expect(mockTaggingClient.send).toHaveBeenCalledTimes(1);
+    expect(mockTaggingClient.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: {
+          ResourceARNList: [functionFoo.FunctionArn],
+          Tags: { [DD_SLS_REMOTE_INSTRUMENTER_VERSION]: `v${VERSION}` },
+        },
+      }),
+    );
   });
   test("should uninstrument and untag functions that need it", async () => {
     await instrument.instrumentFunctions(
-      mockClient,
+      mockS3Client,
       [rcConfig],
       [functionBar],
       baseInstrumentOutcome,
-      mockClient,
+      mockTaggingClient,
     );
     expect(datadogCi.cli.run).toHaveBeenCalledTimes(1);
     expect(datadogCi.cli.run).toHaveBeenCalledWith(
@@ -180,19 +187,24 @@ describe("instrumentFunctions", () => {
       ],
       expect.anything(),
     );
-    expect(tag.untagResourcesOfSlsTag).toHaveBeenCalledTimes(1);
-    expect(tag.untagResourcesOfSlsTag).toHaveBeenCalledWith(mockClient, [
-      functionBar.FunctionArn,
-    ]);
+    expect(mockTaggingClient.send).toHaveBeenCalledTimes(1);
+    expect(mockTaggingClient.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: {
+          ResourceARNList: [functionBar.FunctionArn],
+          TagKeys: [DD_SLS_REMOTE_INSTRUMENTER_VERSION],
+        },
+      }),
+    );
   });
   test("should uninstrument the right functions when there are no configs", async () => {
     process.env.AWS_REGION = "us-east-2";
     await instrument.instrumentFunctions(
-      mockClient,
+      mockS3Client,
       [],
       [functionFoo, functionBar],
       baseInstrumentOutcome,
-      mockClient,
+      mockTaggingClient,
     );
     expect(datadogCi.cli.run).toHaveBeenCalledTimes(1);
     expect(datadogCi.cli.run).toHaveBeenCalledWith(
@@ -206,19 +218,24 @@ describe("instrumentFunctions", () => {
       ],
       expect.anything(),
     );
-    expect(tag.untagResourcesOfSlsTag).toHaveBeenCalledTimes(1);
-    expect(tag.untagResourcesOfSlsTag).toHaveBeenCalledWith(mockClient, [
-      functionBar.FunctionArn,
-    ]);
+    expect(mockTaggingClient.send).toHaveBeenCalledTimes(1);
+    expect(mockTaggingClient.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: {
+          ResourceARNList: [functionBar.FunctionArn],
+          TagKeys: [DD_SLS_REMOTE_INSTRUMENTER_VERSION],
+        },
+      }),
+    );
     expect(applyState.deleteApplyState).toHaveBeenCalledTimes(1);
   });
   test("should write apply state if triggered by scheduled invocation", async () => {
     await instrument.instrumentFunctions(
-      mockClient,
+      mockS3Client,
       [rcConfig],
       [functionFoo, functionBar],
       baseInstrumentOutcome,
-      mockClient,
+      mockTaggingClient,
       SCHEDULED_INVOCATION_EVENT,
     );
     expect(applyState.putApplyState).toHaveBeenCalledTimes(1);
@@ -228,11 +245,11 @@ describe("instrumentFunctions", () => {
   });
   test("should not write apply state if triggered by lambda management event", async () => {
     await instrument.instrumentFunctions(
-      mockClient,
+      mockS3Client,
       [rcConfig],
       [functionFoo, functionBar],
       baseInstrumentOutcome,
-      mockClient,
+      mockTaggingClient,
       LAMBDA_EVENT,
     );
     expect(applyState.putApplyState).toHaveBeenCalledTimes(0);
@@ -240,11 +257,11 @@ describe("instrumentFunctions", () => {
   test("should track datadog-ci command errors", async () => {
     datadogCi.cli.run.mockReturnValue(1);
     await instrument.instrumentFunctions(
-      mockClient,
+      mockS3Client,
       [rcConfig],
       [functionFoo],
       baseInstrumentOutcome,
-      mockClient,
+      mockTaggingClient,
     );
     expect(datadogCi.cli.run).toHaveBeenCalledTimes(1);
     expect(datadogCi.cli.run).toHaveBeenCalledWith(
@@ -274,7 +291,10 @@ describe("instrumentFunctions", () => {
 });
 
 describe("removeRemoteInstrumentation", () => {
-  const mockClient = {
+  const mockTaggingClient = {
+    send: jest.fn(),
+  };
+  const mockS3Client = {
     send: jest.fn(),
   };
   beforeEach(() => {
@@ -291,14 +311,23 @@ describe("removeRemoteInstrumentation", () => {
         `${DD_SLS_REMOTE_INSTRUMENTER_VERSION}:${VERSION}`,
       ]),
     };
+    const functionBaz = {
+      FunctionName: "baz",
+      FunctionArn: "arn:aws:lambda:us-east-2:123456789:function:baz",
+      Runtime: "nodejs18.x",
+      Tags: new Set([
+        "foo:baz",
+        `${DD_SLS_REMOTE_INSTRUMENTER_VERSION}:${VERSION}`,
+      ]),
+    };
     process.env.AWS_REGION = "us-east-2";
     await instrument.removeRemoteInstrumentation(
-      mockClient,
-      [functionBar],
+      mockS3Client,
+      [functionBar, functionBaz],
       baseInstrumentOutcome,
-      mockClient,
+      mockTaggingClient,
     );
-    expect(datadogCi.cli.run).toHaveBeenCalledTimes(1);
+    expect(datadogCi.cli.run).toHaveBeenCalledTimes(2);
     expect(datadogCi.cli.run).toHaveBeenCalledWith(
       [
         "lambda",
@@ -310,10 +339,26 @@ describe("removeRemoteInstrumentation", () => {
       ],
       expect.anything(),
     );
-    expect(tag.untagResourcesOfSlsTag).toHaveBeenCalledTimes(1);
-    expect(tag.untagResourcesOfSlsTag).toHaveBeenCalledWith(mockClient, [
-      functionBar.FunctionArn,
-    ]);
+    expect(datadogCi.cli.run).toHaveBeenCalledWith(
+      [
+        "lambda",
+        "uninstrument",
+        "-f",
+        functionBaz.FunctionArn,
+        "-r",
+        "us-east-2",
+      ],
+      expect.anything(),
+    );
+    expect(mockTaggingClient.send).toHaveBeenCalledTimes(1);
+    expect(mockTaggingClient.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: {
+          ResourceARNList: [functionBar.FunctionArn, functionBaz.FunctionArn],
+          TagKeys: [DD_SLS_REMOTE_INSTRUMENTER_VERSION],
+        },
+      }),
+    );
     expect(applyState.deleteApplyState).toHaveBeenCalledTimes(1);
   });
   test("should not uninstrument or untag functions that are not remotely instrumented", async () => {
@@ -324,13 +369,13 @@ describe("removeRemoteInstrumentation", () => {
       Tags: new Set(["env:prod"]),
     };
     await instrument.removeRemoteInstrumentation(
-      mockClient,
+      mockS3Client,
       [functionFoo],
       baseInstrumentOutcome,
-      mockClient,
+      mockTaggingClient,
     );
     expect(datadogCi.cli.run).toHaveBeenCalledTimes(0);
-    expect(tag.untagResourcesOfSlsTag).toHaveBeenCalledTimes(0);
+    expect(mockTaggingClient.send).toHaveBeenCalledTimes(0);
     expect(applyState.deleteApplyState).toHaveBeenCalledTimes(1);
   });
 });
