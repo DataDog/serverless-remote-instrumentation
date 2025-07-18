@@ -30,7 +30,7 @@ class TestingStack extends Stack {
     }));
 
     assumedRole.addToPolicy(new PolicyStatement({
-      actions: ['lambda:GetFunctionConfiguration', 'lambda:CreateFunction', 'lambda:DeleteFunction', 'lambda:TagResource'],
+      actions: ['lambda:GetFunctionConfiguration', 'lambda:CreateFunction', 'lambda:DeleteFunction', 'lambda:TagResource', 'lambda:GetLayerVersion'],
       resources: [ '*' ],
     }));
 

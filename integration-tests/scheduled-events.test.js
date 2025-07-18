@@ -22,6 +22,7 @@ const {
   putErrorObject,
   doesErrorObjectExist,
 } = require("./utilities/s3-error-object");
+const { region } = require("./config.json");
 
 describe("Remote instrumenter scheduled event tests", () => {
   const functionThatDoesntExist = "ThisDoesNotExist";
@@ -280,5 +281,20 @@ describe("Remote instrumenter scheduled event tests", () => {
       functionThatDoesntExist,
     );
     expect(doesErrorObjectStillExist).toEqual(false);
+  });
+
+  it("can instrument a function with a pre-existing non-Datadog layer", async () => {
+    const { FunctionName: functionName } = await createFunction({
+      Tags: { foo: "bar" },
+      Layers: [
+        `arn:aws:lambda:${region}:580247275435:layer:LambdaInsightsExtension:3`,
+      ],
+    });
+    await setRemoteConfig();
+    await invokeLambdaWithScheduledEvent();
+    let isInstrumented = await pollUntilTrue(60000, 5000, () =>
+      isFunctionInstrumented(functionName),
+    );
+    expect(isInstrumented).toStrictEqual(true);
   });
 });
