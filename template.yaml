@@ -175,15 +175,7 @@ Resources:
             Action:
               - lambda:GetLayerVersion
             Resource:
-            - !Sub arn:aws:lambda:${AWS::Region}:464622532012:layer:*
-            - !Sub arn:aws:lambda:${AWS::Region}:464622532012:layer:Datadog-Serverless-Remote-Instrumentation-ARM:*
-            - !Join
-              - ''
-              - - 'arn:aws:lambda:'
-                - !Ref "AWS::Region"
-                - ':'
-                - !FindInMap [ Constants, DdRemoteInstrumentLayerAwsAccount, Number ]
-                - ':layer:*'
+            - !Sub arn:aws:lambda:${AWS::Region}:*:layer:*
           - Effect: Allow
             Action:
               - lambda:ListTags
