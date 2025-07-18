@@ -3,14 +3,12 @@ const {
   SCHEDULED_INVOCATION_EVENT,
   PROCESSING,
 } = require("./consts");
-const LOG_LEVEL = process.env.DD_LOG_LEVEL || "WARN";
+const LOG_LEVEL = (process.env.DD_LOG_LEVEL || "WARN").toUpperCase();
 
-const LOG_INFO = ["TRACE", "DEBUG", "INFO"].includes(LOG_LEVEL.toUpperCase());
-const LOG_WARN = ["TRACE", "DEBUG", "INFO", "WARN"].includes(
-  LOG_LEVEL.toUpperCase(),
-);
+const LOG_INFO = ["TRACE", "DEBUG", "INFO"].includes(LOG_LEVEL);
+const LOG_WARN = ["TRACE", "DEBUG", "INFO", "WARN"].includes(LOG_LEVEL);
 const LOG_ERROR = ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"].includes(
-  LOG_LEVEL.toUpperCase(),
+  LOG_LEVEL,
 );
 
 class Logger {
