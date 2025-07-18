@@ -93,3 +93,93 @@ describe("redact", () => {
     }
   });
 });
+
+describe("log", () => {
+  test.each([
+    ["TRACE", true],
+    ["DEBUG", true],
+    ["INFO", true],
+    ["WARN", false],
+    ["ERROR", false],
+    ["trace", true],
+    ["debug", true],
+    ["info", true],
+    ["warn", false],
+    ["error", false],
+  ])("should log", (logLevel, expectToLog) => {
+    process.env.DD_LOG_LEVEL = logLevel;
+    // Reload the logger module to pick up the new environment variable
+    jest.resetModules();
+    const { logger } = require("../src/logger");
+    const consoleLogSpy = jest.spyOn(console, "log");
+    logger.log("test");
+    if (expectToLog) {
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining("test"),
+      );
+    } else {
+      expect(consoleLogSpy).not.toHaveBeenCalled();
+    }
+    consoleLogSpy.mockRestore();
+  });
+});
+
+describe("warn", () => {
+  test.each([
+    ["TRACE", true],
+    ["DEBUG", true],
+    ["INFO", true],
+    ["WARN", true],
+    ["ERROR", false],
+    ["trace", true],
+    ["debug", true],
+    ["info", true],
+    ["warn", true],
+    ["error", false],
+  ])("should log", (logLevel, expectToLog) => {
+    process.env.DD_LOG_LEVEL = logLevel;
+    // Reload the logger module to pick up the new environment variable
+    jest.resetModules();
+    const { logger } = require("../src/logger");
+    const consoleLogSpy = jest.spyOn(console, "warn");
+    logger.warn("test");
+    if (expectToLog) {
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining("test"),
+      );
+    } else {
+      expect(consoleLogSpy).not.toHaveBeenCalled();
+    }
+    consoleLogSpy.mockRestore();
+  });
+});
+
+describe("error", () => {
+  test.each([
+    ["TRACE", true],
+    ["DEBUG", true],
+    ["INFO", true],
+    ["WARN", true],
+    ["ERROR", true],
+    ["trace", true],
+    ["debug", true],
+    ["info", true],
+    ["warn", true],
+    ["error", true],
+  ])("should log", (logLevel, expectToLog) => {
+    process.env.DD_LOG_LEVEL = logLevel;
+    // Reload the logger module to pick up the new environment variable
+    jest.resetModules();
+    const { logger } = require("../src/logger");
+    const consoleLogSpy = jest.spyOn(console, "error");
+    logger.error("test");
+    if (expectToLog) {
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining("test"),
+      );
+    } else {
+      expect(consoleLogSpy).not.toHaveBeenCalled();
+    }
+    consoleLogSpy.mockRestore();
+  });
+});
