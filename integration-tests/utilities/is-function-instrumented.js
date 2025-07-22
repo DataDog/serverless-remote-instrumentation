@@ -1,4 +1,7 @@
-const { GetFunctionConfigurationCommand } = require("@aws-sdk/client-lambda");
+const {
+  GetFunctionConfigurationCommand,
+  ListTagsCommand,
+} = require("@aws-sdk/client-lambda");
 const { getRemoteConfig } = require("./remote-config");
 const { getLambdaClient } = require("./aws-resources");
 const { isFunctionInvokable } = require("./lambda-functions");
@@ -19,6 +22,24 @@ const hasEnvVar = (l, varName) =>
 
 const hasEnvVarMatching = (l, varName, value) =>
   l?.Environment?.Variables[varName] === value;
+
+const hasRemoteInstrumenterTag = async (functionArn) => {
+  const lambdaClient = await getLambdaClient();
+  try {
+    const tagsResponse = await lambdaClient.send(
+      new ListTagsCommand({
+        Resource: functionArn,
+      }),
+    );
+    return "dd_sls_remote_instrumenter_version" in tagsResponse.Tags;
+  } catch (error) {
+    console.log(
+      `Error checking tags for function ${functionArn}: ${error.message}`,
+    );
+    return false;
+  }
+};
+exports.hasRemoteInstrumenterTag = hasRemoteInstrumenterTag;
 
 // A function is considered instrumented if all are true:
 // 1. If the extension layer is configured, there is a Datadog-Extension with matching version
