@@ -299,6 +299,32 @@ describe("Remote instrumenter scheduled event tests", () => {
     expect(isInstrumented).toStrictEqual(true);
   });
 
+  it("can instrument a function with a remote instrumenter tag but no instrumentation", async () => {
+    const { FunctionName: functionName } = await createFunction({
+      Tags: { foo: "bar", dd_sls_remote_instrumenter_version: "1.0.0" },
+    });
+    await setRemoteConfig();
+    await invokeLambdaWithScheduledEvent();
+    let isInstrumented = await pollUntilTrue(60000, 5000, () =>
+      isFunctionInstrumented(functionName),
+    );
+    expect(isInstrumented).toStrictEqual(true);
+  });
+
+  it("can remove tags from functions that should not have them", async () => {
+    const { FunctionName: functionName, FunctionArn: functionArn } =
+      await createFunction({
+        Tags: { foo: "baz", dd_sls_remote_instrumenter_version: "1.0.0" },
+      });
+    await setRemoteConfig();
+    await invokeLambdaWithScheduledEvent();
+    let isInstrumented = await isFunctionInstrumented(functionName);
+    expect(isInstrumented).toStrictEqual(false);
+
+    const hasTag = await hasRemoteInstrumenterTag(functionArn);
+    expect(hasTag).toStrictEqual(false);
+  });
+
   it("correctly tags instrumented functions", async () => {
     const functions = await createFunctions({}, 21);
     const functionNames = functions.map((lambda) => lambda.FunctionName);
@@ -334,5 +360,5 @@ describe("Remote instrumenter scheduled event tests", () => {
       const hasTag = await hasRemoteInstrumenterTag(functionArn);
       expect(hasTag).toStrictEqual(true);
     }
-  });
+  }, 180000); // Increase the timeout for this temporarily since checking 21 functions takes a while
 });

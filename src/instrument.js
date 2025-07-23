@@ -182,6 +182,11 @@ async function instrumentFunctions(
       `Functions to untag: ${functionsToUntag.map((f) => f.FunctionName)}`,
     );
 
+    await tagResourcesWithSlsTag(
+      taggingClient,
+      functionsToTag.map((f) => f.FunctionArn),
+    );
+
     // Instrument and tag the functions that need to be instrumented
     for (const functionToInstrument of functionsToInstrument) {
       await instrumentWithDatadogCi(
@@ -191,14 +196,6 @@ async function instrumentFunctions(
         instrumentOutcome,
       );
     }
-    await tagResourcesWithSlsTag(
-      taggingClient,
-      functionsToTag.flatMap((f) =>
-        !(f.FunctionName in instrumentOutcome.instrument[FAILED])
-          ? f.FunctionArn
-          : [],
-      ),
-    );
 
     // Uninstrument and untag the functions that need to be uninstrumented
     for (const functionToUninstrument of functionsToUninstrument) {
