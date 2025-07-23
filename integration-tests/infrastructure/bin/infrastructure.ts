@@ -74,6 +74,8 @@ class TestingStack extends Stack {
     template.Mappings.Constants.DdRemoteInstrumentLayerAwsAccount.Number = account;
     template.Mappings.Constants.DdRemoteInstrumentLayerVersion.Version = version;
     template.Resources.LambdaFunction.Properties.Environment.Variables.DD_LOG_LEVEL = "INFO";
+    // Timeout at 5 minutes since sometimes we run into cases where the custom resource hangs.
+    template.Resources.CloudFormationLifeCycle.Properties.ServiceTimeout = 300;
     template.Mappings.Constants.DdCIBypassSiteValidation.Bypass = true;
     writeFileSync(modifiedPath, yamlDump(template));
     return modifiedPath;
