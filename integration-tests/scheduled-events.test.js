@@ -288,7 +288,7 @@ describe("Remote instrumenter scheduled event tests", () => {
     const { FunctionName: functionName } = await createFunction({
       Tags: { foo: "bar" },
       Layers: [
-        `arn:aws:lambda:${region}:451483290750:layer:NewRelicLambdaExtension:37`,
+        `arn:aws:lambda:${region}:451483290750:layer:NewRelicLambdaExtension:36`,
       ],
     });
     await setRemoteConfig();
