@@ -2,6 +2,7 @@ const { pollUntilTrue } = require("./utilities/poll-until-true");
 const {
   isFunctionInstrumented,
   isFunctionUninstrumented,
+  hasRemoteInstrumenterTag,
 } = require("./utilities/is-function-instrumented");
 const {
   setRemoteConfig,
@@ -296,5 +297,42 @@ describe("Remote instrumenter scheduled event tests", () => {
       isFunctionInstrumented(functionName),
     );
     expect(isInstrumented).toStrictEqual(true);
+  });
+
+  it("correctly tags instrumented functions", async () => {
+    const functions = await createFunctions({}, 21);
+    const functionNames = functions.map((lambda) => lambda.FunctionName);
+    const functionArns = functions.map((lambda) => lambda.FunctionArn);
+
+    await setRemoteConfig({
+      ruleFilters: [
+        {
+          key: "function_name",
+          values: ["*"],
+          filter_type: "function_name",
+          allow: true,
+        },
+      ],
+    });
+
+    await invokeLambdaWithScheduledEvent();
+
+    // For each of the 21 functions
+    for (const functionName of functionNames) {
+      // After some time
+      const isInstrumented = await pollUntilTrue(60000, 5000, () =>
+        isFunctionInstrumented(functionName),
+      );
+
+      // The function is instrumented correctly
+      expect(isInstrumented).toStrictEqual(true);
+    }
+
+    // For each of the 21 functions
+    for (const functionArn of functionArns) {
+      // Check that the function has the remote instrumenter tag
+      const hasTag = await hasRemoteInstrumenterTag(functionArn);
+      expect(hasTag).toStrictEqual(true);
+    }
   });
 });
