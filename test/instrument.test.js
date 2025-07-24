@@ -107,7 +107,7 @@ describe("instrumentFunctions", () => {
 
   // Mock client
   const mockTaggingClient = {
-    send: jest.fn(),
+    send: jest.fn().mockReturnValue({}),
   };
 
   const mockS3Client = {
@@ -292,7 +292,7 @@ describe("instrumentFunctions", () => {
 
 describe("removeRemoteInstrumentation", () => {
   const mockTaggingClient = {
-    send: jest.fn(),
+    send: jest.fn().mockReturnValue({}),
   };
   const mockS3Client = {
     send: jest.fn(),

@@ -1,3 +1,5 @@
+const { applyFunctionTags } = require("../src/tag");
+
 jest.mock("@aws-sdk/client-resource-groups-tagging-api", () => ({
   TagResourcesCommand: jest.fn().mockImplementation((input) => ({
     input,
@@ -179,6 +181,134 @@ describe("Tag Functions", () => {
       const secondCallArgs = mockSend.mock.calls[1][0];
       expect(firstCallArgs.input.ResourceARNList).toHaveLength(20);
       expect(secondCallArgs.input.ResourceARNList).toHaveLength(20);
+    });
+  });
+
+  describe("applyFunctionTags", () => {
+    it("should process all resources successfully in the happy path", async () => {
+      // Mock client and send
+      const mockSend = jest.fn().mockResolvedValue({
+        FailedResourcesMap: {},
+      });
+      const mockClient = { send: mockSend };
+
+      // 25 ARNs to ensure batching (20 + 5)
+      const functionArns = Array.from(
+        { length: 25 },
+        (_, i) => `arn:aws:lambda:us-east-1:123456789012:function:test-${i}`,
+      );
+
+      // Call the function
+      await applyFunctionTags(mockClient, functionArns, "tagging", (batch) => ({
+        input: { ResourceARNList: batch },
+      }));
+
+      // Should call send twice (20 + 5)
+      expect(mockSend).toHaveBeenCalledTimes(2);
+      expect(mockSend.mock.calls[0][0].input.ResourceARNList).toHaveLength(20);
+      expect(mockSend.mock.calls[1][0].input.ResourceARNList).toHaveLength(5);
+    });
+    it("should retry only failed resources when FailedResourcesMap has elements", async () => {
+      // Prepare 25 ARNs (so two batches: 20 + 5)
+      const functionArns = Array.from(
+        { length: 25 },
+        (_, i) => `arn:aws:lambda:us-east-1:123456789012:function:test-${i}`,
+      );
+
+      // First call: fail 2 resources in the first batch, succeed in the second batch
+      const failedResources = {
+        "arn:aws:lambda:us-east-1:123456789012:function:test-3": {
+          ErrorCode: "SomeError",
+        },
+        "arn:aws:lambda:us-east-1:123456789012:function:test-7": {
+          ErrorCode: "SomeError",
+        },
+        "arn:aws:lambda:us-east-1:123456789012:function:test-10": {
+          ErrorCode: "InvalidParameterException",
+        },
+      };
+
+      const secondBatchFailures = {
+        "arn:aws:lambda:us-east-1:123456789012:function:test-22": {
+          ErrorCode: "SomeError",
+        },
+      };
+
+      const mockSend = jest
+        .fn()
+        // First batch: 2 failures
+        .mockResolvedValueOnce({
+          FailedResourcesMap: failedResources,
+        })
+        // Second batch: 1 failure
+        .mockResolvedValueOnce({
+          FailedResourcesMap: secondBatchFailures,
+        })
+        // Retry batch: only the failed ARNs, succeed
+        .mockResolvedValueOnce({
+          FailedResourcesMap: {},
+        });
+
+      const mockClient = { send: mockSend };
+
+      await applyFunctionTags(mockClient, functionArns, "tagging", (batch) => ({
+        input: { ResourceARNList: batch },
+      }));
+
+      // First call: 20 ARNs (first batch)
+      expect(mockSend.mock.calls[0][0].input.ResourceARNList).toHaveLength(20);
+      // Second call: 5 ARNs (second batch)
+      expect(mockSend.mock.calls[1][0].input.ResourceARNList).toHaveLength(5);
+      // Third call: 3 ARNs (the failed ones from both batches)
+      expect(mockSend.mock.calls[2][0].input.ResourceARNList).toEqual([
+        "arn:aws:lambda:us-east-1:123456789012:function:test-3",
+        "arn:aws:lambda:us-east-1:123456789012:function:test-7",
+        "arn:aws:lambda:us-east-1:123456789012:function:test-22",
+      ]);
+      expect(mockSend).toHaveBeenCalledTimes(3);
+    });
+
+    it("should throw error when resources fail after 3 tries", async () => {
+      // Prepare 5 ARNs for testing
+      const functionArns = Array.from(
+        { length: 5 },
+        (_, i) => `arn:aws:lambda:us-east-1:123456789012:function:test-${i}`,
+      );
+
+      // Persistent failures for 2 resources
+      const persistentFailures = {
+        "arn:aws:lambda:us-east-1:123456789012:function:test-1": {
+          ErrorCode: "SomeError",
+        },
+        "arn:aws:lambda:us-east-1:123456789012:function:test-3": {
+          ErrorCode: "AnotherError",
+        },
+      };
+
+      // Mock will always return the same failures for all 3 attempts
+      const mockSend = jest.fn().mockResolvedValue({
+        FailedResourcesMap: persistentFailures,
+      });
+
+      const mockClient = { send: mockSend };
+
+      // Expect the function to throw an error
+      await expect(
+        applyFunctionTags(mockClient, functionArns, "tagging", (batch) => ({
+          input: { ResourceARNList: batch },
+        })),
+      ).rejects.toThrow(
+        'Failed to process 2 resources after 3 tries ["arn:aws:lambda:us-east-1:123456789012:function:test-1","arn:aws:lambda:us-east-1:123456789012:function:test-3"]',
+      );
+
+      // Should have made exactly 3 attempts:
+      // 1st attempt: all 5 ARNs
+      // 2nd attempt: 2 failed ARNs
+      // 3rd attempt: 2 failed ARNs again
+      expect(mockSend).toHaveBeenCalledTimes(3);
+      expect(mockSend.mock.calls[0][0].input.ResourceARNList).toHaveLength(5);
+      expect(mockSend.mock.calls[1][0].input.ResourceARNList).toHaveLength(2);
+      expect(mockSend.mock.calls[2][0].input.ResourceARNList).toHaveLength(2);
     });
   });
 });

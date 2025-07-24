@@ -5,14 +5,9 @@ const {
 const { DD_SLS_REMOTE_INSTRUMENTER_VERSION, VERSION } = require("./consts");
 const { logger } = require("./logger");
 
-async function processResourcesInBatches(
-  client,
-  functionArns,
-  operationName,
-  createCommand,
-) {
+async function tagBatch(client, functionArns, operationName, createCommand) {
   if (functionArns.length === 0) {
-    return;
+    return [];
   }
 
   // Batch the function ARNs into groups of 20 (AWS limit)
@@ -26,11 +21,13 @@ async function processResourcesInBatches(
     `Processing ${functionArns.length} resources in ${batches.length} batches of ${batchSize} for ${operationName}`,
   );
 
+  const results = [];
+
   for (let i = 0; i < batches.length; i++) {
     const batch = batches[i];
     const command = createCommand(batch);
     try {
-      await client.send(command);
+      results.push(await client.send(command));
       logger.log(
         `Successfully processed batch ${i + 1}/${batches.length} (${batch.length} resources) for ${operationName}`,
       );
@@ -40,7 +37,49 @@ async function processResourcesInBatches(
       );
     }
   }
+
+  return results;
 }
+
+const applyFunctionTags = async (
+  client,
+  functionArns,
+  operationName,
+  createCommand,
+) => {
+  let tries = 0;
+  let functionsToTag = [...functionArns];
+  while (functionsToTag.length > 0 && tries < 3) {
+    tries++;
+    const results = await tagBatch(
+      client,
+      functionsToTag,
+      operationName,
+      createCommand,
+    );
+
+    functionsToTag = results
+      .flatMap((result) =>
+        Object.entries(result.FailedResourcesMap || {}).filter(
+          ([, value]) => value.ErrorCode !== "InvalidParameterException",
+        ),
+      )
+      .map(([key]) => key);
+
+    if (functionsToTag.length > 0) {
+      logger.log(`Retrying tagging on ${functionsToTag.length} functions`);
+    }
+  }
+  if (functionsToTag.length > 0) {
+    throw new Error(
+      `Failed to process ${functionsToTag.length} resources after 3 tries ${JSON.stringify(
+        functionsToTag,
+      )}`,
+    );
+  }
+};
+
+exports.applyFunctionTags = applyFunctionTags;
 
 async function tagResourcesWithSlsTag(client, functionArns) {
   logger.log(
@@ -55,12 +94,7 @@ async function tagResourcesWithSlsTag(client, functionArns) {
     return new TagResourcesCommand(input);
   };
 
-  await processResourcesInBatches(
-    client,
-    functionArns,
-    "tagging",
-    createTagCommand,
-  );
+  await applyFunctionTags(client, functionArns, "tagging", createTagCommand);
 }
 exports.tagResourcesWithSlsTag = tagResourcesWithSlsTag;
 
@@ -77,7 +111,7 @@ async function untagResourcesOfSlsTag(client, functionArns) {
     return new UntagResourcesCommand(input);
   };
 
-  await processResourcesInBatches(
+  await applyFunctionTags(
     client,
     functionArns,
     "untagging",
