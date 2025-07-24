@@ -12,7 +12,7 @@ async function processResourcesInBatches(
   createCommand,
 ) {
   if (functionArns.length === 0) {
-    return;
+    return [];
   }
 
   // Batch the function ARNs into groups of 20 (AWS limit)
@@ -26,11 +26,13 @@ async function processResourcesInBatches(
     `Processing ${functionArns.length} resources in ${batches.length} batches of ${batchSize} for ${operationName}`,
   );
 
+  const results = [];
+
   for (let i = 0; i < batches.length; i++) {
     const batch = batches[i];
     const command = createCommand(batch);
     try {
-      await client.send(command);
+      results.push(await client.send(command));
       logger.log(
         `Successfully processed batch ${i + 1}/${batches.length} (${batch.length} resources) for ${operationName}`,
       );
@@ -40,7 +42,50 @@ async function processResourcesInBatches(
       );
     }
   }
+
+  return results;
 }
+
+const processResourcesInBatchesWithFailures = async (
+  client,
+  functionArns,
+  operationName,
+  createCommand,
+) => {
+  let tries = 0;
+  let functionsLeft = [...functionArns];
+  while (functionsLeft.length > 0 && tries < 3) {
+    tries++;
+    const results = await processResourcesInBatches(
+      client,
+      functionsLeft,
+      operationName,
+      createCommand,
+    );
+
+    functionsLeft = results
+      .flatMap((result) =>
+        Object.entries(result.FailedResourcesMap || {}).filter(
+          ([, value]) => value.ErrorCode !== "InvalidParameterException",
+        ),
+      )
+      .map(([key]) => key);
+
+    if (functionsLeft.length > 0) {
+      logger.log(`Retrying tagging on ${functionsLeft.length} functions`);
+    }
+  }
+  if (functionsLeft.length > 0) {
+    throw new Error(
+      `Failed to process ${functionsLeft.length} resources after 3 tries ${JSON.stringify(
+        functionsLeft,
+      )}`,
+    );
+  }
+};
+
+exports.processResourcesInBatchesWithFailures =
+  processResourcesInBatchesWithFailures;
 
 async function tagResourcesWithSlsTag(client, functionArns) {
   logger.log(
@@ -55,7 +100,7 @@ async function tagResourcesWithSlsTag(client, functionArns) {
     return new TagResourcesCommand(input);
   };
 
-  await processResourcesInBatches(
+  await processResourcesInBatchesWithFailures(
     client,
     functionArns,
     "tagging",
@@ -77,7 +122,7 @@ async function untagResourcesOfSlsTag(client, functionArns) {
     return new UntagResourcesCommand(input);
   };
 
-  await processResourcesInBatches(
+  await processResourcesInBatchesWithFailures(
     client,
     functionArns,
     "untagging",
