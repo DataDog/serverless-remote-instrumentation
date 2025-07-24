@@ -1,4 +1,4 @@
-const { processResourcesInBatchesWithFailures } = require("../src/tag");
+const { applyFunctionTags } = require("../src/tag");
 
 jest.mock("@aws-sdk/client-resource-groups-tagging-api", () => ({
   TagResourcesCommand: jest.fn().mockImplementation((input) => ({
@@ -184,7 +184,7 @@ describe("Tag Functions", () => {
     });
   });
 
-  describe("processResourcesInBatchesWithFailures", () => {
+  describe("applyFunctionTags", () => {
     it("should process all resources successfully in the happy path", async () => {
       // Mock client and send
       const mockSend = jest.fn().mockResolvedValue({
@@ -199,12 +199,9 @@ describe("Tag Functions", () => {
       );
 
       // Call the function
-      await processResourcesInBatchesWithFailures(
-        mockClient,
-        functionArns,
-        "tagging",
-        (batch) => ({ input: { ResourceARNList: batch } }),
-      );
+      await applyFunctionTags(mockClient, functionArns, "tagging", (batch) => ({
+        input: { ResourceARNList: batch },
+      }));
 
       // Should call send twice (20 + 5)
       expect(mockSend).toHaveBeenCalledTimes(2);
@@ -254,12 +251,9 @@ describe("Tag Functions", () => {
 
       const mockClient = { send: mockSend };
 
-      await processResourcesInBatchesWithFailures(
-        mockClient,
-        functionArns,
-        "tagging",
-        (batch) => ({ input: { ResourceARNList: batch } }),
-      );
+      await applyFunctionTags(mockClient, functionArns, "tagging", (batch) => ({
+        input: { ResourceARNList: batch },
+      }));
 
       // First call: 20 ARNs (first batch)
       expect(mockSend.mock.calls[0][0].input.ResourceARNList).toHaveLength(20);
@@ -300,12 +294,9 @@ describe("Tag Functions", () => {
 
       // Expect the function to throw an error
       await expect(
-        processResourcesInBatchesWithFailures(
-          mockClient,
-          functionArns,
-          "tagging",
-          (batch) => ({ input: { ResourceARNList: batch } }),
-        ),
+        applyFunctionTags(mockClient, functionArns, "tagging", (batch) => ({
+          input: { ResourceARNList: batch },
+        })),
       ).rejects.toThrow(
         'Failed to process 2 resources after 3 tries ["arn:aws:lambda:us-east-1:123456789012:function:test-1","arn:aws:lambda:us-east-1:123456789012:function:test-3"]',
       );

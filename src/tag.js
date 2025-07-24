@@ -5,12 +5,7 @@ const {
 const { DD_SLS_REMOTE_INSTRUMENTER_VERSION, VERSION } = require("./consts");
 const { logger } = require("./logger");
 
-async function processResourcesInBatches(
-  client,
-  functionArns,
-  operationName,
-  createCommand,
-) {
+async function tagBatch(client, functionArns, operationName, createCommand) {
   if (functionArns.length === 0) {
     return [];
   }
@@ -46,24 +41,24 @@ async function processResourcesInBatches(
   return results;
 }
 
-const processResourcesInBatchesWithFailures = async (
+const applyFunctionTags = async (
   client,
   functionArns,
   operationName,
   createCommand,
 ) => {
   let tries = 0;
-  let functionsLeft = [...functionArns];
-  while (functionsLeft.length > 0 && tries < 3) {
+  let functionsToTag = [...functionArns];
+  while (functionsToTag.length > 0 && tries < 3) {
     tries++;
-    const results = await processResourcesInBatches(
+    const results = await tagBatch(
       client,
-      functionsLeft,
+      functionsToTag,
       operationName,
       createCommand,
     );
 
-    functionsLeft = results
+    functionsToTag = results
       .flatMap((result) =>
         Object.entries(result.FailedResourcesMap || {}).filter(
           ([, value]) => value.ErrorCode !== "InvalidParameterException",
@@ -71,21 +66,20 @@ const processResourcesInBatchesWithFailures = async (
       )
       .map(([key]) => key);
 
-    if (functionsLeft.length > 0) {
-      logger.log(`Retrying tagging on ${functionsLeft.length} functions`);
+    if (functionsToTag.length > 0) {
+      logger.log(`Retrying tagging on ${functionsToTag.length} functions`);
     }
   }
-  if (functionsLeft.length > 0) {
+  if (functionsToTag.length > 0) {
     throw new Error(
-      `Failed to process ${functionsLeft.length} resources after 3 tries ${JSON.stringify(
-        functionsLeft,
+      `Failed to process ${functionsToTag.length} resources after 3 tries ${JSON.stringify(
+        functionsToTag,
       )}`,
     );
   }
 };
 
-exports.processResourcesInBatchesWithFailures =
-  processResourcesInBatchesWithFailures;
+exports.applyFunctionTags = applyFunctionTags;
 
 async function tagResourcesWithSlsTag(client, functionArns) {
   logger.log(
@@ -100,12 +94,7 @@ async function tagResourcesWithSlsTag(client, functionArns) {
     return new TagResourcesCommand(input);
   };
 
-  await processResourcesInBatchesWithFailures(
-    client,
-    functionArns,
-    "tagging",
-    createTagCommand,
-  );
+  await applyFunctionTags(client, functionArns, "tagging", createTagCommand);
 }
 exports.tagResourcesWithSlsTag = tagResourcesWithSlsTag;
 
@@ -122,7 +111,7 @@ async function untagResourcesOfSlsTag(client, functionArns) {
     return new UntagResourcesCommand(input);
   };
 
-  await processResourcesInBatchesWithFailures(
+  await applyFunctionTags(
     client,
     functionArns,
     "untagging",
