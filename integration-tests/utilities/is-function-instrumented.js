@@ -6,6 +6,7 @@ const { getRemoteConfig } = require("./remote-config");
 const { getLambdaClient } = require("./aws-resources");
 const { isFunctionInvokable } = require("./lambda-functions");
 const { ddSite } = require("../config.json");
+const { pollUntilTrue } = require("./poll-until-true");
 
 const hasLayerMatching = (l, matcher, version) =>
   l?.Layers?.some(
@@ -135,3 +136,17 @@ const isFunctionUninstrumented = async (functionName) => {
 };
 
 exports.isFunctionUninstrumented = isFunctionUninstrumented;
+
+const expectFunctionsToBeInstrumented = async (functionNames) => {
+  await Promise.all(
+    functionNames.map(async (functionName) => {
+      const isInstrumented = await pollUntilTrue(60000, 5000, () =>
+        isFunctionInstrumented(functionName),
+      );
+
+      // The function is instrumented correctly
+      expect(isInstrumented).toStrictEqual(true);
+    }),
+  );
+};
+exports.expectFunctionsToBeInstrumented = expectFunctionsToBeInstrumented;

@@ -3,6 +3,7 @@ const {
   isFunctionInstrumented,
   isFunctionUninstrumented,
   hasRemoteInstrumenterTag,
+  expectFunctionsToBeInstrumented,
 } = require("./utilities/is-function-instrumented");
 const {
   setRemoteConfig,
@@ -187,6 +188,9 @@ describe("Remote instrumenter scheduled event tests", () => {
   });
 
   it("instruments all functions when using wildcard rule filter", async () => {
+    const functions = await createFunctions({}, 3);
+    const functionNames = functions.map((lambda) => lambda.FunctionName);
+
     await setRemoteConfig({
       ruleFilters: [
         {
@@ -198,24 +202,8 @@ describe("Remote instrumenter scheduled event tests", () => {
       ],
     });
 
-    const functions = await createFunctions({}, 3);
-    const functionNames = functions.map((lambda) => lambda.FunctionName);
-    const res = await invokeLambdaWithScheduledEvent();
-
-    // For each of the 3 functions
-    for (const functionName of functionNames) {
-      // After some time
-      const isInstrumented = await pollUntilTrue(60000, 5000, () =>
-        isFunctionInstrumented(functionName),
-      );
-
-      // The function is instrumented correctly
-      expect(isInstrumented).toStrictEqual(true);
-    }
-
-    expect(Object.keys(res.instrument.succeeded)).toEqual(
-      expect.arrayContaining(functionNames),
-    );
+    await invokeLambdaWithScheduledEvent();
+    await expectFunctionsToBeInstrumented(functionNames);
   });
 
   it("sets DD_TRACE_ENABLED and DD_SERVERLESS_LOGS_ENABLED correctly", async () => {
@@ -344,15 +332,7 @@ describe("Remote instrumenter scheduled event tests", () => {
     await invokeLambdaWithScheduledEvent();
 
     // For each of the 21 functions
-    for (const functionName of functionNames) {
-      // After some time
-      const isInstrumented = await pollUntilTrue(60000, 5000, () =>
-        isFunctionInstrumented(functionName),
-      );
-
-      // The function is instrumented correctly
-      expect(isInstrumented).toStrictEqual(true);
-    }
+    await expectFunctionsToBeInstrumented(functionNames);
 
     // For each of the 21 functions
     for (const functionArn of functionArns) {
@@ -360,5 +340,5 @@ describe("Remote instrumenter scheduled event tests", () => {
       const hasTag = await hasRemoteInstrumenterTag(functionArn);
       expect(hasTag).toStrictEqual(true);
     }
-  }, 180000); // Increase the timeout for this temporarily since checking 21 functions takes a while
+  });
 });
