@@ -6,22 +6,21 @@ variables:
 .defined_rules:
   merge_into_prod:
     - if: '$CI_COMMIT_BRANCH == "prod" && $CI_PIPELINE_SOURCE == "push"'
-      when: on_success
   feature_branch:
     - if: $CI_COMMIT_BRANCH != "prod" && $CI_PIPELINE_SOURCE == "push"
-      when: always
       variables:
         SELF_MONITORING: false
 
 stages:
   - build
+  - pre-deploy checks
   - deploy
   - test
   - cleanup
   - publish
 
 lint:
-  stage: test
+  stage: pre-deploy checks
   image: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
   tags: ["arch:arm64"]
   rules:
@@ -33,7 +32,7 @@ lint:
     - yarn lint-yaml
 
 unit tests:
-  stage: test
+  stage: pre-deploy checks
   image: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
   tags: ["arch:arm64"]
   rules:
@@ -64,8 +63,8 @@ integration test setup:
   image: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
   allow_failure: false
   tags: ["arch:arm64"]
+  needs: [lint, unit tests]
   resource_group: pipeline
-  when: manual
   rules:
     - !reference [.defined_rules, merge_into_prod]
     - !reference [.defined_rules, feature_branch]
@@ -85,7 +84,6 @@ integration tests:
   allow_failure: false
   tags: ["arch:arm64"]
   resource_group: pipeline
-  when: manual
   rules:
     - !reference [.defined_rules, merge_into_prod]
     - if: '$CI_PIPELINE_SOURCE == "schedule" && $SCHEDULE_NAME == "self-monitoring"'
@@ -107,7 +105,6 @@ metrics validation:
   tags: ["arch:arm64"]
   resource_group: pipeline
   needs: [integration tests]
-  when: manual
   rules:
     - !reference [.defined_rules, merge_into_prod]
   variables:
@@ -124,6 +121,7 @@ integration test teardown:
   image: ${DOCKER_TARGET_IMAGE}:${DOCKER_TARGET_VERSION}
   allow_failure: false
   tags: ["arch:arm64"]
+  when: always
   needs: [integration tests, integration test setup]
   dependencies: [integration test setup]
   rules:
@@ -141,7 +139,6 @@ publish (sandbox):
   allow_failure: false
   tags: ["arch:arm64"]
   needs: [metrics validation]
-  when: manual
   rules:
     - !reference [.defined_rules, merge_into_prod]
   variables:
@@ -162,7 +159,6 @@ publish (prod):
   tags: ["arch:arm64"]
   resource_group: pipeline
   needs: [publish (sandbox)]
-  when: manual
   rules:
     - if: '$CI_COMMIT_BRANCH == "prod" && $CI_PIPELINE_SOURCE == "push"'
       when: on_success
