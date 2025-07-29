@@ -11,9 +11,7 @@ existing_layers
 nodejs/*
 node_modules/*
 self-monitoring-app/dist/*
-scripts/.cache
-scripts/.layers
-scripts/.src
+scripts
 # Intermediate template for custom variables
 modified_template.yaml
 

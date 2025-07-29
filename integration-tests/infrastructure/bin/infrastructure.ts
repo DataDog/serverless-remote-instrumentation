@@ -69,7 +69,7 @@ class TestingStack extends Stack {
 
   modifyTemplate(): string {
     const modifiedPath = 'modified_template.yaml';
-    const version = readFileSync('scripts/.layers/version', { encoding: 'utf8', flag: 'r' }).trim();
+    const version = readFileSync(`${process.env.SCRIPTS_PATH}/.layers/version`, { encoding: 'utf8', flag: 'r' }).trim();
     const template = yamlParse(readFileSync('template.yaml', { encoding: 'utf8', flag: 'r' }));
     template.Mappings.Constants.DdRemoteInstrumentLayerAwsAccount.Number = account;
     template.Mappings.Constants.DdRemoteInstrumentLayerVersion.Version = version;
