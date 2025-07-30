@@ -1,5 +1,6 @@
 const {
   DeleteObjectCommand,
+  DeleteObjectsCommand,
   ListObjectsV2Command,
   PutObjectCommand,
 } = require("@aws-sdk/client-s3");
@@ -89,3 +90,38 @@ const identifyNewErrorsAndResolvedErrors = (
 };
 
 exports.identifyNewErrorsAndResolvedErrors = identifyNewErrorsAndResolvedErrors;
+
+const emptyBucket = async (s3) => {
+  const params = {
+    Bucket: bucketName,
+  };
+
+  let isTruncated = true;
+
+  while (isTruncated) {
+    const command = new ListObjectsV2Command(params);
+    const response = await s3.send(command);
+    const { Contents, NextContinuationToken } = response;
+    isTruncated = response.IsTruncated;
+    if (Contents && Contents.length > 0) {
+      // Batch delete objects in groups of 1000 using DeleteObjectsCommand
+      for (let i = 0; i < Contents.length; i += 1000) {
+        const batch = Contents.slice(i, i + 1000);
+        const deleteParams = {
+          Bucket: bucketName,
+          Delete: {
+            Objects: batch.map((object) => ({ Key: object.Key })),
+            Quiet: true,
+          },
+        };
+        const deleteCommand = new DeleteObjectsCommand(deleteParams);
+        await s3.send(deleteCommand);
+      }
+    }
+    if (NextContinuationToken) {
+      params.ContinuationToken = NextContinuationToken;
+    }
+  }
+};
+
+exports.emptyBucket = emptyBucket;
