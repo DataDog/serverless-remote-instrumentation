@@ -103,7 +103,7 @@ const emptyBucket = async (s3) => {
     const { Contents, NextContinuationToken } = response;
     isTruncated = response.IsTruncated;
     if (Contents && Contents.length > 0) {
-      // Batch delete objects in groups of 1000 using DeleteObjectsCommand
+      // Batch delete objects in groups of 1000 using DeleteObjectsCommand to match the limit https://docs.aws.amazon.com/cli/latest/reference/s3api/delete-objects.html
       for (let i = 0; i < Contents.length; i += 1000) {
         const batch = Contents.slice(i, i + 1000);
         const deleteParams = {
