@@ -99,8 +99,7 @@ const emptyBucket = async (s3) => {
   let isTruncated = true;
 
   while (isTruncated) {
-    const command = new ListObjectsV2Command(params);
-    const response = await s3.send(command);
+    const response = await s3.send(new ListObjectsV2Command(params));
     const { Contents, NextContinuationToken } = response;
     isTruncated = response.IsTruncated;
     if (Contents && Contents.length > 0) {
@@ -114,8 +113,7 @@ const emptyBucket = async (s3) => {
             Quiet: true,
           },
         };
-        const deleteCommand = new DeleteObjectsCommand(deleteParams);
-        await s3.send(deleteCommand);
+        await s3.send(new DeleteObjectsCommand(deleteParams));
       }
     }
     if (NextContinuationToken) {
