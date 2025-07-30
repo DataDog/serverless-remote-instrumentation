@@ -1,9 +1,12 @@
 const { InvokeCommand } = require("@aws-sdk/client-lambda");
 const { getLambdaClient } = require("./aws-resources");
 const { functionName } = require("../config.json");
-const { createPresignedUrl } = require("./s3-helpers");
+const { createPresignedUrl, deleteObject } = require("./s3-helpers");
 
 const invokeLambdaWithScheduledEvent = async () => {
+  // Delete the last hash so that the remote instrumenter will more consistently check
+  // if the function is supposed to be instrumented or not, instead of skipping it
+  await deleteObject("datadog_remote_instrumentation_config.txt");
   const command = new InvokeCommand({
     FunctionName: functionName,
     Payload: JSON.stringify({
