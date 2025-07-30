@@ -1,5 +1,8 @@
 {
+  "name": "serverless-remote-instrumentation",
+  "description": "Remote instrumentater lambda function for Datadog Serverless Remote Instrumentation",
   "version": "1.0.0",
+  "license": "Apache-2.0",
   "dependencies": {
     "@datadog/datadog-ci": "3.11.0",
     "axios": "^1.8.4"
