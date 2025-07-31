@@ -24,11 +24,13 @@ Once you have some code ready, open a PR, [linking it to the issue](https://docs
 ### Testing your changes
 
 For changes to the remote instrumenter lambda function code, use:
+
 - `yarn lint` to lint
 - `yarn format` to format
 - `yarn test` to run unit tests
 
 For changes to the CloudFormation template, use:
+
 - `yarn lint-yaml` to lint
 - `yarn format-yaml` to format
 
@@ -38,7 +40,7 @@ To run integration tests, ask a maintainer.
 
 ### Contributing to reporting bugs
 
-If you think you have found a bug in serverless-remote-instrumentation feel free to report it. When creating issues, you will be presented with a template to fill. Please, fill as much as you can from that template, including steps to reproduce your issue, so we can address it quicker.
+If you think you have found a bug in serverless-remote-instrumentation feel free to report it by [creating an issue](https://github.com/DataDog/serverless-remote-instrumentation/issues/new). When creating issues, you will be presented with a template to fill. Please, fill as much as you can from that template, including steps to reproduce your issue, so we can address it quicker.
 
 ### Contributing to triaging issues
 
