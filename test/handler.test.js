@@ -209,6 +209,7 @@ describe("stack delete events", () => {
     expect(cfnResponse.send).toHaveBeenCalledTimes(1);
     expect(cfnResponse.send).toHaveBeenCalledWith(event, context, "SUCCESS");
     expect(res.uninstrument.succeeded.test).toStrictEqual("1");
+    expect(errorStorage.emptyBucket).toHaveBeenCalledTimes(1);
   });
 
   test("fails to uninstrument and calls back with fail", async () => {

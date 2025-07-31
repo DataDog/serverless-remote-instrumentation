@@ -1,6 +1,7 @@
 const {
   identifyNewErrorsAndResolvedErrors,
   listErrors,
+  emptyBucket,
 } = require("../src/error-storage");
 const { FAILED, SKIPPED, SUCCEEDED } = require("../src/consts");
 
@@ -324,5 +325,182 @@ describe("identifyErrorsAndResolvedErrors test suite", () => {
       previousErrors,
     );
     expect(result).toStrictEqual(expected);
+  });
+});
+
+describe("emptyBucket test suite", () => {
+  beforeEach(() => {
+    jest.resetAllMocks();
+  });
+
+  test("handles empty bucket", async () => {
+    const mockResult = {
+      IsTruncated: false,
+      Contents: [],
+    };
+    mockS3.send.mockReturnValue(mockResult);
+
+    await emptyBucket(mockS3);
+
+    expect(mockS3.send).toHaveBeenCalledTimes(1);
+    expect(mockS3.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: expect.objectContaining({
+          Bucket: process.env.DD_S3_BUCKET,
+        }),
+      }),
+    );
+  });
+
+  test("handles empty bucket with undefined contents", async () => {
+    const mockResult = {
+      IsTruncated: false,
+    };
+    mockS3.send.mockReturnValue(mockResult);
+
+    await emptyBucket(mockS3);
+
+    expect(mockS3.send).toHaveBeenCalledTimes(1);
+  });
+
+  test("deletes objects in single page", async () => {
+    const mockListResult = {
+      IsTruncated: false,
+      Contents: [
+        { Key: "errors/key1.json" },
+        { Key: "errors/key2.json" },
+        { Key: "other/file.txt" },
+      ],
+    };
+    mockS3.send.mockReturnValueOnce(mockListResult);
+
+    await emptyBucket(mockS3);
+
+    expect(mockS3.send).toHaveBeenCalledTimes(2);
+    expect(mockS3.send).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        input: expect.objectContaining({
+          Bucket: process.env.DD_S3_BUCKET,
+          Delete: {
+            Objects: [
+              { Key: "errors/key1.json" },
+              { Key: "errors/key2.json" },
+              { Key: "other/file.txt" },
+            ],
+            Quiet: true,
+          },
+        }),
+      }),
+    );
+  });
+
+  test("handles multiple pages of objects", async () => {
+    const mockListResult1 = {
+      IsTruncated: true,
+      Contents: [{ Key: "errors/key1.json" }, { Key: "errors/key2.json" }],
+      NextContinuationToken: "token1",
+    };
+    const mockListResult2 = {
+      IsTruncated: false,
+      Contents: [{ Key: "errors/key3.json" }],
+    };
+
+    mockS3.send
+      .mockReturnValueOnce(mockListResult1)
+      .mockReturnValueOnce(undefined) // delete command response
+      .mockReturnValueOnce(mockListResult2)
+      .mockReturnValueOnce(undefined); // delete command response
+
+    await emptyBucket(mockS3);
+
+    expect(mockS3.send).toHaveBeenCalledTimes(4);
+    // First list call
+    expect(mockS3.send).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        input: expect.objectContaining({
+          Bucket: process.env.DD_S3_BUCKET,
+        }),
+      }),
+    );
+    // First delete call
+    expect(mockS3.send).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        input: expect.objectContaining({
+          Delete: {
+            Objects: [{ Key: "errors/key1.json" }, { Key: "errors/key2.json" }],
+            Quiet: true,
+          },
+        }),
+      }),
+    );
+    // Second list call with continuation token
+    expect(mockS3.send).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        input: expect.objectContaining({
+          Bucket: process.env.DD_S3_BUCKET,
+          ContinuationToken: "token1",
+        }),
+      }),
+    );
+    // Second delete call
+    expect(mockS3.send).toHaveBeenNthCalledWith(
+      4,
+      expect.objectContaining({
+        input: expect.objectContaining({
+          Delete: {
+            Objects: [{ Key: "errors/key3.json" }],
+            Quiet: true,
+          },
+        }),
+      }),
+    );
+  });
+
+  test("handles large number of objects requiring batching", async () => {
+    // Create 1500 objects to test batching
+    const objects = Array.from({ length: 1500 }, (_, i) => ({
+      Key: `object${i}.json`,
+    }));
+
+    const mockListResult = {
+      IsTruncated: false,
+      Contents: objects,
+    };
+    mockS3.send.mockReturnValueOnce(mockListResult);
+
+    await emptyBucket(mockS3);
+
+    // Should be 1 list call + 2 delete calls (1000 + 500 objects)
+    expect(mockS3.send).toHaveBeenCalledTimes(3);
+
+    // First batch (objects 0-999)
+    expect(mockS3.send).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        input: expect.objectContaining({
+          Delete: {
+            Objects: objects.slice(0, 1000),
+            Quiet: true,
+          },
+        }),
+      }),
+    );
+
+    // Second batch (objects 1000-1499)
+    expect(mockS3.send).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        input: expect.objectContaining({
+          Delete: {
+            Objects: objects.slice(1000, 1500),
+            Quiet: true,
+          },
+        }),
+      }),
+    );
   });
 });

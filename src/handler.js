@@ -14,6 +14,7 @@ const {
   identifyNewErrorsAndResolvedErrors,
   putError,
   listErrors,
+  emptyBucket,
 } = require("./error-storage");
 const { ResourceNotFoundException } = require("@aws-sdk/client-lambda");
 const {
@@ -77,6 +78,7 @@ exports.handler = async (event, context) => {
     // on the next scheduled invocation
     await cfnResponse.send(event, context, "SUCCESS");
   } else if (isStackDeletedEvent(event)) {
+    const emptyBucketResponsePromise = emptyBucket(s3Client);
     logger.log(`Received a CloudFormation '${event.RequestType}' event.`);
     const allFunctions = await getAllFunctions(lambdaClient);
     const enrichedFunctions = await enrichFunctionsWithTags(
@@ -94,6 +96,10 @@ exports.handler = async (event, context) => {
     const failedToUninstrument = Object.keys(
       instrumentOutcome.uninstrument.failed,
     );
+
+    // Wait for the bucket to be empty before sending the CFN response
+    await emptyBucketResponsePromise;
+
     if (failedToUninstrument.length) {
       await cfnResponse.send(event, context, "FAILED", {
         failed: failedToUninstrument,
