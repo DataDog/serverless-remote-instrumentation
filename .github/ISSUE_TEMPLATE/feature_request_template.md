@@ -16,9 +16,3 @@ about: Suggest an idea
 ## Specifications
 
 - Remote Instrumentation Version:
-
-## Stacktrace
-
-```
-Paste here
-```
