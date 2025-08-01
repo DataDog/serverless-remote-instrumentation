@@ -1,7 +1,6 @@
 const instrument = require("../src/instrument");
 const applyState = require("../src/apply-state");
 const { RcConfig } = require("../src/config");
-const datadogCi = require("@datadog/datadog-ci/dist/cli.js");
 const {
   sampleRcConfigID,
   sampleRcTestJSON,
@@ -77,9 +76,14 @@ describe("getExtensionAndRuntimeLayerVersion", () => {
 });
 
 jest.mock("../src/apply-state");
-jest.mock("@datadog/datadog-ci/dist/cli.js");
 
 describe("instrumentFunctions", () => {
+  // Mock the CLI before tests
+  beforeEach(() => {
+    // Mock the CLI methods
+    instrument.cli.run = jest.fn().mockReturnValue(0);
+    instrument.cli.register = jest.fn();
+  });
   // Sample functions to (un)instrument
   const functionFoo = {
     FunctionName: "foo",
@@ -126,7 +130,7 @@ describe("instrumentFunctions", () => {
 
   beforeEach(() => {
     // Mock datadog-ci command
-    datadogCi.cli.run.mockReturnValue(0);
+    instrument.cli.run = jest.fn().mockReturnValue(0);
 
     jest.clearAllMocks();
   });
@@ -139,8 +143,8 @@ describe("instrumentFunctions", () => {
       baseInstrumentOutcome,
       mockTaggingClient,
     );
-    expect(datadogCi.cli.run).toHaveBeenCalledTimes(1);
-    expect(datadogCi.cli.run).toHaveBeenCalledWith(
+    expect(instrument.cli.run).toHaveBeenCalledTimes(1);
+    expect(instrument.cli.run).toHaveBeenCalledWith(
       [
         "lambda",
         "instrument",
@@ -175,8 +179,8 @@ describe("instrumentFunctions", () => {
       baseInstrumentOutcome,
       mockTaggingClient,
     );
-    expect(datadogCi.cli.run).toHaveBeenCalledTimes(1);
-    expect(datadogCi.cli.run).toHaveBeenCalledWith(
+    expect(instrument.cli.run).toHaveBeenCalledTimes(1);
+    expect(instrument.cli.run).toHaveBeenCalledWith(
       [
         "lambda",
         "uninstrument",
@@ -206,8 +210,8 @@ describe("instrumentFunctions", () => {
       baseInstrumentOutcome,
       mockTaggingClient,
     );
-    expect(datadogCi.cli.run).toHaveBeenCalledTimes(1);
-    expect(datadogCi.cli.run).toHaveBeenCalledWith(
+    expect(instrument.cli.run).toHaveBeenCalledTimes(1);
+    expect(instrument.cli.run).toHaveBeenCalledWith(
       [
         "lambda",
         "uninstrument",
@@ -255,7 +259,7 @@ describe("instrumentFunctions", () => {
     expect(applyState.putApplyState).toHaveBeenCalledTimes(0);
   });
   test("should track datadog-ci command errors", async () => {
-    datadogCi.cli.run.mockReturnValue(1);
+    instrument.cli.run.mockReturnValue(1);
     await instrument.instrumentFunctions(
       mockS3Client,
       [rcConfig],
@@ -263,8 +267,8 @@ describe("instrumentFunctions", () => {
       baseInstrumentOutcome,
       mockTaggingClient,
     );
-    expect(datadogCi.cli.run).toHaveBeenCalledTimes(1);
-    expect(datadogCi.cli.run).toHaveBeenCalledWith(
+    expect(instrument.cli.run).toHaveBeenCalledTimes(1);
+    expect(instrument.cli.run).toHaveBeenCalledWith(
       [
         "lambda",
         "instrument",
@@ -298,7 +302,7 @@ describe("removeRemoteInstrumentation", () => {
     send: jest.fn(),
   };
   beforeEach(() => {
-    datadogCi.cli.run.mockReturnValue(0);
+    instrument.cli.run.mockReturnValue(0);
     jest.clearAllMocks();
   });
   test("should uninstrument and untag remotely instrumented functions", async () => {
@@ -327,8 +331,8 @@ describe("removeRemoteInstrumentation", () => {
       baseInstrumentOutcome,
       mockTaggingClient,
     );
-    expect(datadogCi.cli.run).toHaveBeenCalledTimes(2);
-    expect(datadogCi.cli.run).toHaveBeenCalledWith(
+    expect(instrument.cli.run).toHaveBeenCalledTimes(2);
+    expect(instrument.cli.run).toHaveBeenCalledWith(
       [
         "lambda",
         "uninstrument",
@@ -339,7 +343,7 @@ describe("removeRemoteInstrumentation", () => {
       ],
       expect.anything(),
     );
-    expect(datadogCi.cli.run).toHaveBeenCalledWith(
+    expect(instrument.cli.run).toHaveBeenCalledWith(
       [
         "lambda",
         "uninstrument",
@@ -374,7 +378,7 @@ describe("removeRemoteInstrumentation", () => {
       baseInstrumentOutcome,
       mockTaggingClient,
     );
-    expect(datadogCi.cli.run).toHaveBeenCalledTimes(0);
+    expect(instrument.cli.run).toHaveBeenCalledTimes(0);
     expect(mockTaggingClient.send).toHaveBeenCalledTimes(0);
     expect(applyState.deleteApplyState).toHaveBeenCalledTimes(1);
   });

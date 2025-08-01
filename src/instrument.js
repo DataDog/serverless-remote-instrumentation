@@ -40,6 +40,7 @@ const cli = new Cli({
 });
 cli.register(InstrumentCommand);
 cli.register(UninstrumentCommand);
+exports.cli = cli;
 
 function getExtensionAndRuntimeLayerVersion(runtime, config) {
   const result = {
