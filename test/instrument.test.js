@@ -78,12 +78,6 @@ describe("getExtensionAndRuntimeLayerVersion", () => {
 jest.mock("../src/apply-state");
 
 describe("instrumentFunctions", () => {
-  // Mock the CLI before tests
-  beforeEach(() => {
-    // Mock the CLI methods
-    instrument.cli.run = jest.fn().mockReturnValue(0);
-    instrument.cli.register = jest.fn();
-  });
   // Sample functions to (un)instrument
   const functionFoo = {
     FunctionName: "foo",
