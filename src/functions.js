@@ -146,6 +146,10 @@ async function enrichFunctionsWithTags(client, functions) {
 exports.enrichFunctionsWithTags = enrichFunctionsWithTags;
 
 function satisfiesTargetingRules(functionName, functionTags, ruleFilters) {
+  functionTags = new Set(
+    Array.from(functionTags).map((tag) => tag.toLowerCase()),
+  );
+
   // If there are no rule filters, nothing matches
   if (ruleFilters.length === 0) {
     return false;
@@ -153,10 +157,14 @@ function satisfiesTargetingRules(functionName, functionTags, ruleFilters) {
 
   for (const ruleFilter of ruleFilters) {
     if (ruleFilter.filterType === TAG) {
+      const ruleFilterKey = ruleFilter.key.toLowerCase();
+      const ruleFilterValues = ruleFilter.values.map((value) =>
+        value.toLowerCase(),
+      );
       if (ruleFilter.allow) {
         let hasAllowedTag = false;
-        for (const value of ruleFilter.values) {
-          if (functionTags.has(ruleFilter.key + ":" + value)) {
+        for (const value of ruleFilterValues) {
+          if (functionTags.has(ruleFilterKey + ":" + value)) {
             hasAllowedTag = true;
           }
         }
@@ -164,8 +172,8 @@ function satisfiesTargetingRules(functionName, functionTags, ruleFilters) {
           return false;
         }
       } else {
-        for (const value of ruleFilter.values) {
-          if (functionTags.has(ruleFilter.key + ":" + value)) {
+        for (const value of ruleFilterValues) {
+          if (functionTags.has(ruleFilterKey + ":" + value)) {
             return false;
           }
         }

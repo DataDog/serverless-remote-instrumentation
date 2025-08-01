@@ -54,6 +54,24 @@ describe("Remote instrumenter lambda management event tests", () => {
     expect(isInstrumented).toStrictEqual(true);
   });
 
+  it("can instrument a new lambda function with different tag casing", async () => {
+    // When there is a remote config
+    await setRemoteConfig();
+
+    // And a lambda is created
+    const { FunctionName: functionName } = await createFunction({
+      Tags: { FOO: "BAR" },
+    });
+
+    // After some time
+    const isInstrumented = await pollUntilTrue(60000, 5000, () =>
+      isFunctionInstrumented(functionName),
+    );
+
+    // The function is instrumented correctly
+    expect(isInstrumented).toStrictEqual(true);
+  });
+
   it("can instrument multiple new lambda functions", async () => {
     // When there is a remote config
     await setRemoteConfig();
