@@ -82,6 +82,41 @@ describe("satisfiesTargetingRules", () => {
         ]),
       ).toBe(true);
     });
+    test("should return true if the function has an allowed tag with different casing", () => {
+      // Tag value casing is different
+      expect(
+        satisfiesTargetingRules("functionA", new Set(["foo:Bar"]), [
+          {
+            key: "foo",
+            values: ["bar", "baz"],
+            allow: true,
+            filterType: "tag",
+          },
+        ]),
+      ).toBe(true);
+      // Tag key casing is different
+      expect(
+        satisfiesTargetingRules("functionA", new Set(["FOO:bar"]), [
+          {
+            key: "foo",
+            values: ["bar", "baz"],
+            allow: true,
+            filterType: "tag",
+          },
+        ]),
+      ).toBe(true);
+      // Tag key and value casing are both different
+      expect(
+        satisfiesTargetingRules("functionA", new Set(["FOO:bAR"]), [
+          {
+            key: "foo",
+            values: ["bar", "baz"],
+            allow: true,
+            filterType: "tag",
+          },
+        ]),
+      ).toBe(true);
+    });
     test("should return false if the function doesn't have an allowed tag", () => {
       expect(
         satisfiesTargetingRules("functionA", new Set(["foo:x"]), [
@@ -154,6 +189,18 @@ describe("satisfiesTargetingRules", () => {
           },
         ]),
       ).toBe(true);
+    });
+    test("should return false if the function name does not match", () => {
+      expect(
+        satisfiesTargetingRules("functionA", new Set(["foo:bar"]), [
+          {
+            key: "functionName",
+            values: ["FUNCTIONA"],
+            allow: true,
+            filterType: "function_name",
+          },
+        ]),
+      ).toBe(false);
     });
     test("should return false if the function name is not allowed", () => {
       expect(
