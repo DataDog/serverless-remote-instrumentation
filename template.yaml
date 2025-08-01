@@ -8,6 +8,8 @@ Mappings:
       Version: 1.6.0
     DdRemoteInstrumentLayerAwsAccount:
       Number: 464622532012
+    InstrumenterFunctionName:
+      Name: datadog-remote-instrumenter
     DdRemoteInstrumentLayerVersion:
       # eslint-disable-next-line
       Version: {CURRENT_LAYER_VERSION}
@@ -29,7 +31,6 @@ Metadata:
           - DdSite
           - BucketPrefix
           - BucketName
-          - InstrumenterFunctionName
           - TrailName
 
 Conditions:
@@ -58,11 +59,6 @@ Parameters:
       The Datadog site where data will be sent. Possible values are `datadoghq.com`, `datadoghq.eu`, `us3.datadoghq.com`, `us5.datadoghq.com`, `ap1.datadoghq.com`, `ap2.datadoghq.com`.
     AllowedPattern: .+
     ConstraintDescription: DdSite is required
-  InstrumenterFunctionName:
-    Type: String
-    Default: datadog-remote-instrumenter
-    Description: >-
-      The name of the Lambda function that will instrument other Lambda functions.
   BucketName:
     Type: String
     Default: ""
@@ -88,11 +84,11 @@ Resources:
     Version: '1.0'
     Properties:
       ServiceToken: !GetAtt LambdaFunction.Arn
-      FunctionName: !Ref InstrumenterFunctionName
+      FunctionName: !FindInMap [ Constants, InstrumenterFunctionName, Name ]
   LambdaFunction:
     Type: 'AWS::Lambda::Function'
     Properties:
-      FunctionName: !Ref InstrumenterFunctionName
+      FunctionName: !FindInMap [ Constants, InstrumenterFunctionName, Name ]
       Architectures:
       - arm64
       Runtime: nodejs20.x
@@ -198,7 +194,10 @@ Resources:
             Resource: '*'
             Condition:
               ArnEquals:
-                lambda:SourceFunctionArn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${InstrumenterFunctionName}
+                lambda:SourceFunctionArn:
+                  !Sub
+                    - arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${InstrumenterFunctionName}
+                    - InstrumenterFunctionName: !FindInMap [ Constants, InstrumenterFunctionName, Name ]
 
   InstrumenterCodeSigningConfig:
     Type: "AWS::Lambda::CodeSigningConfig"
@@ -307,7 +306,7 @@ Resources:
   LambdaEventRulePermission:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !Ref InstrumenterFunctionName
+      FunctionName: !GetAtt LambdaFunction.Arn
       Action: lambda:InvokeFunction
       Principal: events.amazonaws.com
       SourceArn: !GetAtt LambdaEventRule.Arn
