@@ -58,7 +58,6 @@ class TestingStack extends Stack {
       templateFile: this.modifyTemplate(),
       parameters: {
         EnableCodeSigningConfigurations: false,
-        InstrumenterFunctionName: functionName,
         TrailName: trailName,
         DdSite: ddSite,
         DdApiKey: SecretValue.secretsManager(apiSecretName),
@@ -73,6 +72,7 @@ class TestingStack extends Stack {
     const template = yamlParse(readFileSync('template.yaml', { encoding: 'utf8', flag: 'r' }));
     template.Mappings.Constants.DdRemoteInstrumentLayerAwsAccount.Number = account;
     template.Mappings.Constants.DdRemoteInstrumentLayerVersion.Version = version;
+    template.Mappings.Constants.InstrumenterFunctionName.Name = functionName;
     template.Resources.LambdaFunction.Properties.Environment.Variables.DD_LOG_LEVEL = "INFO";
     // Timeout at 5 minutes since sometimes we run into cases where the custom resource hangs.
     template.Resources.CloudFormationLifeCycle.Properties.ServiceTimeout = 300;
