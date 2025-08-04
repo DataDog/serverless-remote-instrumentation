@@ -1,4 +1,10 @@
-const datadogCi = require("@datadog/datadog-ci/dist/cli.js");
+const { Cli } = require("clipanion");
+const {
+  InstrumentCommand,
+} = require("@datadog/datadog-ci/dist/commands/lambda/instrument.js");
+const {
+  UninstrumentCommand,
+} = require("@datadog/datadog-ci/dist/commands/lambda/uninstrument.js");
 const {
   INSTRUMENT,
   PYTHON,
@@ -28,6 +34,14 @@ const {
   deleteApplyState,
 } = require("./apply-state");
 
+// Create a CLI instance with the instrument and uninstrument commands
+const cli = new Cli({
+  binaryName: "datadog-ci",
+});
+cli.register(InstrumentCommand);
+cli.register(UninstrumentCommand);
+exports.cli = cli;
+
 function getExtensionAndRuntimeLayerVersion(runtime, config) {
   const result = {
     runtimeLayerVersion: undefined,
@@ -54,7 +68,6 @@ async function instrumentWithDatadogCi(
   const functionArn = functionToInstrument.FunctionArn;
   const runtime = functionToInstrument.Runtime;
 
-  const cli = datadogCi.cli;
   const layerVersionObj = getExtensionAndRuntimeLayerVersion(runtime, config);
 
   const operationName = instrument ? INSTRUMENT : UNINSTRUMENT;

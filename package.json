@@ -5,7 +5,8 @@
   "license": "Apache-2.0",
   "dependencies": {
     "@datadog/datadog-ci": "3.11.0",
-    "axios": "^1.11.0"
+    "axios": "^1.11.0",
+    "clipanion": "^3.2.1"
   },
   "devDependencies": {
     "@aws-sdk/client-lambda": "3.858.0",
