@@ -5,7 +5,7 @@ Description: Datadog Lambda Remote Instrumentation App
 Mappings:
   Constants:
     DdRemoteInstrumentApp:
-      Version: 1.6.0
+      Version: 1.7.0
     DdRemoteInstrumentLayerAwsAccount:
       Number: 464622532012
     InstrumenterFunctionName:
