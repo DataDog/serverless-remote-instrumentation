@@ -3,7 +3,7 @@ import { App, SecretValue, Stack, Tags } from 'aws-cdk-lib';
 import { AccountRootPrincipal, Role, ServicePrincipal, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { CfnInclude } from 'aws-cdk-lib/cloudformation-include';
 import { Construct } from 'constructs';
-import { region, account, roleName, stackName, functionName, trailName, bucketName, testLambdaRole, ddSite, apiSecretName } from '../../config.json';
+import { region, account, roleName, stackName, functionName, bucketName, testLambdaRole, ddSite, apiSecretName } from '../../config.json';
 import { readFileSync, writeFileSync } from 'fs'
 import { yamlParse, yamlDump } from 'yaml-cfn'
 
@@ -58,7 +58,7 @@ class TestingStack extends Stack {
       templateFile: this.modifyTemplate(),
       parameters: {
         EnableCodeSigningConfigurations: false,
-        TrailName: trailName,
+        UseExistingCloudTrailTrail: true,
         DdSite: ddSite,
         DdApiKey: SecretValue.secretsManager(apiSecretName),
         BucketName: bucketName,
