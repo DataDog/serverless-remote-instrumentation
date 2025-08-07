@@ -31,11 +31,13 @@ Metadata:
           - DdSite
           - BucketPrefix
           - BucketName
+          - UseExistingCloudTrailTrail
           - TrailName
 
 Conditions:
   CreateCodeSigningConfig: !Equals [ !Ref EnableCodeSigningConfigurations, "true" ]
   HasBucketName: !Not [!Equals [ !Ref BucketName, ""]]
+  CreateCloudTrail: !Not [!Equals [ !Ref UseExistingCloudTrailTrail, "true" ] ]
 
 Parameters:
   EnableCodeSigningConfigurations:
@@ -69,9 +71,20 @@ Parameters:
     Default: datadog-remote-instrument
     Description: >-
       A prefix to use for the name of the remote instrumenter bucket. The bucket name will be generated based on this prefix.
+  UseExistingCloudTrailTrail:
+    Type: String
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: "false"
+    Description: >-
+      Whether to use an existing CloudTrail Trail for the remote instrumenter.  If set to true, there must be a CloudTrail Trail in the
+      region where the remote instrumenter is deployed.  Deleting the Trail will cause functions to no longer be instrumented on update.
   TrailName:
     Type: String
     Default: datadog-serverless-instrumentation-trail
+    Description: >-
+      The name of the CloudTrail Trail to use for the remote instrumenter.  If UseExistingCloudTrailTrail is set to true, this parameter is ignored.
   DdInstrumenterFunctionEnv:
     Type: String
     Default: 'dev'
@@ -211,6 +224,7 @@ Resources:
         UntrustedArtifactOnDeployment: Enforce
 
   CloudTrail:
+    Condition: CreateCloudTrail
     Type: AWS::CloudTrail::Trail
     DependsOn:
       - S3Bucket
