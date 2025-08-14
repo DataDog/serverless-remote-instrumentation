@@ -12,6 +12,7 @@ export default [
     languageOptions: {
       globals: {
         ...globals.jest,
+        some test
       },
     },
   },
