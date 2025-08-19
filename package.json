@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "license": "Apache-2.0",
   "dependencies": {
-    "@datadog/datadog-ci": "3.17.0",
+    "@datadog/datadog-ci": "3.18.0",
     "axios": "^1.11.0",
     "clipanion": "^3.2.1"
   },
@@ -15,11 +15,11 @@
     "@aws-sdk/client-cloudwatch-logs": "^3.864.0",
     "@aws-sdk/client-secrets-manager": "^3.864.0",
     "@aws-sdk/s3-request-presigner": "^3.864.0",
-    "@datadog/datadog-api-client": "^1.40.0",
+    "@datadog/datadog-api-client": "^1.41.0",
     "@types/jest": "^30.0.0",
     "@types/lodash": "^4.17.20",
-    "aws-cdk": "^2.1024.0",
-    "aws-cdk-lib": "^2.210.0",
+    "aws-cdk": "^2.1025.0",
+    "aws-cdk-lib": "^2.211.0",
     "cfn-response": "^1.0.1",
     "constructs": "^10.4.2",
     "eslint": "^9.33.0",
