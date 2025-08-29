@@ -7,8 +7,6 @@ const {
 } = require("@datadog/datadog-ci/dist/commands/lambda/uninstrument.js");
 const {
   INSTRUMENT,
-  PYTHON,
-  NODE,
   UNINSTRUMENT,
   IN_PROGRESS,
   SUCCEEDED,
@@ -27,6 +25,7 @@ const { tagResourcesWithSlsTag, untagResourcesOfSlsTag } = require("./tag");
 const {
   REMOTE_INSTRUMENTATION_STARTED,
   REMOTE_INSTRUMENTATION_ENDED,
+  getRuntimeConfig,
 } = require("./consts");
 const {
   putApplyState,
@@ -48,10 +47,9 @@ function getExtensionAndRuntimeLayerVersion(runtime, config) {
     extensionVersion: config.extensionVersion,
   };
 
-  if (runtime.includes(NODE)) {
-    result.runtimeLayerVersion = config.nodeLayerVersion;
-  } else if (runtime.includes(PYTHON)) {
-    result.runtimeLayerVersion = config.pythonLayerVersion;
+  const runtimeConfig = getRuntimeConfig(runtime);
+  if (runtimeConfig) {
+    result.runtimeLayerVersion = config[runtimeConfig.configField];
   }
 
   return result;

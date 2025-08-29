@@ -15,6 +15,7 @@ const {
   CONFIG_HASH_KEY,
   CONFIG_CACHE_TTL_MS,
   CONFIG_STATUS_EXPIRED,
+  SUPPORTED_RUNTIME_CONFIGURATIONS,
 } = require("./consts");
 const { getApplyState } = require("./apply-state");
 
@@ -31,14 +32,17 @@ class RcConfig {
     this.setRcConfigVersion(configMeta.custom?.v);
     this.setConfigVersion(configJSON.config_version);
     this.setEntityType(configJSON.entity_type);
+
+    Object.values(SUPPORTED_RUNTIME_CONFIGURATIONS).forEach((config) => {
+      this.setField(
+        config.configField,
+        config.getFromJsonConfig(configJSON),
+        "number",
+        true,
+      );
+    });
     this.setExtensionVersion(
       configJSON.instrumentation_settings?.extension_version,
-    );
-    this.setNodeLayerVersion(
-      configJSON.instrumentation_settings?.node_layer_version,
-    );
-    this.setPythonLayerVersion(
-      configJSON.instrumentation_settings?.python_layer_version,
     );
     this.setDDTraceEnabled(
       configJSON.instrumentation_settings?.dd_trace_enabled,
@@ -95,6 +99,16 @@ class RcConfig {
     }
   }
 
+  setField(field, value, type, allowUndefined = false) {
+    if ((allowUndefined && value === undefined) || typeof value === type) {
+      this[field] = value;
+    } else {
+      throw this.configurationError(
+        `${field} must be a ${type}, but received '${value}'`,
+      );
+    }
+  }
+
   setExtensionVersion(extensionVersion) {
     if (
       extensionVersion === undefined ||
@@ -104,32 +118,6 @@ class RcConfig {
     } else {
       throw this.configurationError(
         `extension version must be a number, but received '${extensionVersion}'`,
-      );
-    }
-  }
-
-  setNodeLayerVersion(nodeLayerVersion) {
-    if (
-      nodeLayerVersion === undefined ||
-      typeof nodeLayerVersion === "number"
-    ) {
-      this.nodeLayerVersion = nodeLayerVersion;
-    } else {
-      throw this.configurationError(
-        `node layer version must be a number, but received '${nodeLayerVersion}'`,
-      );
-    }
-  }
-
-  setPythonLayerVersion(pythonLayerVersion) {
-    if (
-      pythonLayerVersion === undefined ||
-      typeof pythonLayerVersion === "number"
-    ) {
-      this.pythonLayerVersion = pythonLayerVersion;
-    } else {
-      throw this.configurationError(
-        `python layer version must be a number, but received '${pythonLayerVersion}'`,
       );
     }
   }

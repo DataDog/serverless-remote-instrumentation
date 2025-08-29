@@ -18,9 +18,6 @@ const {
   DD_API_KEY_SECRET_ARN,
   DD_SITE,
   VERSION,
-  SUPPORTED_RUNTIMES,
-  NODE,
-  PYTHON,
   INSTRUMENT,
   TAG,
   FUNCTION_NAME,
@@ -29,6 +26,8 @@ const {
   REMOTE_INSTRUMENTER_FUNCTION,
   UNSUPPORTED_RUNTIME,
   ALREADY_CORRECT_EXTENSION_AND_LAYER,
+  SUPPORTED_RUNTIME_CONFIGURATIONS,
+  getRuntimeConfig,
 } = require("./consts");
 
 /**
@@ -267,9 +266,9 @@ function isInstrumented(lambdaFunc) {
   // Since the above environment variables can be configured
   // in a datadog.yaml file, check if a datadog layer is present
   const hasDatadogLayer =
-    hasLayerMatching(lambdaFunc, "Datadog-Python") ||
-    hasLayerMatching(lambdaFunc, "Datadog-Node") ||
-    hasLayerMatching(lambdaFunc, "Datadog-Extension");
+    Object.values(SUPPORTED_RUNTIME_CONFIGURATIONS).some((runtimeConfig) =>
+      hasLayerMatching(lambdaFunc, runtimeConfig.layerName),
+    ) || hasLayerMatching(lambdaFunc, "Datadog-Extension");
 
   if (hasDatadogLayer) {
     return true;
@@ -310,15 +309,9 @@ function isCorrectlyInstrumented({
   }
 
   // Check if the lambda layer version is correct
-  let expectedLayerName;
-  let expectedLayerVersion;
-  if (targetLambdaRuntime.toLowerCase().includes(PYTHON)) {
-    expectedLayerName = "Datadog-Python";
-    expectedLayerVersion = config.pythonLayerVersion;
-  } else if (targetLambdaRuntime.toLowerCase().includes(NODE)) {
-    expectedLayerName = "Datadog-Node";
-    expectedLayerVersion = config.nodeLayerVersion;
-  }
+  const runtimeConfig = getRuntimeConfig(targetLambdaRuntime);
+  const expectedLayerName = runtimeConfig?.layerName;
+  const expectedLayerVersion = config[runtimeConfig?.configField];
 
   let foundLayerVersion;
   for (const layer of layers) {
@@ -468,14 +461,7 @@ function needsInstrumentationUpdate(
   }
 
   // If it's an unsupported runtime, skip it
-  let isSupportedRuntime = false;
-  for (const supportedRuntime of SUPPORTED_RUNTIMES) {
-    if (runtime.includes(supportedRuntime)) {
-      isSupportedRuntime = true;
-      break;
-    }
-  }
-  if (!isSupportedRuntime) {
+  if (!getRuntimeConfig(runtime)) {
     if (emitProcessingLogs) {
       logger.emitFrontendProcessingEvent(
         functionName,
