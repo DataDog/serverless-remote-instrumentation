@@ -139,7 +139,7 @@ describe("Config constructor", () => {
     expect(
       () => new RcConfig(sampleRcConfigID, testJSON, sampleRcMetadata),
     ).toThrow(
-      "Received invalid configuration: python layer version must be a number",
+      "Received invalid configuration: pythonLayerVersion must be a number",
     );
   });
 
@@ -158,7 +158,7 @@ describe("Config constructor", () => {
     expect(
       () => new RcConfig(sampleRcConfigID, testJSON, sampleRcMetadata),
     ).toThrow(
-      "Received invalid configuration: node layer version must be a number",
+      "Received invalid configuration: nodeLayerVersion must be a number",
     );
   });
 

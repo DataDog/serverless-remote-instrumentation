@@ -112,10 +112,28 @@ describe("Remote instrumenter scheduled event tests", () => {
     expect(isInstrumented).toStrictEqual(true);
   });
 
+  it.each([
+    ["nodejs20.x", Runtime.nodejs20x],
+    ["python3.10", Runtime.python310],
+  ])(
+    "function with runtime %s gets instrumented",
+    async (runtimeName, runtimeValue) => {
+      const { FunctionName: functionName } = await createFunction({
+        Tags: { foo: "bar" },
+        Runtime: runtimeValue,
+      });
+      await setRemoteConfig();
+      await invokeLambdaWithScheduledEvent();
+
+      const isInstrumented = await isFunctionInstrumented(functionName);
+      expect(isInstrumented).toStrictEqual(true);
+    },
+  );
+
   it("function with unsupported runtime does not get instrumented", async () => {
     const { FunctionName: functionName } = await createFunction({
       Tags: { foo: "bar" },
-      Runtime: Runtime.java21,
+      Runtime: Runtime.providedal2,
     });
     await setRemoteConfig();
 

@@ -3,7 +3,28 @@ const NODE = "node";
 exports.NODE = NODE;
 const PYTHON = "python";
 exports.PYTHON = PYTHON;
-exports.SUPPORTED_RUNTIMES = [NODE, PYTHON];
+
+const SUPPORTED_RUNTIME_CONFIGURATIONS = {
+  [NODE]: {
+    layerName: "Datadog-Node",
+    configField: "nodeLayerVersion",
+    getFromJsonConfig: (configJSON) =>
+      configJSON.instrumentation_settings?.node_layer_version,
+    isSupportedRuntime: (runtime) => runtime.toLowerCase().includes(NODE),
+  },
+  [PYTHON]: {
+    layerName: "Datadog-Python",
+    configField: "pythonLayerVersion",
+    getFromJsonConfig: (configJSON) =>
+      configJSON.instrumentation_settings?.python_layer_version,
+    isSupportedRuntime: (runtime) => runtime.toLowerCase().includes(PYTHON),
+  },
+};
+exports.SUPPORTED_RUNTIME_CONFIGURATIONS = SUPPORTED_RUNTIME_CONFIGURATIONS;
+exports.getRuntimeConfig = (runtime) =>
+  Object.entries(SUPPORTED_RUNTIME_CONFIGURATIONS).find(([, config]) =>
+    config.isSupportedRuntime(runtime),
+  )?.[1];
 
 // Event Types
 exports.LAMBDA_EVENT = "LambdaEvent";
