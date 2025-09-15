@@ -34,7 +34,10 @@ describe("handler lambda management events", () => {
     functions.enrichFunctionsWithTags.mockReturnValue(enrichedFunction);
 
     const configsResult = ["a"];
-    config.getConfigs.mockReturnValue(configsResult);
+    config.getConfigsWithRetry.mockReturnValue({
+      configs: configsResult,
+      configChanged: true,
+    });
     instrument.instrumentFunctions.mockReturnValue(true);
 
     await handler.handler(event, context);
@@ -47,7 +50,10 @@ describe("handler lambda management events", () => {
       expect.anything(),
       [lambdaFunction],
     );
-    expect(config.getConfigs).toHaveBeenCalledWith(expect.anything(), context);
+    expect(config.getConfigsWithRetry).toHaveBeenCalledWith(
+      expect.anything(),
+      context,
+    );
     expect(instrument.instrumentFunctions).toHaveBeenCalledWith(
       expect.anything(),
       configsResult,
@@ -76,7 +82,7 @@ describe("handler lambda management events", () => {
     const error = () => {
       throw new Error("ERROR!");
     };
-    config.getConfigs.mockImplementation(error);
+    config.getConfigsWithRetry.mockImplementation(error);
     instrument.instrumentFunctions.mockReturnValue(true);
 
     await expect(handler.handler(event, context)).rejects.toThrow("ERROR!");
@@ -89,7 +95,10 @@ describe("handler lambda management events", () => {
       expect.anything(),
       [lambdaFunction],
     );
-    expect(config.getConfigs).toHaveBeenCalledWith(expect.anything(), context);
+    expect(config.getConfigsWithRetry).toHaveBeenCalledWith(
+      expect.anything(),
+      context,
+    );
     expect(instrument.instrumentFunctions).not.toHaveBeenCalled();
     expect(errorStorage.putError).toHaveBeenCalledWith(
       expect.anything(),
@@ -112,7 +121,10 @@ describe("scheduled invocation events", () => {
     const configsResult = ["a"];
 
     lambdaEvent.isScheduledInvocationEvent.mockReturnValue(true);
-    config.getConfigs.mockReturnValue(configsResult);
+    config.getConfigsWithRetry.mockReturnValue({
+      configs: configsResult,
+      configChanged: false,
+    });
     config.configHasChanged.mockReturnValue(false);
     errorStorage.listErrors.mockReturnValue(["function1", "function2"]);
     errorStorage.putError.mockReturnValue(true);
@@ -276,7 +288,10 @@ describe("stack create events", () => {
 
     lambdaEvent.isStackCreatedEvent.mockReturnValue(true);
     const configsResult = ["configs"];
-    config.getConfigs.mockReturnValue(configsResult);
+    config.getConfigsWithRetry.mockReturnValue({
+      configs: configsResult,
+      configChanged: true,
+    });
     functions.getAllFunctions.mockReturnValue("getAllFunctionsRV");
     functions.enrichFunctionsWithTags.mockReturnValue(
       "enrichFunctionsWithTagsRV",
@@ -320,7 +335,7 @@ describe("stack create events", () => {
     const context = "context";
 
     lambdaEvent.isStackCreatedEvent.mockReturnValue(true);
-    config.getConfigs.mockImplementation(() => {
+    config.getConfigsWithRetry.mockImplementation(() => {
       throw new Error();
     });
 

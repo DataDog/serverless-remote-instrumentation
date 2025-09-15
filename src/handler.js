@@ -56,7 +56,8 @@ exports.handler = async (event, context) => {
   // If it's a stack event, send a response to CloudFormation for custom resource management
   if (isStackCreatedEvent(event)) {
     try {
-      const configs = await getConfigsWithRetry(s3Client, context);
+      const configResult = await getConfigsWithRetry(s3Client, context);
+      const configs = configResult.configs;
       const allFunctions = await getAllFunctions(lambdaClient);
       const functionsToCheck = await enrichFunctionsWithTags(
         lambdaClient,
@@ -126,7 +127,8 @@ exports.handler = async (event, context) => {
 
     let configs;
     try {
-      configs = await getConfigsWithRetry(s3Client, context);
+      const configResult = await getConfigsWithRetry(s3Client, context);
+      configs = configResult.configs;
     } catch (error) {
       // This pulls the reason from the error, just stringifying it does not return the message
       const errorDetails = JSON.parse(
