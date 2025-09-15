@@ -23,6 +23,9 @@ const {
 jest.mock("axios", () => ({
   post: jest.fn(),
 }));
+jest.mock("../src/sleep", () => ({
+  sleep: jest.fn().mockResolvedValue(),
+}));
 
 describe("Config constructor", () => {
   it("creates an RcConfig object out of well-formed JSON", () => {
@@ -865,6 +868,14 @@ describe("getConfigsWithRetry", () => {
     mockedAxios = require("axios");
     mockedAxios.post.mockReset();
     mockS3Client.send.mockReset();
+    const { sleep } = require("../src/sleep");
+    sleep.mockClear();
+    // Setup sleep mock to invalidate cache when called (simulates waiting for cache TTL)
+    sleep.mockImplementation(() => {
+      CONFIG_CACHE.configs = null;
+      CONFIG_CACHE.expirationTime = null;
+      return Promise.resolve();
+    });
     process.env.AWS_REGION = "us-east-1";
     process.env.DD_S3_BUCKET = "test-bucket";
     process.env.AWS_LAMBDA_FUNCTION_NAME = "test-function";
@@ -1105,7 +1116,7 @@ describe("getConfigsWithRetry", () => {
 
     // Check that there were two calls to RC
     expect(mockedAxios.post).toHaveBeenCalledTimes(2);
-  }, 10000);
+  });
 
   test("should stop retrying after max retries", async () => {
     const existingConfig = new RcConfig(
@@ -1156,5 +1167,5 @@ describe("getConfigsWithRetry", () => {
 
     // Check that there were three calls to RC
     expect(mockedAxios.post).toHaveBeenCalledTimes(3);
-  }, 20000);
+  });
 });
