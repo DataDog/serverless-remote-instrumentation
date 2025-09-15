@@ -455,9 +455,3 @@ function updateCache(configs) {
   CONFIG_CACHE.expirationTime = Date.now() + CONFIG_CACHE_TTL_MS;
 }
 exports.updateCache = updateCache;
-
-function invalidateCache() {
-  CONFIG_CACHE.configs = null;
-  CONFIG_CACHE.expirationTime = null;
-}
-exports.invalidateCache = invalidateCache;

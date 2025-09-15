@@ -5,7 +5,6 @@ const {
   getConfigsFromResponse,
   getConfigs,
   CONFIG_CACHE,
-  invalidateCache,
   getConfigsWithRetry,
 } = require("../src/config");
 const {
@@ -643,19 +642,6 @@ describe("Config cache", () => {
       );
     });
   });
-
-  describe("invalidateCache", () => {
-    test("invalidates cache", () => {
-      const newConfigs = [sampleRcConfig, sampleRcConfig];
-      updateCache(newConfigs);
-      expect(isCacheValid()).toBe(true);
-
-      invalidateCache();
-      expect(CONFIG_CACHE.configs).toBeNull();
-      expect(CONFIG_CACHE.expirationTime).toBeNull();
-      expect(isCacheValid()).toBe(false);
-    });
-  });
 });
 
 describe("getConfigs", () => {
@@ -671,7 +657,8 @@ describe("getConfigs", () => {
       invokedFunctionArn:
         "arn:aws:lambda:us-east-1:123456789012:function:test-function",
     };
-    invalidateCache();
+    CONFIG_CACHE.configs = null;
+    CONFIG_CACHE.expirationTime = null;
     mockedAxios = require("axios");
     mockedAxios.post.mockReset();
     process.env.AWS_REGION = "us-east-1";
@@ -873,7 +860,8 @@ describe("getConfigsWithRetry", () => {
       invokedFunctionArn:
         "arn:aws:lambda:us-east-1:123456789012:function:test-function",
     };
-    invalidateCache();
+    CONFIG_CACHE.configs = null;
+    CONFIG_CACHE.expirationTime = null;
     mockedAxios = require("axios");
     mockedAxios.post.mockReset();
     mockS3Client.send.mockReset();
