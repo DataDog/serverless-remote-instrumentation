@@ -223,7 +223,6 @@ async function getConfigsFromRC(s3Client, accountID, region) {
     },
     cached_target_files: [],
   };
-  logger.logObject(payload);
 
   let configs = [];
   await axios
@@ -235,6 +234,10 @@ async function getConfigsFromRC(s3Client, accountID, region) {
       logger.error(error);
       throw new Error("Failed to retrieve configs");
     });
+
+  if (configs.length === 0) {
+    logger.logObject(payload);
+  }
   return configs;
 }
 
