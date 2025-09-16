@@ -5,6 +5,7 @@ const {
   getConfigsFromResponse,
   getConfigs,
   CONFIG_CACHE,
+  getConfigsWithRetry,
 } = require("../src/config");
 const {
   FILTER_TYPES,
@@ -21,6 +22,9 @@ const {
 
 jest.mock("axios", () => ({
   post: jest.fn(),
+}));
+jest.mock("../src/sleep", () => ({
+  sleep: jest.fn().mockResolvedValue(),
 }));
 
 describe("Config constructor", () => {
@@ -843,5 +847,325 @@ describe("getConfigs", () => {
     // Check that cache was not updated
     expect(CONFIG_CACHE.configs).toEqual(oldConfigs);
     expect(CONFIG_CACHE.expirationTime).toBe(expirationTime);
+  });
+});
+
+describe("getConfigsWithRetry", () => {
+  let mockS3Client;
+  let mockContext;
+  let mockedAxios;
+
+  beforeEach(() => {
+    mockS3Client = {
+      send: jest.fn(),
+    };
+    mockContext = {
+      invokedFunctionArn:
+        "arn:aws:lambda:us-east-1:123456789012:function:test-function",
+    };
+    CONFIG_CACHE.configs = null;
+    CONFIG_CACHE.expirationTime = null;
+    mockedAxios = require("axios");
+    mockedAxios.post.mockReset();
+    mockS3Client.send.mockReset();
+    const { sleep } = require("../src/sleep");
+    sleep.mockClear();
+    // Setup sleep mock to invalidate cache when called (simulates waiting for cache TTL)
+    sleep.mockImplementation(() => {
+      CONFIG_CACHE.configs = null;
+      CONFIG_CACHE.expirationTime = null;
+      return Promise.resolve();
+    });
+    process.env.AWS_REGION = "us-east-1";
+    process.env.DD_S3_BUCKET = "test-bucket";
+    process.env.AWS_LAMBDA_FUNCTION_NAME = "test-function";
+  });
+
+  test("should only fetch configs once when config has not changed", async () => {
+    const existingConfig = new RcConfig(
+      "test-id",
+      sampleRcTestJSON,
+      sampleRcMetadata,
+    );
+    existingConfig.awsAccountId = "123456789012";
+    existingConfig.awsRegion = "us-east-1";
+    existingConfig.instrumenterFunctionName = "test-function";
+    const existingConfigs = [existingConfig];
+
+    const path = "datadog/2/SERVERLESS_REMOTE_INSTRUMENTATION/test-id";
+    const rcResponse = {
+      data: {
+        target_files: [
+          {
+            path: path,
+            raw: btoa(JSON.stringify(sampleRcTestJSON)),
+          },
+        ],
+        client_configs: [path],
+        targets: btoa(
+          JSON.stringify({
+            signed: {
+              targets: {
+                [path]: sampleRcMetadata,
+              },
+            },
+          }),
+        ),
+      },
+    };
+    mockedAxios.post.mockResolvedValueOnce(rcResponse);
+
+    const existingConfigHash = require("crypto")
+      .createHash("sha256", "datadog-remote-instrumenter")
+      .update(JSON.stringify(existingConfigs))
+      .digest("hex");
+
+    mockS3Client.send.mockImplementation(() => {
+      return Promise.resolve({
+        Body: {
+          transformToString: () => Promise.resolve(existingConfigHash),
+        },
+      });
+    });
+
+    const { configs, configChanged } = await getConfigsWithRetry(
+      mockS3Client,
+      mockContext,
+    );
+
+    // Check that the same configs are returned
+    expect(configChanged).toBe(false);
+    expect(JSON.stringify(configs)).toEqual(JSON.stringify(existingConfigs));
+    expect(CONFIG_CACHE.configs).toEqual(existingConfigs);
+
+    // Check that there was only one call to RC
+    expect(mockedAxios.post).toHaveBeenCalledTimes(1);
+  });
+
+  test("should only fetch configs once when different configs are returned", async () => {
+    const newConfig = new RcConfig(
+      "test-id",
+      sampleRcTestJSON,
+      sampleRcMetadata,
+    );
+    newConfig.awsAccountId = "123456789012";
+    newConfig.awsRegion = "us-east-1";
+    newConfig.instrumenterFunctionName = "test-function";
+    const newConfigs = [newConfig];
+
+    const path = "datadog/2/SERVERLESS_REMOTE_INSTRUMENTATION/test-id";
+    const rcResponse = {
+      data: {
+        target_files: [
+          {
+            path: path,
+            raw: btoa(JSON.stringify(sampleRcTestJSON)),
+          },
+        ],
+        client_configs: [path],
+        targets: btoa(
+          JSON.stringify({
+            signed: {
+              targets: {
+                [path]: sampleRcMetadata,
+              },
+            },
+          }),
+        ),
+      },
+    };
+    mockedAxios.post.mockResolvedValueOnce(rcResponse);
+
+    const existingConfigHash = require("crypto")
+      .createHash("sha256", "datadog-remote-instrumenter")
+      .update(JSON.stringify([{}]))
+      .digest("hex");
+
+    mockS3Client.send.mockImplementation(() => {
+      return Promise.resolve({
+        Body: {
+          transformToString: () => Promise.resolve(existingConfigHash),
+        },
+      });
+    });
+
+    const { configs, configChanged } = await getConfigsWithRetry(
+      mockS3Client,
+      mockContext,
+    );
+
+    // Check that configs are returned
+    expect(configChanged).toBe(true);
+    expect(JSON.stringify(configs)).toEqual(JSON.stringify(newConfigs));
+    expect(CONFIG_CACHE.configs).toEqual(newConfigs);
+
+    // Check that there was only one call to RC
+    expect(mockedAxios.post).toHaveBeenCalledTimes(1);
+  });
+
+  test("should only fetch configs once when there are still no configs", async () => {
+    const rcResponse = {
+      data: {
+        targets: btoa(
+          JSON.stringify({
+            signed: {
+              targets: {},
+            },
+          }),
+        ),
+      },
+    };
+    mockedAxios.post.mockResolvedValueOnce(rcResponse);
+
+    const existingConfigHash = require("crypto")
+      .createHash("sha256", "datadog-remote-instrumenter")
+      .update(JSON.stringify([]))
+      .digest("hex");
+
+    mockS3Client.send.mockImplementation(() => {
+      return Promise.resolve({
+        Body: {
+          transformToString: () => Promise.resolve(existingConfigHash),
+        },
+      });
+    });
+
+    const { configs, configChanged } = await getConfigsWithRetry(
+      mockS3Client,
+      mockContext,
+    );
+
+    // Check that no configs are returned
+    expect(configChanged).toBe(false);
+    expect(configs.length).toBe(0);
+    expect(CONFIG_CACHE.configs).toEqual([]);
+
+    // Check that there was only one call to RC
+    expect(mockedAxios.post).toHaveBeenCalledTimes(1);
+  });
+
+  test("should retry fetching configs when no configs are incorrectly returned on first attempt", async () => {
+    const existingConfig = new RcConfig(
+      "test-id",
+      sampleRcTestJSON,
+      sampleRcMetadata,
+    );
+    existingConfig.awsAccountId = "123456789012";
+    existingConfig.awsRegion = "us-east-1";
+    existingConfig.instrumenterFunctionName = "test-function";
+    const existingConfigs = [existingConfig];
+
+    const path = "datadog/2/SERVERLESS_REMOTE_INSTRUMENTATION/test-id";
+    const rcResponse = {
+      data: {
+        target_files: [
+          {
+            path: path,
+            raw: btoa(JSON.stringify(sampleRcTestJSON)),
+          },
+        ],
+        client_configs: [path],
+        targets: btoa(
+          JSON.stringify({
+            signed: {
+              targets: {
+                [path]: sampleRcMetadata,
+              },
+            },
+          }),
+        ),
+      },
+    };
+
+    const noConfigsResponse = {
+      data: {
+        targets: btoa(
+          JSON.stringify({
+            signed: {
+              targets: {},
+            },
+          }),
+        ),
+      },
+    };
+    mockedAxios.post.mockResolvedValueOnce(noConfigsResponse);
+    mockedAxios.post.mockResolvedValueOnce(rcResponse);
+
+    const existingConfigHash = require("crypto")
+      .createHash("sha256", "datadog-remote-instrumenter")
+      .update(JSON.stringify(existingConfigs))
+      .digest("hex");
+
+    mockS3Client.send.mockImplementation(() => {
+      return Promise.resolve({
+        Body: {
+          transformToString: () => Promise.resolve(existingConfigHash),
+        },
+      });
+    });
+
+    const { configs, configChanged } = await getConfigsWithRetry(
+      mockS3Client,
+      mockContext,
+    );
+
+    // Check that configs are returned
+    expect(configChanged).toBe(false);
+    expect(JSON.stringify(configs)).toEqual(JSON.stringify(existingConfigs));
+    expect(CONFIG_CACHE.configs).toEqual(existingConfigs);
+
+    // Check that there were two calls to RC
+    expect(mockedAxios.post).toHaveBeenCalledTimes(2);
+  });
+
+  test("should stop retrying after max retries", async () => {
+    const existingConfig = new RcConfig(
+      "test-id",
+      sampleRcTestJSON,
+      sampleRcMetadata,
+    );
+    existingConfig.awsAccountId = "123456789012";
+    existingConfig.awsRegion = "us-east-1";
+    existingConfig.instrumenterFunctionName = "test-function";
+    const existingConfigs = [existingConfig];
+
+    const noConfigsResponse = {
+      data: {
+        targets: btoa(
+          JSON.stringify({
+            signed: {
+              targets: {},
+            },
+          }),
+        ),
+      },
+    };
+    mockedAxios.post.mockResolvedValue(noConfigsResponse);
+
+    const existingConfigHash = require("crypto")
+      .createHash("sha256", "datadog-remote-instrumenter")
+      .update(JSON.stringify(existingConfigs))
+      .digest("hex");
+
+    mockS3Client.send.mockImplementation(() => {
+      return Promise.resolve({
+        Body: {
+          transformToString: () => Promise.resolve(existingConfigHash),
+        },
+      });
+    });
+
+    const { configs, configChanged } = await getConfigsWithRetry(
+      mockS3Client,
+      mockContext,
+    );
+
+    // Check that configs are returned
+    expect(configChanged).toBe(true);
+    expect(JSON.stringify(configs)).toEqual(JSON.stringify([]));
+    expect(CONFIG_CACHE.configs).toEqual([]);
+
+    // Check that there were three calls to RC
+    expect(mockedAxios.post).toHaveBeenCalledTimes(3);
   });
 });

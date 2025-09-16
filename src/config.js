@@ -18,6 +18,7 @@ const {
   SUPPORTED_RUNTIME_CONFIGURATIONS,
 } = require("./consts");
 const { getApplyState } = require("./apply-state");
+const { sleep } = require("./sleep");
 
 // Initialize config cache
 const CONFIG_CACHE = {
@@ -233,6 +234,10 @@ async function getConfigsFromRC(s3Client, accountID, region) {
       logger.error(error);
       throw new Error("Failed to retrieve configs");
     });
+
+  if (configs.length === 0) {
+    logger.logObject(payload);
+  }
   return configs;
 }
 
@@ -380,6 +385,36 @@ async function configHasChanged(client, configs) {
   }
 }
 exports.configHasChanged = configHasChanged;
+
+async function getConfigsWithRetry(s3Client, context) {
+  let configs = await getConfigs(s3Client, context);
+  let configChanged = await configHasChanged(s3Client, configs);
+
+  // If we detect a config change and newly receive no configs, retry fetching configs up to 2 more times
+  let retryCount = 0;
+  const maxRetries = 2;
+  while (configChanged && configs.length === 0 && retryCount < maxRetries) {
+    retryCount++;
+    logger.log(
+      `Config changed but no configs found. Retrying attempt ${retryCount}/${maxRetries}`,
+    );
+
+    // Wait for the cache TTL so that we don't exhaust our cache bypass limit
+    await sleep(CONFIG_CACHE_TTL_MS);
+    configs = await getConfigs(s3Client, context);
+    configChanged = await configHasChanged(s3Client, configs);
+
+    // Stop retrying if we now have configs
+    if (configs.length > 0) {
+      logger.log(
+        `Found ${configs.length} configs on retry attempt ${retryCount}`,
+      );
+      break;
+    }
+  }
+  return { configs, configChanged };
+}
+exports.getConfigsWithRetry = getConfigsWithRetry;
 
 async function updateConfigHash(client, configs) {
   const newConfigHash = crypto

@@ -1,5 +1,5 @@
 const cfnResponse = require("cfn-response"); // file will be auto-injected by CloudFormation
-const { getConfigs, configHasChanged, updateConfigHash } = require("./config");
+const { getConfigsWithRetry, updateConfigHash } = require("./config");
 const { logger } = require("./logger");
 const {
   isLambdaManagementEvent,
@@ -56,7 +56,8 @@ exports.handler = async (event, context) => {
   // If it's a stack event, send a response to CloudFormation for custom resource management
   if (isStackCreatedEvent(event)) {
     try {
-      const configs = await getConfigs(s3Client, context);
+      const configResult = await getConfigsWithRetry(s3Client, context);
+      const configs = configResult.configs;
       const allFunctions = await getAllFunctions(lambdaClient);
       const functionsToCheck = await enrichFunctionsWithTags(
         lambdaClient,
@@ -126,7 +127,8 @@ exports.handler = async (event, context) => {
 
     let configs;
     try {
-      configs = await getConfigs(s3Client, context);
+      const configResult = await getConfigsWithRetry(s3Client, context);
+      configs = configResult.configs;
     } catch (error) {
       // This pulls the reason from the error, just stringifying it does not return the message
       const errorDetails = JSON.parse(
@@ -150,8 +152,11 @@ exports.handler = async (event, context) => {
   else if (isScheduledInvocationEvent(event)) {
     logger.log("Received an invocation from the scheduler.");
     const errors = await listErrors(s3Client);
-    const configs = await getConfigs(s3Client, context);
-    const configChanged = await configHasChanged(s3Client, configs);
+    const { configs, configChanged } = await getConfigsWithRetry(
+      s3Client,
+      context,
+    );
+
     let functionsToCheck = [];
     if (configChanged) {
       // If the config has changed, check all functions for instrumentation
