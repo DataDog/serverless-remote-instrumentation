@@ -109,15 +109,16 @@ describe("handler lambda management events", () => {
 });
 
 describe("scheduled invocation events", () => {
+  const event = {
+    "event-type": "Scheduled Instrumenter Invocation",
+  };
+  const context = "context";
+
   beforeEach(() => {
     jest.resetAllMocks();
   });
 
   test("Loads errors from s3", async () => {
-    const event = {
-      "event-type": "Scheduled Instrumenter Invocation",
-    };
-    const context = "context";
     const configsResult = ["a"];
 
     lambdaEvent.isScheduledInvocationEvent.mockReturnValue(true);
@@ -172,6 +173,36 @@ describe("scheduled invocation events", () => {
       expect.anything(),
       "error!",
     );
+  });
+
+  test("happy path", async () => {
+    const allFunctions = [{ FunctionName: "function1" }];
+
+    lambdaEvent.isScheduledInvocationEvent.mockReturnValue(true);
+    config.getConfigsWithRetry.mockReturnValue({
+      configs: ["a"],
+      configChanged: true,
+    });
+    config.deleteConfigHash.mockReturnValue(true);
+    errorStorage.listErrors.mockReturnValue([]);
+    functions.getAllFunctions.mockReturnValue(allFunctions);
+    functions.enrichFunctionsWithTags.mockReturnValue("enrichedFunctions");
+    instrument.instrumentFunctions.mockReturnValue(true);
+    config.updateConfigHash.mockReturnValue(true);
+    errorStorage.identifyNewErrorsAndResolvedErrors.mockReturnValue({
+      newErrors: [],
+      resolvedErrors: [],
+    });
+
+    await handler.handler(event, context);
+
+    expect(config.getConfigsWithRetry).toHaveBeenCalledTimes(1);
+    expect(config.deleteConfigHash).toHaveBeenCalledTimes(1);
+    expect(errorStorage.listErrors).toHaveBeenCalledTimes(1);
+    expect(functions.getAllFunctions).toHaveBeenCalledTimes(1);
+    expect(functions.enrichFunctionsWithTags).toHaveBeenCalledTimes(1);
+    expect(instrument.instrumentFunctions).toHaveBeenCalledTimes(1);
+    expect(config.updateConfigHash).toHaveBeenCalledTimes(1);
   });
 });
 

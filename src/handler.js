@@ -1,5 +1,9 @@
 const cfnResponse = require("cfn-response"); // file will be auto-injected by CloudFormation
-const { getConfigsWithRetry, updateConfigHash } = require("./config");
+const {
+  deleteConfigHash,
+  getConfigsWithRetry,
+  updateConfigHash,
+} = require("./config");
 const { logger } = require("./logger");
 const {
   isLambdaManagementEvent,
@@ -159,6 +163,7 @@ exports.handler = async (event, context) => {
 
     let functionsToCheck = [];
     if (configChanged) {
+      await deleteConfigHash(s3Client);
       // If the config has changed, check all functions for instrumentation
       // Get all functions in the customer's account
       const allFunctions = await getAllFunctions(lambdaClient);
