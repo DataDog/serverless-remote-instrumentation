@@ -1,6 +1,7 @@
 const axios = require("axios");
 const { logger } = require("./logger");
 const {
+  DeleteObjectCommand,
   GetObjectCommand,
   PutObjectCommand,
   NoSuchKey,
@@ -443,6 +444,15 @@ async function updateConfigHash(client, configs) {
   }
 }
 exports.updateConfigHash = updateConfigHash;
+
+async function deleteConfigHash(client) {
+  const command = new DeleteObjectCommand({
+    Bucket: process.env.DD_S3_BUCKET,
+    Key: CONFIG_HASH_KEY,
+  });
+  await client.send(command);
+}
+exports.deleteConfigHash = deleteConfigHash;
 
 function isCacheValid() {
   return (
