@@ -18,12 +18,13 @@ const { getLambdaClient } = require("./aws-resources");
 const { sleep } = require("./sleep");
 
 const functionNamesToCleanUp = [];
+const functionNameCount = {};
 
 const createFunctions = async (lambdaProps, numFunctions = 1) => {
   const lambdaClient = await getLambdaClient();
   const createdFunctions = new Set();
   for (let i = 0; i < numFunctions; i++) {
-    const functionName = generateTestFunctionName(i);
+    const functionName = generateTestFunctionName();
 
     const zip = new JSZip();
     zip.file(
@@ -82,7 +83,7 @@ const createFunction = async (lambdaProps) => {
 };
 exports.createFunction = createFunction;
 
-function generateTestFunctionName(suffixNumber) {
+function generateTestFunctionName() {
   // Name the function after the test, picking the last 64 characters since
   // lambda limits function name length and that is probably the most descriptive
   let functionName =
@@ -91,8 +92,13 @@ function generateTestFunctionName(suffixNumber) {
       "",
     );
 
+  if (functionNameCount[functionName] === undefined) {
+    functionNameCount[functionName] = 0;
+  }
+  functionNameCount[functionName]++;
+
   const prefix = "ri-test-";
-  const suffix = `-${suffixNumber}`;
+  const suffix = `-${functionNameCount[functionName]}`;
   const maxLengthWithoutPrefixAndSuffix = 64 - prefix.length - suffix.length;
   if (functionName.length > maxLengthWithoutPrefixAndSuffix) {
     functionName = functionName.slice(
