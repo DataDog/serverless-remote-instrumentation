@@ -73,7 +73,31 @@ describe("Remote instrumenter lambda management event tests", () => {
   });
 
   it("can instrument a lambda function with deny rule", async () => {
-    // When there is a remote config
+    // Config will cause the function to be instrumented
+    await setRemoteConfig({
+      ruleFilters: [
+        {
+          key: "apple",
+          values: ["honeycrisp"],
+          filter_type: "tag",
+          allow: true,
+        },
+      ],
+    });
+
+    const { FunctionName: functionName } = await createFunction({
+      Tags: {
+        apple: "honeycrisp",
+        potato: "idaho",
+      },
+    });
+
+    const isInstrumented = await pollUntilTrue(60000, 5000, () =>
+      isFunctionInstrumented(functionName),
+    );
+    expect(isInstrumented).toStrictEqual(true);
+
+    // Exclude functions by tag
     await setRemoteConfig({
       ruleFilters: [
         {
@@ -91,29 +115,9 @@ describe("Remote instrumenter lambda management event tests", () => {
       ],
     });
 
-    // Create the uninstrumented function first so it will have been processed by the instrumenter
-    const { FunctionName: notInstrumentedFunctionName } = await createFunction({
-      Tags: {
-        apple: "honeycrisp",
-        potato: "idaho",
-      },
-    });
-    const { FunctionName: instrumentedFunctionName } = await createFunction({
-      Tags: {
-        apple: "honeycrisp",
-        potato: "yukonGold",
-      },
-    });
+    await invokeLambdaWithScheduledEvent();
 
-    // After some time
-    const isInstrumented = await pollUntilTrue(60000, 5000, () =>
-      isFunctionInstrumented(instrumentedFunctionName),
-    );
-    expect(isInstrumented).toStrictEqual(true);
-
-    const isUninstrumented = await isFunctionUninstrumented(
-      notInstrumentedFunctionName,
-    );
+    const isUninstrumented = await isFunctionUninstrumented(functionName);
     expect(isUninstrumented).toStrictEqual(true);
   });
 
