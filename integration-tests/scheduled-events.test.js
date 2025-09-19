@@ -150,6 +150,47 @@ describe("Remote instrumenter scheduled event tests", () => {
     expect(isUninstrumented).toStrictEqual(true);
   });
 
+  it("handles function name deny rules", async () => {
+    const { FunctionName: excludedFunctionName } = await createFunction({
+      Tags: {
+        foo: "bar",
+      },
+    });
+    const { FunctionName: instrumentedFunctionName } = await createFunction({
+      Tags: {
+        foo: "bar",
+      },
+    });
+
+    await setRemoteConfig({
+      ruleFilters: [
+        {
+          key: "foo",
+          values: ["bar"],
+          filter_type: "tag",
+          allow: true,
+        },
+        {
+          key: "functionName",
+          values: [excludedFunctionName],
+          filter_type: "function_name",
+          allow: false,
+        },
+      ],
+    });
+
+    await invokeLambdaWithScheduledEvent();
+
+    const isInstrumented = await pollUntilTrue(60000, 5000, () =>
+      isFunctionInstrumented(instrumentedFunctionName),
+    );
+    expect(isInstrumented).toStrictEqual(true);
+
+    const isUninstrumented =
+      await isFunctionUninstrumented(excludedFunctionName);
+    expect(isUninstrumented).toStrictEqual(true);
+  });
+
   it("can upgrade layer versions when the config changes", async () => {
     const rc = await setRemoteConfig({
       extensionVersion: 66,
