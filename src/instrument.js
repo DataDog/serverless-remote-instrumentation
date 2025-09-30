@@ -1,10 +1,10 @@
 const { Cli } = require("clipanion");
 const {
-  PluginCommand: InstrumentCommand,
-} = require("@datadog/datadog-ci-plugin-lambda/commands/instrument");
+  InstrumentCommand,
+} = require("@datadog/datadog-ci-base/commands/lambda/instrument");
 const {
-  PluginCommand: UninstrumentCommand,
-} = require("@datadog/datadog-ci-plugin-lambda/commands/uninstrument");
+  UninstrumentCommand,
+} = require("@datadog/datadog-ci-base/commands/lambda/uninstrument");
 const {
   INSTRUMENT,
   UNINSTRUMENT,
