@@ -4,15 +4,16 @@
   "version": "1.0.0",
   "license": "Apache-2.0",
   "dependencies": {
-    "@datadog/datadog-ci": "3.20.0",
+    "@datadog/datadog-ci-base": "^3.21.4",
+    "@datadog/datadog-ci-plugin-lambda": "^3.21.4",
     "axios": "^1.12.2",
     "clipanion": "^3.2.1"
   },
   "devDependencies": {
+    "@aws-sdk/client-cloudwatch-logs": "^3.893.0",
     "@aws-sdk/client-lambda": "3.893.0",
     "@aws-sdk/client-resource-groups-tagging-api": "3.893.0",
     "@aws-sdk/client-s3": "^3.893.0",
-    "@aws-sdk/client-cloudwatch-logs": "^3.893.0",
     "@aws-sdk/client-secrets-manager": "^3.893.0",
     "@aws-sdk/s3-request-presigner": "^3.893.0",
     "@datadog/datadog-api-client": "^1.43.0",
