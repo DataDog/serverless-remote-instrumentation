@@ -16,3 +16,4 @@ scripts
 modified_template.yaml
 
 *.zip
+/.envrc.local
