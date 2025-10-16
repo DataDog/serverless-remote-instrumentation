@@ -56,6 +56,15 @@ function getExtensionAndRuntimeLayerVersion(runtime, config) {
 }
 exports.getExtensionAndRuntimeLayerVersion = getExtensionAndRuntimeLayerVersion;
 
+function createFunctionBatches(functions, batchSize = 50) {
+  const batches = [];
+  for (let i = 0; i < functions.length; i += batchSize) {
+    batches.push(functions.slice(i, i + batchSize));
+  }
+  return batches;
+}
+exports.createFunctionBatches = createFunctionBatches;
+
 async function instrumentWithDatadogCi(
   functionToInstrument,
   instrument,
@@ -170,61 +179,93 @@ async function instrumentFunctions(
   }
 
   for (const config of configs) {
-    let {
-      functionsToInstrument,
-      functionsToUninstrument,
-      functionsToTag,
-      functionsToUntag,
-    } = filterFunctionsToChangeInstrumentation(
-      functionsToCheck,
-      config,
-      instrumentOutcome,
-    );
-    logger.log(
-      `Functions to instrument: ${functionsToInstrument.map((f) => f.FunctionName)}`,
-    );
-    logger.log(
-      `Functions to uninstrument: ${functionsToUninstrument.map((f) => f.FunctionName)}`,
-    );
-    logger.log(
-      `Functions to tag: ${functionsToTag.map((f) => f.FunctionName)}`,
-    );
-    logger.log(
-      `Functions to untag: ${functionsToUntag.map((f) => f.FunctionName)}`,
-    );
-
-    await tagResourcesWithSlsTag(
-      taggingClient,
-      functionsToTag.map((f) => f.FunctionArn),
-    );
-
-    // Instrument and tag the functions that need to be instrumented
-    for (const functionToInstrument of functionsToInstrument) {
-      await instrumentWithDatadogCi(
-        functionToInstrument,
-        true,
+    const { functionsToInstrumentOrTag, functionsToUninstrumentOrUntag } =
+      filterFunctionsToChangeInstrumentation(
+        functionsToCheck,
         config,
         instrumentOutcome,
       );
+    logger.log(
+      `Functions to instrument: ${functionsToInstrumentOrTag.map((f) => f.FunctionName)}`,
+    );
+    logger.log(
+      `Functions to uninstrument: ${functionsToUninstrumentOrUntag.map((f) => f.FunctionName)}`,
+    );
+    const batchSize = 50;
+    const batches = createFunctionBatches(
+      functionsToInstrumentOrTag,
+      batchSize,
+    );
+    logger.log(
+      `Processing ${functionsToInstrumentOrTag.length} functions in ${batches.length} batches of ${batchSize}`,
+    );
+
+    for (let i = 0; i < batches.length; i++) {
+      const batch = batches[i];
+      logger.log(
+        `Processing batch ${i + 1}/${batches.length} with ${batch.length} functions`,
+      );
+
+      // First, tag all functions in this batch that need tagging
+      const functionsToTagInBatch = batch.filter((func) => func.needsTagging);
+
+      await tagResourcesWithSlsTag(
+        taggingClient,
+        functionsToTagInBatch.map((f) => f.FunctionArn),
+      );
+
+      // Then, instrument all functions in this batch that need instrumentation
+      const functionsToInstrumentInBatch = batch.filter(
+        (func) => func.needsInstrumentation,
+      );
+      for (const functionToInstrument of functionsToInstrumentInBatch) {
+        await instrumentWithDatadogCi(
+          functionToInstrument,
+          true,
+          config,
+          instrumentOutcome,
+        );
+      }
     }
 
-    // Uninstrument and untag the functions that need to be uninstrumented
-    for (const functionToUninstrument of functionsToUninstrument) {
-      await instrumentWithDatadogCi(
-        functionToUninstrument,
-        false,
-        config,
-        instrumentOutcome,
+    const unprocessBatches = createFunctionBatches(
+      functionsToUninstrumentOrUntag,
+    );
+    logger.log(
+      `Unprocessing ${functionsToUninstrumentOrUntag.length} functions in ${unprocessBatches.length} batches of 20`,
+    );
+
+    for (let i = 0; i < unprocessBatches.length; i++) {
+      const batch = unprocessBatches[i];
+      logger.log(
+        `Unprocessing batch ${i + 1}/${unprocessBatches.length} with ${batch.length} functions`,
+      );
+
+      // First, uninstrument all functions in this batch that need uninstrumentation
+      const functionsToUninstrumentInBatch = batch.filter(
+        (func) => func.needsUninstrumentation,
+      );
+      for (const functionToUninstrument of functionsToUninstrumentInBatch) {
+        await instrumentWithDatadogCi(
+          functionToUninstrument,
+          false,
+          config,
+          instrumentOutcome,
+        );
+      }
+
+      // Then, untag all functions in this batch that need untagging (but only if uninstrumentation didn't fail)
+      const functionsToUntagInBatch = batch.filter(
+        (func) =>
+          func.needsUntagging &&
+          !(func.FunctionName in instrumentOutcome.uninstrument[FAILED]),
+      );
+
+      await untagResourcesOfSlsTag(
+        taggingClient,
+        functionsToUntagInBatch.map((f) => f.FunctionArn),
       );
     }
-    await untagResourcesOfSlsTag(
-      taggingClient,
-      functionsToUntag.flatMap((f) =>
-        !(f.FunctionName in instrumentOutcome.uninstrument[FAILED])
-          ? f.FunctionArn
-          : [],
-      ),
-    );
     // Add the config apply state to the list
     configApplyStates.push(createApplyStateObject(instrumentOutcome, config));
   }
