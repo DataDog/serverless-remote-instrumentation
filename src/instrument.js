@@ -192,18 +192,18 @@ async function instrumentFunctions(
       `Functions to uninstrument: ${functionsToUninstrumentOrUntag.map((f) => f.FunctionName)}`,
     );
     const batchSize = 50;
-    const batches = createFunctionBatches(
+    const instrumentBatches = createFunctionBatches(
       functionsToInstrumentOrTag,
       batchSize,
     );
     logger.log(
-      `Processing ${functionsToInstrumentOrTag.length} functions in ${batches.length} batches of ${batchSize}`,
+      `Instrumenting ${functionsToInstrumentOrTag.length} functions in ${instrumentBatches.length} batches of ${batchSize}`,
     );
 
-    for (let i = 0; i < batches.length; i++) {
-      const batch = batches[i];
+    for (let i = 0; i < instrumentBatches.length; i++) {
+      const batch = instrumentBatches[i];
       logger.log(
-        `Processing batch ${i + 1}/${batches.length} with ${batch.length} functions`,
+        `Instrumenting batch ${i + 1}/${instrumentBatches.length} with ${batch.length} functions`,
       );
 
       // First, tag all functions in this batch that need tagging
@@ -228,17 +228,17 @@ async function instrumentFunctions(
       }
     }
 
-    const unprocessBatches = createFunctionBatches(
+    const uninstrumentBatches = createFunctionBatches(
       functionsToUninstrumentOrUntag,
     );
     logger.log(
-      `Unprocessing ${functionsToUninstrumentOrUntag.length} functions in ${unprocessBatches.length} batches of 20`,
+      `Uninstrumenting ${functionsToUninstrumentOrUntag.length} functions in ${uninstrumentBatches.length} batches of 20`,
     );
 
-    for (let i = 0; i < unprocessBatches.length; i++) {
-      const batch = unprocessBatches[i];
+    for (let i = 0; i < uninstrumentBatches.length; i++) {
+      const batch = uninstrumentBatches[i];
       logger.log(
-        `Unprocessing batch ${i + 1}/${unprocessBatches.length} with ${batch.length} functions`,
+        `Uninstrumenting batch ${i + 1}/${uninstrumentBatches.length} with ${batch.length} functions`,
       );
 
       // First, uninstrument all functions in this batch that need uninstrumentation
