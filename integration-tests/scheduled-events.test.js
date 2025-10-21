@@ -373,7 +373,7 @@ describe("Remote instrumenter scheduled event tests", () => {
   });
 
   it("correctly tags instrumented functions", async () => {
-    const functions = await createFunctions({}, 21);
+    const functions = await createFunctions({}, 51);
     const functionNames = functions.map((lambda) => lambda.FunctionName);
     const functionArns = functions.map((lambda) => lambda.FunctionArn);
 
@@ -390,14 +390,14 @@ describe("Remote instrumenter scheduled event tests", () => {
 
     await invokeLambdaWithScheduledEvent();
 
-    // For each of the 21 functions
+    // For each of the 51 functions
     await expectFunctionsToBeInstrumented(functionNames);
 
-    // For each of the 21 functions
+    // For each of the 51 functions
     for (const functionArn of functionArns) {
       // Check that the function has the remote instrumenter tag
       const hasTag = await hasRemoteInstrumenterTag(functionArn);
       expect(hasTag).toStrictEqual(true);
     }
-  });
+  }, 120000);
 });
