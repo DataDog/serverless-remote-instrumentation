@@ -377,3 +377,28 @@ describe("removeRemoteInstrumentation", () => {
     expect(applyState.deleteApplyState).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("createFunctionBatches", () => {
+  const functionFoo = {
+    FunctionName: "foo",
+    FunctionArn: "arn:aws:lambda:us-east-2:123456789:function:foo",
+    Runtime: "nodejs18.x",
+    Tags: new Set(["env:prod"]),
+  };
+  test("should create batches of the correct size when the number of functions is greater than the batch size", () => {
+    const functions = Array(100).fill(functionFoo);
+    expect(instrument.createFunctionBatches(functions, 50).length).toBe(2);
+    expect(instrument.createFunctionBatches(functions, 50)[0].length).toBe(50);
+    expect(instrument.createFunctionBatches(functions, 50)[1].length).toBe(50);
+  });
+  test("should create a single batch if the number of functions is less than the batch size", () => {
+    const functions = Array(50).fill(functionFoo);
+    expect(instrument.createFunctionBatches(functions, 50).length).toBe(1);
+    expect(instrument.createFunctionBatches(functions, 50)[0].length).toBe(50);
+  });
+  test("should create a single batch if the number of functions is equal to the batch size", () => {
+    const functions = Array(50).fill(functionFoo);
+    expect(instrument.createFunctionBatches(functions, 50).length).toBe(1);
+    expect(instrument.createFunctionBatches(functions, 50)[0].length).toBe(50);
+  });
+});

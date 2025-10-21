@@ -205,10 +205,8 @@ function filterFunctionsToChangeInstrumentation(
   config,
   instrumentOutcome,
 ) {
-  const functionsToInstrument = [];
-  const functionsToUninstrument = [];
-  const functionsToTag = [];
-  const functionsToUntag = [];
+  const functionsToInstrumentOrTag = [];
+  const functionsToUninstrumentOrUntag = [];
   const emitProcessingLogs = functions.length === 1;
   for (const lambdaFunc of functions) {
     const { instrument, uninstrument, tag, untag } = needsInstrumentationUpdate(
@@ -217,23 +215,19 @@ function filterFunctionsToChangeInstrumentation(
       instrumentOutcome,
       emitProcessingLogs,
     );
-    if (instrument) {
-      functionsToInstrument.push(lambdaFunc);
-    } else if (uninstrument) {
-      functionsToUninstrument.push(lambdaFunc);
-    }
-
-    if (tag) {
-      functionsToTag.push(lambdaFunc);
-    } else if (untag) {
-      functionsToUntag.push(lambdaFunc);
+    if (instrument || tag) {
+      lambdaFunc.needsInstrumentation = instrument;
+      lambdaFunc.needsTagging = tag;
+      functionsToInstrumentOrTag.push(lambdaFunc);
+    } else if (uninstrument || untag) {
+      lambdaFunc.needsUninstrumentation = uninstrument;
+      lambdaFunc.needsUntagging = untag;
+      functionsToUninstrumentOrUntag.push(lambdaFunc);
     }
   }
   return {
-    functionsToInstrument: functionsToInstrument,
-    functionsToUninstrument: functionsToUninstrument,
-    functionsToTag: functionsToTag,
-    functionsToUntag: functionsToUntag,
+    functionsToInstrumentOrTag,
+    functionsToUninstrumentOrUntag,
   };
 }
 exports.filterFunctionsToChangeInstrumentation =

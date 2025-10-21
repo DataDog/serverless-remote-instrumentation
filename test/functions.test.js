@@ -1327,24 +1327,18 @@ describe("filterFunctionsToChangeInstrumentation", () => {
         { key: "foo", values: ["bar"], allow: true, filterType: "tag" },
       ],
     });
-    const {
-      functionsToInstrument,
-      functionsToUninstrument,
-      functionsToTag,
-      functionsToUntag,
-    } = filterFunctionsToChangeInstrumentation(
-      functionsToCheck,
-      config,
-      baseInstrumentOutcome,
-    );
-    expect(functionsToInstrument.length).toBe(1);
-    expect(functionsToInstrument[0].FunctionName).toBe("functionA");
-    expect(functionsToUninstrument.length).toBe(1);
-    expect(functionsToUninstrument[0].FunctionName).toBe("functionB");
-    expect(functionsToTag.length).toBe(1);
-    expect(functionsToTag[0].FunctionName).toBe("functionA");
-    expect(functionsToUntag.length).toBe(1);
-    expect(functionsToUntag[0].FunctionName).toBe("functionB");
+    const { functionsToInstrumentOrTag, functionsToUninstrumentOrUntag } =
+      filterFunctionsToChangeInstrumentation(
+        functionsToCheck,
+        config,
+        baseInstrumentOutcome,
+      );
+    expect(Object.keys(functionsToInstrumentOrTag).length).toBe(1);
+    expect(Object.keys(functionsToUninstrumentOrUntag).length).toBe(1);
+    expect(functionsToInstrumentOrTag[0].needsInstrumentation).toBe(true);
+    expect(functionsToInstrumentOrTag[0].needsTagging).toBe(true);
+    expect(functionsToUninstrumentOrUntag[0].needsUninstrumentation).toBe(true);
+    expect(functionsToUninstrumentOrUntag[0].needsUntagging).toBe(true);
   });
 });
 
