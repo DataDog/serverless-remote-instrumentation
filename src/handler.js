@@ -22,16 +22,16 @@ const {
 } = require("./error-storage");
 const { ResourceNotFoundException } = require("@aws-sdk/client-lambda");
 const {
-  ResourceGroupsTaggingAPIClient,
-} = require("@aws-sdk/client-resource-groups-tagging-api");
-const { S3Client } = require("@aws-sdk/client-s3");
-const {
   getLambdaFunction,
   getAllFunctions,
   enrichFunctionsWithTags,
   getFunctionCount,
 } = require("./functions");
-const { getLambdaClient } = require("./aws-resources");
+const {
+  getLambdaClient,
+  getS3Client,
+  getTaggingClient,
+} = require("./aws-resources");
 const { instrumentFunctions } = require("./instrument");
 const {
   LAMBDA_EVENT,
@@ -43,12 +43,9 @@ const {
   SKIPPED,
 } = require("./consts");
 
-const awsRegion = process.env.AWS_REGION;
 const lambdaClient = getLambdaClient();
-const taggingClient = new ResourceGroupsTaggingAPIClient({
-  region: awsRegion,
-});
-const s3Client = new S3Client({ region: awsRegion });
+const taggingClient = getTaggingClient();
+const s3Client = getS3Client();
 
 exports.handler = async (event, context) => {
   logger.logObject(selectEventFieldsForLogging(event));
