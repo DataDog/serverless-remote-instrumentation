@@ -115,6 +115,11 @@ describe("Remote instrumenter scheduled event tests", () => {
   it.each([
     ["nodejs20.x", Runtime.nodejs20x],
     ["python3.10", Runtime.python310],
+    ["ruby2.5", Runtime.ruby25],
+    ["java21", Runtime.java21],
+    ["dotnet8.0", Runtime.dotnet8],
+    ["provided.al2", Runtime.providedal2],
+    ["provided.al2023", Runtime.providedal2023],
   ])(
     "function with runtime %s gets instrumented",
     async (runtimeName, runtimeValue) => {

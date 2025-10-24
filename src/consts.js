@@ -3,6 +3,16 @@ const NODE = "node";
 exports.NODE = NODE;
 const PYTHON = "python";
 exports.PYTHON = PYTHON;
+const RUBY = "ruby";
+exports.RUBY = RUBY;
+const JAVA = "java";
+exports.JAVA = JAVA;
+const DOTNET = "dotnet";
+exports.DOTNET = DOTNET;
+const PROVIDED_AL2 = "provided.al2";
+exports.PROVIDED_AL2 = PROVIDED_AL2;
+const PROVIDED_AL2023 = "provided.al2023";
+exports.PROVIDED_AL2023 = PROVIDED_AL2023;
 
 const SUPPORTED_RUNTIME_CONFIGURATIONS = {
   [NODE]: {
@@ -18,6 +28,41 @@ const SUPPORTED_RUNTIME_CONFIGURATIONS = {
     getFromJsonConfig: (configJSON) =>
       configJSON.instrumentation_settings?.python_layer_version,
     isSupportedRuntime: (runtime) => runtime.toLowerCase().includes(PYTHON),
+  },
+  [RUBY]: {
+    layerName: "Datadog-Ruby",
+    configField: "rubyLayerVersion",
+    getFromJsonConfig: (configJSON) =>
+      configJSON.instrumentation_settings?.ruby_layer_version,
+    isSupportedRuntime: (runtime) => runtime.toLowerCase().includes(RUBY),
+  },
+  [JAVA]: {
+    layerName: "Datadog-Java",
+    configField: "javaLayerVersion",
+    getFromJsonConfig: (configJSON) =>
+      configJSON.instrumentation_settings?.java_layer_version,
+    isSupportedRuntime: (runtime) => runtime.toLowerCase().includes(JAVA),
+  },
+  [DOTNET]: {
+    layerName: "Datadog-Dotnet",
+    configField: "dotnetLayerVersion",
+    getFromJsonConfig: (configJSON) =>
+      configJSON.instrumentation_settings?.dotnet_layer_version,
+    isSupportedRuntime: (runtime) => runtime.toLowerCase().includes(DOTNET),
+  },
+  [PROVIDED_AL2]: {
+    layerName: "",
+    configField: "",
+    getFromJsonConfig: () => undefined,
+    isSupportedRuntime: (runtime) =>
+      runtime.toLowerCase().includes(PROVIDED_AL2),
+  },
+  [PROVIDED_AL2023]: {
+    layerName: "",
+    configField: "",
+    getFromJsonConfig: () => undefined,
+    isSupportedRuntime: (runtime) =>
+      runtime.toLowerCase().includes(PROVIDED_AL2023),
   },
 };
 exports.SUPPORTED_RUNTIME_CONFIGURATIONS = SUPPORTED_RUNTIME_CONFIGURATIONS;
