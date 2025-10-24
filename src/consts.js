@@ -37,29 +37,25 @@ const SUPPORTED_RUNTIME_CONFIGURATIONS = {
     isSupportedRuntime: (runtime) => runtime.toLowerCase().includes(RUBY),
   },
   [JAVA]: {
-    layerName: "Datadog-Java",
+    layerName: "dd-trace-java",
     configField: "javaLayerVersion",
     getFromJsonConfig: (configJSON) =>
       configJSON.instrumentation_settings?.java_layer_version,
     isSupportedRuntime: (runtime) => runtime.toLowerCase().includes(JAVA),
   },
   [DOTNET]: {
-    layerName: "Datadog-Dotnet",
+    layerName: "dd-trace-dotnet",
     configField: "dotnetLayerVersion",
     getFromJsonConfig: (configJSON) =>
       configJSON.instrumentation_settings?.dotnet_layer_version,
     isSupportedRuntime: (runtime) => runtime.toLowerCase().includes(DOTNET),
   },
   [PROVIDED_AL2]: {
-    layerName: "",
-    configField: "",
     getFromJsonConfig: () => undefined,
     isSupportedRuntime: (runtime) =>
       runtime.toLowerCase().includes(PROVIDED_AL2),
   },
   [PROVIDED_AL2023]: {
-    layerName: "",
-    configField: "",
     getFromJsonConfig: () => undefined,
     isSupportedRuntime: (runtime) =>
       runtime.toLowerCase().includes(PROVIDED_AL2023),
