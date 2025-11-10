@@ -3,6 +3,7 @@
   "description": "Remote instrumentater lambda function for Datadog Serverless Remote Instrumentation",
   "version": "1.0.0",
   "license": "Apache-2.0",
+  "type": "module",
   "dependencies": {
     "@datadog/datadog-ci-base": "^3.21.4",
     "@datadog/datadog-ci-plugin-lambda": "^3.21.4",
@@ -19,6 +20,8 @@
     "@datadog/datadog-api-client": "^1.43.0",
     "@types/jest": "^30.0.0",
     "@types/lodash": "^4.17.20",
+    "@typescript-eslint/eslint-plugin": "^8.46.3",
+    "@typescript-eslint/parser": "^8.46.3",
     "aws-cdk": "^2.1029.2",
     "aws-cdk-lib": "^2.216.0",
     "cfn-response": "^1.0.1",
@@ -41,6 +44,9 @@
     "node": ">=20.0.0 <21.0.0"
   },
   "scripts": {
+    "prebuild": "rm -rf dist",
+    "build": "tsc",
+    "type-check": "tsc --noEmit",
     "format": "eslint --fix .",
     "lint": "eslint -c eslint.config.mjs . ",
     "lint-yaml": "eslint -c eslint.config.yaml.mjs . ",
