@@ -1,11 +1,16 @@
-const {
+import {
   TagResourcesCommand,
   UntagResourcesCommand,
-} = require("@aws-sdk/client-resource-groups-tagging-api");
-const { DD_SLS_REMOTE_INSTRUMENTER_VERSION, VERSION } = require("./consts");
-const { logger } = require("./logger");
+} from "@aws-sdk/client-resource-groups-tagging-api";
+import { DD_SLS_REMOTE_INSTRUMENTER_VERSION, VERSION } from "./consts";
+import { logger } from "./logger";
 
-async function tagBatch(client, functionArns, operationName, createCommand) {
+async function tagBatch(
+  client: any,
+  functionArns: string[],
+  operationName: string,
+  createCommand: (batch: string[]) => any,
+): Promise<any[]> {
   if (functionArns.length === 0) {
     return [];
   }
@@ -42,11 +47,11 @@ async function tagBatch(client, functionArns, operationName, createCommand) {
 }
 
 const applyFunctionTags = async (
-  client,
-  functionArns,
-  operationName,
-  createCommand,
-) => {
+  client: any,
+  functionArns: string[],
+  operationName: string,
+  createCommand: (batch: string[]) => any,
+): Promise<void> => {
   let tries = 0;
   let functionsToTag = [...functionArns];
   while (functionsToTag.length > 0 && tries < 3) {
@@ -61,7 +66,8 @@ const applyFunctionTags = async (
     functionsToTag = results
       .flatMap((result) =>
         Object.entries(result.FailedResourcesMap || {}).filter(
-          ([, value]) => value.ErrorCode !== "InvalidParameterException",
+          ([, value]: [string, any]) =>
+            value.ErrorCode !== "InvalidParameterException",
         ),
       )
       .map(([key]) => key);
@@ -79,14 +85,15 @@ const applyFunctionTags = async (
   }
 };
 
-exports.applyFunctionTags = applyFunctionTags;
-
-async function tagResourcesWithSlsTag(client, functionArns) {
+export async function tagResourcesWithSlsTag(
+  client: any,
+  functionArns: string[],
+): Promise<void> {
   logger.log(
     `Tagging function ARNs '${functionArns}' with tag '${DD_SLS_REMOTE_INSTRUMENTER_VERSION}'`,
   );
 
-  const createTagCommand = (batch) => {
+  const createTagCommand = (batch: string[]) => {
     const input = {
       ResourceARNList: batch,
       Tags: { [DD_SLS_REMOTE_INSTRUMENTER_VERSION]: `v${VERSION}` }, // use [] to specify KEY is a variable
@@ -96,14 +103,16 @@ async function tagResourcesWithSlsTag(client, functionArns) {
 
   await applyFunctionTags(client, functionArns, "tagging", createTagCommand);
 }
-exports.tagResourcesWithSlsTag = tagResourcesWithSlsTag;
 
-async function untagResourcesOfSlsTag(client, functionArns) {
+export async function untagResourcesOfSlsTag(
+  client: any,
+  functionArns: string[],
+): Promise<void> {
   logger.log(
     `Removing tag '${DD_SLS_REMOTE_INSTRUMENTER_VERSION}' from function ARNs '${functionArns}'`,
   );
 
-  const createUntagCommand = (batch) => {
+  const createUntagCommand = (batch: string[]) => {
     const input = {
       ResourceARNList: batch,
       TagKeys: [DD_SLS_REMOTE_INSTRUMENTER_VERSION],
@@ -118,4 +127,5 @@ async function untagResourcesOfSlsTag(client, functionArns) {
     createUntagCommand,
   );
 }
-exports.untagResourcesOfSlsTag = untagResourcesOfSlsTag;
+
+export { applyFunctionTags };

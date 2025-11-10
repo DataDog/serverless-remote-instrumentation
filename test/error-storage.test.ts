@@ -1,9 +1,9 @@
-const {
+import {
   identifyNewErrorsAndResolvedErrors,
   listErrors,
   emptyBucket,
-} = require("../src/error-storage");
-const { FAILED, SKIPPED, SUCCEEDED } = require("../src/consts");
+} from "../src/error-storage";
+import { FAILED, SKIPPED, SUCCEEDED } from "../src/consts";
 
 const mockS3 = {
   send: jest.fn(),
@@ -120,7 +120,9 @@ describe("listErrors test suite", () => {
 });
 
 describe("identifyErrorsAndResolvedErrors test suite", () => {
-  test.each([
+  test.each<
+    [string, any, string[], { newErrors: any[]; resolvedErrors: string[] }]
+  >([
     [
       "nothing happened, no errors, nothing returned",
       {
@@ -319,13 +321,21 @@ describe("identifyErrorsAndResolvedErrors test suite", () => {
         resolvedErrors: ["function1", "function1a", "function4"],
       },
     ],
-  ])("%s", (_, instrumentOutcome, previousErrors, expected) => {
-    const result = identifyNewErrorsAndResolvedErrors(
-      instrumentOutcome,
-      previousErrors,
-    );
-    expect(result).toStrictEqual(expected);
-  });
+  ])(
+    "%s",
+    (
+      _: string,
+      instrumentOutcome: any,
+      previousErrors: string[],
+      expected: { newErrors: any[]; resolvedErrors: string[] },
+    ) => {
+      const result = identifyNewErrorsAndResolvedErrors(
+        instrumentOutcome,
+        previousErrors,
+      );
+      expect(result).toStrictEqual(expected);
+    },
+  );
 });
 
 describe("emptyBucket test suite", () => {
@@ -462,7 +472,7 @@ describe("emptyBucket test suite", () => {
 
   test("handles large number of objects requiring batching", async () => {
     // Create 1500 objects to test batching
-    const objects = Array.from({ length: 1500 }, (_, i) => ({
+    const objects = Array.from({ length: 1500 }, (_, i: number) => ({
       Key: `object${i}.json`,
     }));
 

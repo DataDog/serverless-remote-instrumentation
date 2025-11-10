@@ -1,23 +1,23 @@
-const { pollUntilTrue } = require("./utilities/poll-until-true");
-const {
+import { pollUntilTrue } from "./utilities/poll-until-true";
+import {
   isFunctionInstrumented,
   isFunctionUninstrumented,
-} = require("./utilities/is-function-instrumented");
-const {
+} from "./utilities/is-function-instrumented";
+import {
   setRemoteConfig,
   clearKnownRemoteConfigs,
   clearRemoteConfigs,
-} = require("./utilities/remote-config");
-const {
+} from "./utilities/remote-config";
+import {
   createFunction,
   createFunctions,
   deleteTestFunctions,
   tagFunction,
-} = require("./utilities/lambda-functions");
-const {
+} from "./utilities/lambda-functions";
+import {
   invokeLambdaWithScheduledEvent,
   invokeLambdaWithLambdaManagementEvent,
-} = require("./utilities/remote-instrumenter-invocations");
+} from "./utilities/remote-instrumenter-invocations";
 
 describe("Remote instrumenter lambda management event tests", () => {
   afterAll(async () => {
@@ -166,7 +166,7 @@ describe("Remote instrumenter lambda management event tests", () => {
       },
       20,
     );
-    const functionNames = functions.map((lambda) => lambda.FunctionName);
+    const functionNames = functions.map((lambda: any) => lambda.FunctionName);
 
     // For each of the 20 functions
     for (const functionName of functionNames) {

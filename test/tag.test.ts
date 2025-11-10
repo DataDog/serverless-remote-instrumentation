@@ -1,11 +1,11 @@
-const { applyFunctionTags } = require("../src/tag");
+import { applyFunctionTags } from "../src/tag";
 
 jest.mock("@aws-sdk/client-resource-groups-tagging-api", () => ({
-  TagResourcesCommand: jest.fn().mockImplementation((input) => ({
+  TagResourcesCommand: jest.fn().mockImplementation((input: any) => ({
     input,
     constructor: { name: "TagResourcesCommand" },
   })),
-  UntagResourcesCommand: jest.fn().mockImplementation((input) => ({
+  UntagResourcesCommand: jest.fn().mockImplementation((input: any) => ({
     input,
     constructor: { name: "UntagResourcesCommand" },
   })),
@@ -18,14 +18,11 @@ jest.mock("../src/logger", () => ({
   },
 }));
 
-const {
-  tagResourcesWithSlsTag,
-  untagResourcesOfSlsTag,
-} = require("../src/tag");
+import { tagResourcesWithSlsTag, untagResourcesOfSlsTag } from "../src/tag";
 
 describe("Tag Functions", () => {
-  let mockClient;
-  let mockSend;
+  let mockClient: any;
+  let mockSend: any;
 
   beforeEach(() => {
     mockSend = jest.fn();
@@ -61,7 +58,8 @@ describe("Tag Functions", () => {
     it("should process exactly 20 resources in a single batch", async () => {
       const functionArns = Array.from(
         { length: 20 },
-        (_, i) => `arn:aws:lambda:us-east-1:123456789012:function:test-${i}`,
+        (_: any, i: number) =>
+          `arn:aws:lambda:us-east-1:123456789012:function:test-${i}`,
       );
       mockSend.mockResolvedValue({});
 
@@ -75,7 +73,8 @@ describe("Tag Functions", () => {
     it("should process 21 resources in two batches", async () => {
       const functionArns = Array.from(
         { length: 21 },
-        (_, i) => `arn:aws:lambda:us-east-1:123456789012:function:test-${i}`,
+        (_: any, i: number) =>
+          `arn:aws:lambda:us-east-1:123456789012:function:test-${i}`,
       );
       mockSend.mockResolvedValue({});
 
@@ -95,7 +94,8 @@ describe("Tag Functions", () => {
     it("should process 40 resources in two batches of 20 each", async () => {
       const functionArns = Array.from(
         { length: 40 },
-        (_, i) => `arn:aws:lambda:us-east-1:123456789012:function:test-${i}`,
+        (_: any, i: number) =>
+          `arn:aws:lambda:us-east-1:123456789012:function:test-${i}`,
       );
       mockSend.mockResolvedValue({});
 
@@ -134,7 +134,8 @@ describe("Tag Functions", () => {
     it("should process exactly 20 resources in a single batch", async () => {
       const functionArns = Array.from(
         { length: 20 },
-        (_, i) => `arn:aws:lambda:us-east-1:123456789012:function:test-${i}`,
+        (_: any, i: number) =>
+          `arn:aws:lambda:us-east-1:123456789012:function:test-${i}`,
       );
       mockSend.mockResolvedValue({});
 
@@ -148,7 +149,8 @@ describe("Tag Functions", () => {
     it("should process 21 resources in two batches", async () => {
       const functionArns = Array.from(
         { length: 21 },
-        (_, i) => `arn:aws:lambda:us-east-1:123456789012:function:test-${i}`,
+        (_: any, i: number) =>
+          `arn:aws:lambda:us-east-1:123456789012:function:test-${i}`,
       );
       mockSend.mockResolvedValue({});
 
@@ -168,7 +170,8 @@ describe("Tag Functions", () => {
     it("should process 40 resources in two batches of 20 each", async () => {
       const functionArns = Array.from(
         { length: 40 },
-        (_, i) => `arn:aws:lambda:us-east-1:123456789012:function:test-${i}`,
+        (_: any, i: number) =>
+          `arn:aws:lambda:us-east-1:123456789012:function:test-${i}`,
       );
       mockSend.mockResolvedValue({});
 
@@ -195,13 +198,19 @@ describe("Tag Functions", () => {
       // 25 ARNs to ensure batching (20 + 5)
       const functionArns = Array.from(
         { length: 25 },
-        (_, i) => `arn:aws:lambda:us-east-1:123456789012:function:test-${i}`,
+        (_: any, i: number) =>
+          `arn:aws:lambda:us-east-1:123456789012:function:test-${i}`,
       );
 
       // Call the function
-      await applyFunctionTags(mockClient, functionArns, "tagging", (batch) => ({
-        input: { ResourceARNList: batch },
-      }));
+      await applyFunctionTags(
+        mockClient,
+        functionArns,
+        "tagging",
+        (batch: string[]) => ({
+          input: { ResourceARNList: batch },
+        }),
+      );
 
       // Should call send twice (20 + 5)
       expect(mockSend).toHaveBeenCalledTimes(2);
@@ -212,7 +221,8 @@ describe("Tag Functions", () => {
       // Prepare 25 ARNs (so two batches: 20 + 5)
       const functionArns = Array.from(
         { length: 25 },
-        (_, i) => `arn:aws:lambda:us-east-1:123456789012:function:test-${i}`,
+        (_: any, i: number) =>
+          `arn:aws:lambda:us-east-1:123456789012:function:test-${i}`,
       );
 
       // First call: fail 2 resources in the first batch, succeed in the second batch
@@ -251,9 +261,14 @@ describe("Tag Functions", () => {
 
       const mockClient = { send: mockSend };
 
-      await applyFunctionTags(mockClient, functionArns, "tagging", (batch) => ({
-        input: { ResourceARNList: batch },
-      }));
+      await applyFunctionTags(
+        mockClient,
+        functionArns,
+        "tagging",
+        (batch: string[]) => ({
+          input: { ResourceARNList: batch },
+        }),
+      );
 
       // First call: 20 ARNs (first batch)
       expect(mockSend.mock.calls[0][0].input.ResourceARNList).toHaveLength(20);
@@ -272,7 +287,8 @@ describe("Tag Functions", () => {
       // Prepare 5 ARNs for testing
       const functionArns = Array.from(
         { length: 5 },
-        (_, i) => `arn:aws:lambda:us-east-1:123456789012:function:test-${i}`,
+        (_: any, i: number) =>
+          `arn:aws:lambda:us-east-1:123456789012:function:test-${i}`,
       );
 
       // Persistent failures for 2 resources
@@ -294,9 +310,14 @@ describe("Tag Functions", () => {
 
       // Expect the function to throw an error
       await expect(
-        applyFunctionTags(mockClient, functionArns, "tagging", (batch) => ({
-          input: { ResourceARNList: batch },
-        })),
+        applyFunctionTags(
+          mockClient,
+          functionArns,
+          "tagging",
+          (batch: string[]) => ({
+            input: { ResourceARNList: batch },
+          }),
+        ),
       ).rejects.toThrow(
         'Failed to process 2 resources after 3 tries ["arn:aws:lambda:us-east-1:123456789012:function:test-1","arn:aws:lambda:us-east-1:123456789012:function:test-3"]',
       );

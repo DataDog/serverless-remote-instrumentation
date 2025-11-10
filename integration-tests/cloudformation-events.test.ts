@@ -1,26 +1,26 @@
-const { pollUntilTrue } = require("./utilities/poll-until-true");
-const {
+import { pollUntilTrue } from "./utilities/poll-until-true";
+import {
   isFunctionInstrumented,
   isFunctionUninstrumented,
-} = require("./utilities/is-function-instrumented");
-const {
+} from "./utilities/is-function-instrumented";
+import {
   setRemoteConfig,
   clearKnownRemoteConfigs,
   clearRemoteConfigs,
-} = require("./utilities/remote-config");
-const { sleep } = require("./utilities/sleep");
-const { doesObjectExist, deleteObject } = require("./utilities/s3-helpers");
-const {
+} from "./utilities/remote-config";
+import { sleep } from "./utilities/sleep";
+import { doesObjectExist, deleteObject } from "./utilities/s3-helpers";
+import {
   createFunction,
   deleteTestFunctions,
-} = require("./utilities/lambda-functions");
-const {
+} from "./utilities/lambda-functions";
+import {
   invokeLambdaWithCFNCreateEvent,
   invokeLambdaWithCFNDeleteEvent,
-} = require("./utilities/remote-instrumenter-invocations");
+} from "./utilities/remote-instrumenter-invocations";
 
 describe("Remote instrumenter cloudformation event tests", () => {
-  let keysToDelete = [];
+  let keysToDelete: string[] = [];
 
   afterAll(async () => {
     await clearRemoteConfigs();

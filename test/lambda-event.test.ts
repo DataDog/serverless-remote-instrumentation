@@ -1,4 +1,4 @@
-const {
+import {
   isScheduledInvocationEvent,
   isStackDeletedEvent,
   isStackCreatedEvent,
@@ -9,7 +9,7 @@ const {
   isUntagResourceEvent,
   shouldSkipEvent,
   selectEventFieldsForLogging,
-} = require("../src/lambda-event");
+} from "../src/lambda-event";
 
 describe("isScheduledInvocationEvent", () => {
   it("should return true if the event is a scheduled invocation event", () => {

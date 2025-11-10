@@ -1,4 +1,4 @@
-const { logger } = require("../src/logger");
+import { logger } from "../src/logger";
 
 describe("redact", () => {
   test.each([
@@ -11,14 +11,17 @@ describe("redact", () => {
     ["ddAPIKey:0123456789abcdef0123456789abcdef", true],
     ["DD_API_KEY:2123", false],
     ["DD_API_KEY:0123456789abcdef0123456789^^^&&&", false],
-  ])("should mask Datadog API Keys", (testLog, expectToRedact) => {
-    const redactedLog = logger.redact(testLog);
-    if (expectToRedact) {
-      expect(redactedLog).toBe(`"DD_API_KEY":"****"`);
-    } else {
-      expect(redactedLog).toBe(testLog);
-    }
-  });
+  ])(
+    "should mask Datadog API Keys",
+    (testLog: string, expectToRedact: boolean) => {
+      const redactedLog = logger.redact(testLog);
+      if (expectToRedact) {
+        expect(redactedLog).toBe(`"DD_API_KEY":"****"`);
+      } else {
+        expect(redactedLog).toBe(testLog);
+      }
+    },
+  );
   test.each([
     ["AWS_ACCESS_KEY_ID:AROADBQP57FF2EXAMPLE", true],
     ["AWS_ACCESS_KEY_ID=AROADBQP57FF2EXAMPLE", true],
@@ -29,14 +32,17 @@ describe("redact", () => {
     ["accesskeyid:AROADBQP57FF2EXAMPLE", true],
     ["AWS_ACCESS_KEY_ID:EXAMPLE", false],
     ["AWS_ACCESS_KEY_ID:AROADBQP57FF2E^^^&&&", false],
-  ])("should mask AWS Access Key IDs", (testLog, expectToRedact) => {
-    const redactedLog = logger.redact(testLog);
-    if (expectToRedact) {
-      expect(redactedLog).toBe(`"AWS_ACCESS_KEY_ID":"****"`);
-    } else {
-      expect(redactedLog).toBe(testLog);
-    }
-  });
+  ])(
+    "should mask AWS Access Key IDs",
+    (testLog: string, expectToRedact: boolean) => {
+      const redactedLog = logger.redact(testLog);
+      if (expectToRedact) {
+        expect(redactedLog).toBe(`"AWS_ACCESS_KEY_ID":"****"`);
+      } else {
+        expect(redactedLog).toBe(testLog);
+      }
+    },
+  );
   test.each([
     [
       "AWS_SECRET_ACCESS_KEY: aws wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
@@ -62,14 +68,17 @@ describe("redact", () => {
       "AWS_SECRET_ACCESS_KEY: aws wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAM^^^&&&",
       false,
     ],
-  ])("should mask AWS Secret Access Key", (testLog, expectToRedact) => {
-    const redactedLog = logger.redact(testLog);
-    if (expectToRedact) {
-      expect(redactedLog).toBe(`"AWS_SECRET_ACCESS_KEY":"****"`);
-    } else {
-      expect(redactedLog).toBe(testLog);
-    }
-  });
+  ])(
+    "should mask AWS Secret Access Key",
+    (testLog: string, expectToRedact: boolean) => {
+      const redactedLog = logger.redact(testLog);
+      if (expectToRedact) {
+        expect(redactedLog).toBe(`"AWS_SECRET_ACCESS_KEY":"****"`);
+      } else {
+        expect(redactedLog).toBe(testLog);
+      }
+    },
+  );
   test.each([
     ["AWS_SESSION_TOKEN:XYZ//////////ABC123+def/XYZ456+/lmno11111111,", true],
     ["AWS_SESSION_TOKEN=XYZ//////////ABC123+def/XYZ456+/lmno11111111,", true],
@@ -84,14 +93,17 @@ describe("redact", () => {
     ],
     ["awssessiontoken:XYZ//////////ABC123+def/XYZ456+/lmno11111111,", true],
     ["AWS_SESSION_TOKEN:XYZ//////////ABC123+def/XYZ456+/lmno11111111", false],
-  ])("should mask AWS Session Token", (testLog, expectToRedact) => {
-    const redactedLog = logger.redact(testLog);
-    if (expectToRedact) {
-      expect(redactedLog).toBe(`"AWS_SESSION_TOKEN":"****",`);
-    } else {
-      expect(redactedLog).toBe(testLog);
-    }
-  });
+  ])(
+    "should mask AWS Session Token",
+    (testLog: string, expectToRedact: boolean) => {
+      const redactedLog = logger.redact(testLog);
+      if (expectToRedact) {
+        expect(redactedLog).toBe(`"AWS_SESSION_TOKEN":"****",`);
+      } else {
+        expect(redactedLog).toBe(testLog);
+      }
+    },
+  );
 });
 
 describe("log", () => {
@@ -106,13 +118,13 @@ describe("log", () => {
     ["info", true],
     ["warn", false],
     ["error", false],
-  ])("should log", (logLevel, expectToLog) => {
+  ])("should log", async (logLevel: string, expectToLog: boolean) => {
     process.env.DD_LOG_LEVEL = logLevel;
     // Reload the logger module to pick up the new environment variable
     jest.resetModules();
-    const { logger } = require("../src/logger");
+    const { logger: freshLogger } = await import("../src/logger");
     const consoleLogSpy = jest.spyOn(console, "log");
-    logger.log("test");
+    freshLogger.log("test");
     if (expectToLog) {
       expect(consoleLogSpy).toHaveBeenCalledWith(
         expect.stringContaining("test"),
@@ -136,13 +148,13 @@ describe("warn", () => {
     ["info", true],
     ["warn", true],
     ["error", false],
-  ])("should log", (logLevel, expectToLog) => {
+  ])("should log", async (logLevel: string, expectToLog: boolean) => {
     process.env.DD_LOG_LEVEL = logLevel;
     // Reload the logger module to pick up the new environment variable
     jest.resetModules();
-    const { logger } = require("../src/logger");
+    const { logger: freshLogger } = await import("../src/logger");
     const consoleLogSpy = jest.spyOn(console, "warn");
-    logger.warn("test");
+    freshLogger.warn("test");
     if (expectToLog) {
       expect(consoleLogSpy).toHaveBeenCalledWith(
         expect.stringContaining("test"),
@@ -166,13 +178,13 @@ describe("error", () => {
     ["info", true],
     ["warn", true],
     ["error", true],
-  ])("should log", (logLevel, expectToLog) => {
+  ])("should log", async (logLevel: string, expectToLog: boolean) => {
     process.env.DD_LOG_LEVEL = logLevel;
     // Reload the logger module to pick up the new environment variable
     jest.resetModules();
-    const { logger } = require("../src/logger");
+    const { logger: freshLogger } = await import("../src/logger");
     const consoleLogSpy = jest.spyOn(console, "error");
-    logger.error("test");
+    freshLogger.error("test");
     if (expectToLog) {
       expect(consoleLogSpy).toHaveBeenCalledWith(
         expect.stringContaining("test"),
@@ -183,3 +195,5 @@ describe("error", () => {
     consoleLogSpy.mockRestore();
   });
 });
+
+export {};

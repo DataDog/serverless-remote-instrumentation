@@ -1,14 +1,14 @@
-const axios = require("axios");
-const { logger } = require("./logger");
-const {
+import axios from "axios";
+import { logger } from "./logger";
+import {
   DeleteObjectCommand,
   GetObjectCommand,
   PutObjectCommand,
   NoSuchKey,
   S3ServiceException,
-} = require("@aws-sdk/client-s3");
-const crypto = require("crypto");
-const {
+} from "@aws-sdk/client-s3";
+import crypto from "crypto";
+import {
   ENTITY_TYPES,
   FILTER_TYPES,
   RC_PRODUCT,
@@ -17,25 +17,79 @@ const {
   CONFIG_CACHE_TTL_MS,
   CONFIG_STATUS_EXPIRED,
   SUPPORTED_RUNTIME_CONFIGURATIONS,
-} = require("./consts");
-const { getApplyState } = require("./apply-state");
-const { sleep } = require("./sleep");
+} from "./consts";
+import { getApplyState } from "./apply-state";
+import { sleep } from "./sleep";
+
+interface RuleFilter {
+  key: string;
+  values: string[];
+  allow: boolean;
+  filterType: string;
+}
+
+interface ConfigMeta {
+  custom?: {
+    v?: number;
+  };
+}
+
+interface ConfigJSON {
+  config_version: number;
+  entity_type: string;
+  instrumentation_settings?: {
+    node_layer_version?: number;
+    python_layer_version?: number;
+    extension_version?: number;
+    dd_trace_enabled?: boolean;
+    dd_serverless_logs_enabled?: boolean;
+  };
+  priority: number;
+  rule_filters: Array<{
+    key: string;
+    values: string[];
+    allow: boolean;
+    filter_type: string;
+  }>;
+}
+
+interface ConfigCache {
+  configs: RcConfig[] | null;
+  expirationTime: number | null;
+}
 
 // Initialize config cache
-const CONFIG_CACHE = {
+export const CONFIG_CACHE: ConfigCache = {
   configs: null,
   expirationTime: null,
 };
-exports.CONFIG_CACHE = CONFIG_CACHE;
 
-class RcConfig {
-  constructor(configID, configJSON, configMeta) {
+export class RcConfig {
+  configID!: string;
+  rcConfigVersion!: number;
+  configVersion!: number;
+  entityType!: string;
+  extensionVersion?: number;
+  ddTraceEnabled?: boolean;
+  ddServerlessLogsEnabled?: boolean;
+  priority!: number;
+  ruleFilters!: RuleFilter[];
+  awsAccountId?: string;
+  awsRegion?: string;
+  instrumenterFunctionName?: string;
+  [key: string]: any;
+
+  constructor(
+    configID: string,
+    configJSON: ConfigJSON,
+    configMeta: ConfigMeta,
+  ) {
     this.setConfigID(configID);
     this.setRcConfigVersion(configMeta.custom?.v);
     this.setConfigVersion(configJSON.config_version);
     this.setEntityType(configJSON.entity_type);
 
-    Object.values(SUPPORTED_RUNTIME_CONFIGURATIONS).forEach((config) => {
+    Object.values(SUPPORTED_RUNTIME_CONFIGURATIONS).forEach((config: any) => {
       this.setField(
         config.configField,
         config.getFromJsonConfig(configJSON),
@@ -56,12 +110,12 @@ class RcConfig {
     this.setRuleFilters(configJSON.rule_filters);
   }
 
-  configurationError(message) {
+  configurationError(message: string): Error {
     logger.error(message);
     return Error(`Received invalid configuration: ${message}`);
   }
 
-  setConfigID(configID) {
+  setConfigID(configID: any): void {
     if (typeof configID === "string") {
       this.configID = configID;
     } else {
@@ -71,7 +125,7 @@ class RcConfig {
     }
   }
 
-  setRcConfigVersion(rcConfigVersion) {
+  setRcConfigVersion(rcConfigVersion: any): void {
     if (typeof rcConfigVersion === "number") {
       this.rcConfigVersion = rcConfigVersion;
     } else {
@@ -81,7 +135,7 @@ class RcConfig {
     }
   }
 
-  setConfigVersion(configVersion) {
+  setConfigVersion(configVersion: any): void {
     if (typeof configVersion === "number") {
       this.configVersion = configVersion;
     } else {
@@ -91,7 +145,7 @@ class RcConfig {
     }
   }
 
-  setEntityType(entityType) {
+  setEntityType(entityType: any): void {
     if (typeof entityType === "string" && ENTITY_TYPES.has(entityType)) {
       this.entityType = entityType;
     } else {
@@ -101,7 +155,12 @@ class RcConfig {
     }
   }
 
-  setField(field, value, type, allowUndefined = false) {
+  setField(
+    field: string,
+    value: any,
+    type: string,
+    allowUndefined = false,
+  ): void {
     if ((allowUndefined && value === undefined) || typeof value === type) {
       this[field] = value;
     } else {
@@ -111,7 +170,7 @@ class RcConfig {
     }
   }
 
-  setExtensionVersion(extensionVersion) {
+  setExtensionVersion(extensionVersion: any): void {
     if (
       extensionVersion === undefined ||
       typeof extensionVersion === "number"
@@ -124,7 +183,7 @@ class RcConfig {
     }
   }
 
-  setDDTraceEnabled(ddTraceEnabled) {
+  setDDTraceEnabled(ddTraceEnabled: any): void {
     if (ddTraceEnabled === undefined || typeof ddTraceEnabled === "boolean") {
       this.ddTraceEnabled = ddTraceEnabled;
     } else {
@@ -134,7 +193,7 @@ class RcConfig {
     }
   }
 
-  setDDServerlessLogsEnabled(ddServerlessLogsEnabled) {
+  setDDServerlessLogsEnabled(ddServerlessLogsEnabled: any): void {
     if (
       ddServerlessLogsEnabled === undefined ||
       typeof ddServerlessLogsEnabled === "boolean"
@@ -147,7 +206,7 @@ class RcConfig {
     }
   }
 
-  setPriority(priority) {
+  setPriority(priority: any): void {
     if (typeof priority === "number") {
       this.priority = priority;
     } else {
@@ -157,7 +216,7 @@ class RcConfig {
     }
   }
 
-  setRuleFilters(ruleFilters) {
+  setRuleFilters(ruleFilters: any): void {
     if (Array.isArray(ruleFilters)) {
       const processedFilters = ruleFilters.map((filter) => ({
         key: filter.key,
@@ -196,9 +255,12 @@ class RcConfig {
     }
   }
 }
-exports.RcConfig = RcConfig;
 
-async function getConfigsFromRC(s3Client, accountID, region) {
+async function getConfigsFromRC(
+  s3Client: any,
+  accountID: string,
+  region: string,
+): Promise<RcConfig[]> {
   const applyState = await getApplyState(s3Client);
   const payload = {
     client: {
@@ -225,13 +287,13 @@ async function getConfigsFromRC(s3Client, accountID, region) {
     cached_target_files: [],
   };
 
-  let configs = [];
+  let configs: RcConfig[] = [];
   await axios
     .post(REMOTE_CONFIG_URL, payload)
-    .then(function handleResponse(response) {
+    .then(function handleResponse(response: any) {
       configs = getConfigsFromResponse(response);
     })
-    .catch(function handleError(error) {
+    .catch(function handleError(error: any) {
       logger.error(error);
       throw new Error("Failed to retrieve configs");
     });
@@ -242,7 +304,7 @@ async function getConfigsFromRC(s3Client, accountID, region) {
   return configs;
 }
 
-function getConfigsFromResponse(response) {
+function getConfigsFromResponse(response: any): RcConfig[] {
   if (!response.data) {
     throw new Error("Failed to retrieve configs");
   }
@@ -254,14 +316,14 @@ function getConfigsFromResponse(response) {
   // Map path to config for each target file
   const targetFiles = response.data.target_files ?? [];
   const targetFileMapping = targetFiles.reduce(
-    (acc, targetFile) => ({
+    (acc: any, targetFile: any) => ({
       ...acc,
       [targetFile.path]: targetFile.raw ?? undefined,
     }),
     {},
   );
   const configPaths = response.data.client_configs ?? [];
-  let parsedConfigFiles = [];
+  let parsedConfigFiles: RcConfig[] = [];
   // For each config path, find the config data and signed target metadata
   for (const configPath of configPaths) {
     // Find the target file or error if not found
@@ -291,7 +353,7 @@ function getConfigsFromResponse(response) {
         configMeta,
       );
       parsedConfigFiles.push(rcConfig);
-    } catch (e) {
+    } catch (e: any) {
       throw new Error("Error parsing configs: " + e.message);
     }
   }
@@ -302,11 +364,14 @@ function getConfigsFromResponse(response) {
   }
   return parsedConfigFiles;
 }
-exports.getConfigsFromResponse = getConfigsFromResponse;
+export { getConfigsFromResponse };
 
-async function getConfigs(s3Client, context) {
+export async function getConfigs(
+  s3Client: any,
+  context: any,
+): Promise<RcConfig[]> {
   if (isCacheValid()) {
-    return CONFIG_CACHE.configs;
+    return CONFIG_CACHE.configs!;
   }
 
   const awsAccountId = context.invokedFunctionArn?.split(":")[4];
@@ -342,11 +407,13 @@ async function getConfigs(s3Client, context) {
 
   return configsFromRC;
 }
-exports.getConfigs = getConfigs;
 
-async function configHasChanged(client, configs) {
+export async function configHasChanged(
+  client: any,
+  configs: RcConfig[],
+): Promise<boolean> {
   const newConfigHash = crypto
-    .createHash("sha256", "datadog-remote-instrumenter")
+    .createHash("sha256", "datadog-remote-instrumenter" as any)
     .update(JSON.stringify(configs))
     .digest("hex");
   const bucketName = process.env.DD_S3_BUCKET;
@@ -368,7 +435,7 @@ async function configHasChanged(client, configs) {
       );
     }
     return configChanged;
-  } catch (caught) {
+  } catch (caught: any) {
     if (caught instanceof NoSuchKey) {
       logger.error(
         `Error from S3 while getting object "${CONFIG_HASH_KEY}" from "${bucketName}". No such key exists.`,
@@ -385,9 +452,11 @@ async function configHasChanged(client, configs) {
     }
   }
 }
-exports.configHasChanged = configHasChanged;
 
-async function getConfigsWithRetry(s3Client, context) {
+export async function getConfigsWithRetry(
+  s3Client: any,
+  context: any,
+): Promise<{ configs: RcConfig[]; configChanged: boolean }> {
   let configs = await getConfigs(s3Client, context);
   let configChanged = await configHasChanged(s3Client, configs);
 
@@ -415,11 +484,13 @@ async function getConfigsWithRetry(s3Client, context) {
   }
   return { configs, configChanged };
 }
-exports.getConfigsWithRetry = getConfigsWithRetry;
 
-async function updateConfigHash(client, configs) {
+export async function updateConfigHash(
+  client: any,
+  configs: RcConfig[],
+): Promise<void> {
   const newConfigHash = crypto
-    .createHash("sha256", "datadog-remote-instrumenter")
+    .createHash("sha256", "datadog-remote-instrumenter" as any)
     .update(JSON.stringify(configs))
     .digest("hex");
   const bucketName = process.env.DD_S3_BUCKET;
@@ -432,7 +503,7 @@ async function updateConfigHash(client, configs) {
   try {
     await client.send(command);
     logger.log(`Updated config hash with new instrumentation config.`);
-  } catch (caught) {
+  } catch (caught: any) {
     if (caught instanceof S3ServiceException) {
       logger.error(
         `Error from S3 while uploading object to ${bucketName}.  ${caught.name}: ${caught.message}`,
@@ -443,28 +514,24 @@ async function updateConfigHash(client, configs) {
     }
   }
 }
-exports.updateConfigHash = updateConfigHash;
 
-async function deleteConfigHash(client) {
+export async function deleteConfigHash(client: any): Promise<void> {
   const command = new DeleteObjectCommand({
     Bucket: process.env.DD_S3_BUCKET,
     Key: CONFIG_HASH_KEY,
   });
   await client.send(command);
 }
-exports.deleteConfigHash = deleteConfigHash;
 
-function isCacheValid() {
+export function isCacheValid(): boolean {
   return (
     CONFIG_CACHE.configs !== null &&
     CONFIG_CACHE.expirationTime !== null &&
     Date.now() < CONFIG_CACHE.expirationTime
   );
 }
-exports.isCacheValid = isCacheValid;
 
-function updateCache(configs) {
+export function updateCache(configs: RcConfig[]): void {
   CONFIG_CACHE.configs = configs;
   CONFIG_CACHE.expirationTime = Date.now() + CONFIG_CACHE_TTL_MS;
 }
-exports.updateCache = updateCache;

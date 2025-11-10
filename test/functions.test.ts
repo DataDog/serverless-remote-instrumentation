@@ -1,4 +1,4 @@
-const {
+import {
   satisfiesTargetingRules,
   isRemoteInstrumenter,
   isCorrectlyInstrumented,
@@ -7,17 +7,16 @@ const {
   isInstrumented,
   waitUntilFunctionIsActive,
   selectFunctionFieldsForLogging,
-  enrichFunctionsWithTags,
-} = require("../src/functions");
-const {
+} from "../src/functions";
+import {
   DD_SLS_REMOTE_INSTRUMENTER_VERSION,
   VERSION,
   DD_TRACE_ENABLED,
   DD_SERVERLESS_LOGS_ENABLED,
-} = require("../src/consts");
-const awsClients = require("../src/aws-resources");
-const sleep = require("../src/sleep");
-const { baseInstrumentOutcome } = require("./test-utils");
+} from "../src/consts";
+import * as awsClients from "../src/aws-resources";
+import * as sleep from "../src/sleep";
+import { baseInstrumentOutcome } from "./test-utils";
 
 jest.mock("../src/aws-resources");
 jest.mock("../src/sleep");
@@ -32,7 +31,7 @@ function createTestConfig({
   ddServerlessLogsEnabled,
   priority,
   ruleFilters,
-}) {
+}: any) {
   return {
     configVersion: 1,
     entityType: entityType,
@@ -56,7 +55,7 @@ function createTestLambdaFunction({
   layers,
   envVars,
   extraFields,
-}) {
+}: any) {
   return {
     FunctionName: functionName,
     FunctionArn: functionArn,
@@ -421,8 +420,8 @@ describe("isCorrectlyInstrumented", () => {
             ruleFilters: [],
           }),
           targetLambdaRuntime: "nodejs14.x",
-          tracingEnabled: true,
-          loggingEnabled: false,
+          ddTraceEnabledValue: "true",
+          ddServerlessLogsEnabledValue: "false",
         }),
       ).toBe(false);
     });
@@ -1035,7 +1034,12 @@ describe("needsInstrumentationUpdate", () => {
         ruleFilters: [],
       });
       const { instrument, uninstrument, tag, untag } =
-        needsInstrumentationUpdate(lambdaFunc, config, baseInstrumentOutcome);
+        needsInstrumentationUpdate(
+          lambdaFunc,
+          config,
+          baseInstrumentOutcome,
+          false,
+        );
       expect(instrument).toBe(false);
       expect(uninstrument).toBe(false);
       expect(tag).toBe(false);
@@ -1059,7 +1063,12 @@ describe("needsInstrumentationUpdate", () => {
       });
 
       const { instrument, uninstrument, tag, untag } =
-        needsInstrumentationUpdate(lambdaFunc, config, baseInstrumentOutcome);
+        needsInstrumentationUpdate(
+          lambdaFunc,
+          config,
+          baseInstrumentOutcome,
+          false,
+        );
       expect(instrument).toBe(false);
       expect(uninstrument).toBe(true);
       expect(tag).toBe(false);
@@ -1076,13 +1085,19 @@ describe("needsInstrumentationUpdate", () => {
         tags: new Set([]),
       });
       const { instrument, uninstrument, tag, untag } =
-        needsInstrumentationUpdate(lambdaFunc, {}, baseInstrumentOutcome);
+        needsInstrumentationUpdate(
+          lambdaFunc,
+          {} as any,
+          baseInstrumentOutcome,
+          false,
+        );
       expect(instrument).toBe(false);
       expect(uninstrument).toBe(false);
       expect(tag).toBe(false);
       expect(untag).toBe(false);
       expect(
-        baseInstrumentOutcome.instrument.skipped[functionName].reasonCode,
+        (baseInstrumentOutcome.instrument.skipped as any)[functionName]
+          .reasonCode,
       ).toStrictEqual("already-manually-instrumented");
     });
   });
@@ -1114,7 +1129,12 @@ describe("needsInstrumentationUpdate", () => {
         ruleFilters: ruleFilters,
       });
       const { instrument, uninstrument, tag, untag } =
-        needsInstrumentationUpdate(lambdaFunc, config, baseInstrumentOutcome);
+        needsInstrumentationUpdate(
+          lambdaFunc,
+          config,
+          baseInstrumentOutcome,
+          false,
+        );
       expect(instrument).toBe(false);
       expect(uninstrument).toBe(false);
       expect(tag).toBe(false);
@@ -1147,7 +1167,12 @@ describe("needsInstrumentationUpdate", () => {
         ruleFilters: ruleFilters,
       });
       const { instrument, uninstrument, tag, untag } =
-        needsInstrumentationUpdate(lambdaFunc, config, baseInstrumentOutcome);
+        needsInstrumentationUpdate(
+          lambdaFunc,
+          config,
+          baseInstrumentOutcome,
+          false,
+        );
       expect(instrument).toBe(false);
       expect(uninstrument).toBe(false);
       expect(tag).toBe(false);
@@ -1197,7 +1222,12 @@ describe("needsInstrumentationUpdate", () => {
         ruleFilters: ruleFilters,
       });
       const { instrument, uninstrument, tag, untag } =
-        needsInstrumentationUpdate(lambdaFunc, config, baseInstrumentOutcome);
+        needsInstrumentationUpdate(
+          lambdaFunc,
+          config,
+          baseInstrumentOutcome,
+          false,
+        );
       expect(instrument).toBe(false);
       expect(uninstrument).toBe(false);
       expect(tag).toBe(false);
@@ -1244,7 +1274,12 @@ describe("needsInstrumentationUpdate", () => {
         instrumenterFunctionName: "datadog-remote-instrumenter",
       });
       const { instrument, uninstrument, tag, untag } =
-        needsInstrumentationUpdate(lambdaFunc, config, baseInstrumentOutcome);
+        needsInstrumentationUpdate(
+          lambdaFunc,
+          config,
+          baseInstrumentOutcome,
+          false,
+        );
       expect(instrument).toBe(true);
       expect(uninstrument).toBe(false);
       expect(tag).toBe(true);
@@ -1282,7 +1317,12 @@ describe("needsInstrumentationUpdate", () => {
         instrumenterFunctionName: "datadog-remote-instrumenter",
       });
       const { instrument, uninstrument, tag, untag } =
-        needsInstrumentationUpdate(lambdaFunc, config, baseInstrumentOutcome);
+        needsInstrumentationUpdate(
+          lambdaFunc,
+          config,
+          baseInstrumentOutcome,
+          false,
+        );
       expect(instrument).toBe(true);
       expect(uninstrument).toBe(false);
       expect(tag).toBe(true);
@@ -1407,7 +1447,7 @@ describe("isInstrumented", () => {
       false,
     ],
   ])("%s", (_, lambdaFunc, expected) => {
-    expect(isInstrumented(lambdaFunc)).toBe(expected);
+    expect(isInstrumented(lambdaFunc as any)).toBe(expected);
   });
 });
 
@@ -1417,31 +1457,31 @@ describe("waitUntilFunctionIsActive", () => {
   });
 
   test("stops when the status is active", async () => {
-    awsClients.getLambdaClient.mockReturnValue({
+    jest.mocked(awsClients.getLambdaClient).mockReturnValue({
       send: () => ({ State: "Active" }),
-    });
-    const res = await waitUntilFunctionIsActive();
+    } as any);
+    const res = await waitUntilFunctionIsActive("test-function");
     expect(res).toStrictEqual(true);
     expect(sleep.sleep).toHaveBeenCalledTimes(0);
   });
 
   test("stops when the status is active after the second time", async () => {
-    awsClients.getLambdaClient.mockReturnValue({
+    jest.mocked(awsClients.getLambdaClient).mockReturnValue({
       send: jest
         .fn()
         .mockReturnValueOnce({ State: "Pending" })
         .mockReturnValueOnce({ State: "Active" }),
-    });
-    const res = await waitUntilFunctionIsActive();
+    } as any);
+    const res = await waitUntilFunctionIsActive("test-function");
     expect(res).toStrictEqual(true);
     expect(sleep.sleep).toHaveBeenCalledTimes(1);
   });
 
   test("times out waiting when the status never exits", async () => {
-    awsClients.getLambdaClient.mockReturnValue({
+    jest.mocked(awsClients.getLambdaClient).mockReturnValue({
       send: () => ({ State: "Pending" }),
-    });
-    const res = await waitUntilFunctionIsActive();
+    } as any);
+    const res = await waitUntilFunctionIsActive("test-function");
     expect(res).toStrictEqual(false);
     expect(sleep.sleep).toHaveBeenCalledTimes(10);
   });

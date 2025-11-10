@@ -1,30 +1,32 @@
-const {
+import {
   GetFunctionConfigurationCommand,
   ListTagsCommand,
-} = require("@aws-sdk/client-lambda");
-const { getRemoteConfig } = require("./remote-config");
-const { getLambdaClient } = require("./aws-resources");
-const { isFunctionInvokable } = require("./lambda-functions");
-const { ddSite } = require("../config.json");
-const { pollUntilTrue } = require("./poll-until-true");
+} from "@aws-sdk/client-lambda";
+import { getRemoteConfig } from "./remote-config";
+import { getLambdaClient } from "./aws-resources";
+import { isFunctionInvokable } from "./lambda-functions";
+import { ddSite } from "../config.json" with { type: "json" };
+import { pollUntilTrue } from "./poll-until-true";
 
-const hasLayerMatching = (l, matcher, version) =>
+const hasLayerMatching = (l: any, matcher: string, version: number): boolean =>
   l?.Layers?.some(
-    (layer) =>
+    (layer: any) =>
       layer.Arn.includes(matcher) &&
       Number(layer.Arn.split(":").at(-1)) === version,
   );
 
-const hasLayer = (l, matcher) =>
-  l?.Layers?.some((layer) => layer.Arn.includes(matcher));
+const hasLayer = (l: any, matcher: string): boolean =>
+  l?.Layers?.some((layer: any) => layer.Arn.includes(matcher));
 
-const hasEnvVar = (l, varName) =>
+const hasEnvVar = (l: any, varName: string): boolean =>
   Object.keys(l?.Environment?.Variables || {}).includes(varName);
 
-const hasEnvVarMatching = (l, varName, value) =>
+const hasEnvVarMatching = (l: any, varName: string, value: string): boolean =>
   l?.Environment?.Variables[varName] === value;
 
-const hasRemoteInstrumenterTag = async (functionArn) => {
+const hasRemoteInstrumenterTag = async (
+  functionArn: string,
+): Promise<boolean> => {
   const lambdaClient = await getLambdaClient();
   try {
     const tagsResponse = await lambdaClient.send(
@@ -33,21 +35,22 @@ const hasRemoteInstrumenterTag = async (functionArn) => {
       }),
     );
     return "dd_sls_remote_instrumenter_version" in tagsResponse.Tags;
-  } catch (error) {
+  } catch (error: any) {
     console.log(
       `Error checking tags for function ${functionArn}: ${error.message}`,
     );
     return false;
   }
 };
-exports.hasRemoteInstrumenterTag = hasRemoteInstrumenterTag;
 
 // A function is considered instrumented if all are true:
 // 1. If the extension layer is configured, there is a Datadog-Extension with matching version
 // 2. If there is a language layer configured, there should is a matching version of the language layer
 // 3. It has the DD_API_KEY and DD_SITE environment variables
 // 4. The function should still be invokable
-const isFunctionInstrumented = async (functionName) => {
+const isFunctionInstrumented = async (
+  functionName: string,
+): Promise<boolean> => {
   const lambdaClient = await getLambdaClient();
   const funConfig = await lambdaClient.send(
     new GetFunctionConfigurationCommand({
@@ -116,9 +119,9 @@ const isFunctionInstrumented = async (functionName) => {
   return isFunctionInvokable(functionName);
 };
 
-exports.isFunctionInstrumented = isFunctionInstrumented;
-
-const isFunctionUninstrumented = async (functionName) => {
+const isFunctionUninstrumented = async (
+  functionName: string,
+): Promise<boolean> => {
   const lambdaClient = await getLambdaClient();
   const funConfig = await lambdaClient.send(
     new GetFunctionConfigurationCommand({
@@ -135,9 +138,9 @@ const isFunctionUninstrumented = async (functionName) => {
   );
 };
 
-exports.isFunctionUninstrumented = isFunctionUninstrumented;
-
-const expectFunctionsToBeInstrumented = async (functionNames) => {
+const expectFunctionsToBeInstrumented = async (
+  functionNames: string[],
+): Promise<void> => {
   await Promise.all(
     functionNames.map(async (functionName) => {
       const isInstrumented = await pollUntilTrue(60000, 5000, () =>
@@ -149,4 +152,10 @@ const expectFunctionsToBeInstrumented = async (functionNames) => {
     }),
   );
 };
-exports.expectFunctionsToBeInstrumented = expectFunctionsToBeInstrumented;
+
+export {
+  hasRemoteInstrumenterTag,
+  isFunctionInstrumented,
+  isFunctionUninstrumented,
+  expectFunctionsToBeInstrumented,
+};

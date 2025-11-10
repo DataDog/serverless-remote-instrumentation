@@ -1,16 +1,34 @@
-const {
+import {
   DeleteObjectCommand,
   DeleteObjectsCommand,
   ListObjectsV2Command,
   PutObjectCommand,
-} = require("@aws-sdk/client-s3");
-const { FAILED, SKIPPED, SUCCEEDED } = require("./consts");
+} from "@aws-sdk/client-s3";
+import { FAILED, SKIPPED, SUCCEEDED } from "./consts";
 
 const bucketName = process.env.DD_S3_BUCKET;
 const prefix = "errors/";
 const suffix = ".json";
 
-const putError = async (s3, functionName, error) => {
+interface ErrorItem {
+  functionName: string;
+  reason: string;
+}
+
+interface InstrumentOutcome {
+  instrument: {
+    [key: string]: Record<string, any>;
+  };
+  uninstrument: {
+    [key: string]: Record<string, any>;
+  };
+}
+
+const putError = async (
+  s3: any,
+  functionName: string,
+  error: string,
+): Promise<void> => {
   const command = new PutObjectCommand({
     Bucket: bucketName,
     Key: `${prefix}${functionName}${suffix}`,
@@ -23,16 +41,14 @@ const putError = async (s3, functionName, error) => {
   await s3.send(command);
 };
 
-exports.putError = putError;
-
-const listErrors = async (s3) => {
-  const params = {
+export const listErrors = async (s3: any): Promise<string[]> => {
+  const params: any = {
     Bucket: bucketName,
     Prefix: prefix,
   };
 
   let isTruncated = true;
-  const results = [];
+  const results: any[] = [];
 
   while (isTruncated) {
     const command = new ListObjectsV2Command(params);
@@ -52,9 +68,10 @@ const listErrors = async (s3) => {
     .filter((item) => item.length);
 };
 
-exports.listErrors = listErrors;
-
-const deleteError = async (s3, functionName) => {
+export const deleteError = async (
+  s3: any,
+  functionName: string,
+): Promise<void> => {
   const command = new DeleteObjectCommand({
     Bucket: bucketName,
     Key: `${prefix}${functionName}${suffix}`,
@@ -63,22 +80,22 @@ const deleteError = async (s3, functionName) => {
   await s3.send(command);
 };
 
-exports.deleteError = deleteError;
-
-const identifyNewErrorsAndResolvedErrors = (
-  instrumentOutcome,
-  previousErrors,
-) => {
+export const identifyNewErrorsAndResolvedErrors = (
+  instrumentOutcome: InstrumentOutcome,
+  previousErrors: string[],
+): { newErrors: ErrorItem[]; resolvedErrors: string[] } => {
   const succeeded = ["instrument", "uninstrument"].flatMap((action) =>
     [SKIPPED, SUCCEEDED].flatMap((status) =>
-      Object.keys(instrumentOutcome[action][status]),
+      Object.keys((instrumentOutcome as any)[action][status]),
     ),
   );
   const failed = ["instrument", "uninstrument"].flatMap((action) =>
-    Object.entries(instrumentOutcome[action][FAILED]).map(([k, v]) => ({
-      functionName: k,
-      reason: v.reason,
-    })),
+    Object.entries((instrumentOutcome as any)[action][FAILED]).map(
+      ([k, v]: [string, any]) => ({
+        functionName: k,
+        reason: v.reason,
+      }),
+    ),
   );
 
   return {
@@ -89,10 +106,8 @@ const identifyNewErrorsAndResolvedErrors = (
   };
 };
 
-exports.identifyNewErrorsAndResolvedErrors = identifyNewErrorsAndResolvedErrors;
-
-const emptyBucket = async (s3) => {
-  const params = {
+export const emptyBucket = async (s3: any): Promise<void> => {
+  const params: any = {
     Bucket: bucketName,
   };
 
@@ -109,7 +124,7 @@ const emptyBucket = async (s3) => {
         const deleteParams = {
           Bucket: bucketName,
           Delete: {
-            Objects: batch.map((object) => ({ Key: object.Key })),
+            Objects: batch.map((object: any) => ({ Key: object.Key })),
             Quiet: true,
           },
         };
@@ -122,4 +137,4 @@ const emptyBucket = async (s3) => {
   }
 };
 
-exports.emptyBucket = emptyBucket;
+export { putError };

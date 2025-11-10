@@ -1,8 +1,12 @@
-const { sleep } = require("./sleep");
+import { sleep } from "./sleep";
 
 // This function will call functionToCheck every interval ms
 // until the timeout (in ms), and return once it is true
-const pollUntilTrue = async (timeout, interval, functionToCheck) => {
+const pollUntilTrue = async (
+  timeout: number,
+  interval: number,
+  functionToCheck: () => Promise<boolean>,
+): Promise<boolean> => {
   const startTime = Date.now();
   while (Date.now() - startTime < timeout) {
     const result = await functionToCheck();
@@ -14,4 +18,4 @@ const pollUntilTrue = async (timeout, interval, functionToCheck) => {
   return false;
 };
 
-exports.pollUntilTrue = pollUntilTrue;
+export { pollUntilTrue };

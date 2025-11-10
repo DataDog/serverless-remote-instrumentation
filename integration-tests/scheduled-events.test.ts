@@ -1,30 +1,28 @@
-const { pollUntilTrue } = require("./utilities/poll-until-true");
-const {
+import { pollUntilTrue } from "./utilities/poll-until-true";
+import {
   isFunctionInstrumented,
   isFunctionUninstrumented,
   hasRemoteInstrumenterTag,
   expectFunctionsToBeInstrumented,
-} = require("./utilities/is-function-instrumented");
-const {
+} from "./utilities/is-function-instrumented";
+import {
   setRemoteConfig,
   clearKnownRemoteConfigs,
   clearRemoteConfigs,
-} = require("./utilities/remote-config");
-const {
-  invokeLambdaWithScheduledEvent,
-} = require("./utilities/remote-instrumenter-invocations");
-const {
+} from "./utilities/remote-config";
+import { invokeLambdaWithScheduledEvent } from "./utilities/remote-instrumenter-invocations";
+import {
   createFunction,
   deleteTestFunctions,
   createFunctions,
-} = require("./utilities/lambda-functions");
-const { Runtime } = require("@aws-sdk/client-lambda");
-const {
+} from "./utilities/lambda-functions";
+import { Runtime } from "@aws-sdk/client-lambda";
+import {
   deleteErrorObject,
   putErrorObject,
   doesErrorObjectExist,
-} = require("./utilities/s3-error-object");
-const { region } = require("./config.json");
+} from "./utilities/s3-error-object";
+import { region } from "./config.json" with { type: "json" };
 
 describe("Remote instrumenter scheduled event tests", () => {
   const functionThatDoesntExist = "ThisDoesNotExist";
@@ -117,7 +115,7 @@ describe("Remote instrumenter scheduled event tests", () => {
     ["python3.10", Runtime.python310],
   ])(
     "function with runtime %s gets instrumented",
-    async (runtimeName, runtimeValue) => {
+    async (runtimeName: string, runtimeValue: any) => {
       const { FunctionName: functionName } = await createFunction({
         Tags: { foo: "bar" },
         Runtime: runtimeValue,
@@ -248,7 +246,7 @@ describe("Remote instrumenter scheduled event tests", () => {
 
   it("instruments all functions when using wildcard rule filter", async () => {
     const functions = await createFunctions({}, 3);
-    const functionNames = functions.map((lambda) => lambda.FunctionName);
+    const functionNames = functions.map((lambda: any) => lambda.FunctionName);
 
     await setRemoteConfig({
       ruleFilters: [
@@ -374,8 +372,8 @@ describe("Remote instrumenter scheduled event tests", () => {
 
   it("correctly tags instrumented functions", async () => {
     const functions = await createFunctions({}, 51);
-    const functionNames = functions.map((lambda) => lambda.FunctionName);
-    const functionArns = functions.map((lambda) => lambda.FunctionArn);
+    const functionNames = functions.map((lambda: any) => lambda.FunctionName);
+    const functionArns = functions.map((lambda: any) => lambda.FunctionArn);
 
     await setRemoteConfig({
       ruleFilters: [

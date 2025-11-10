@@ -1,14 +1,18 @@
-const { SecretsManagerClient } = require("@aws-sdk/client-secrets-manager");
-const { LambdaClient } = require("@aws-sdk/client-lambda");
-const { account, roleName, region } = require("../config.json");
-const { S3Client } = require("@aws-sdk/client-s3");
-const { getCredentials } = require("./get-credentials");
-const { CloudWatchLogsClient } = require("@aws-sdk/client-cloudwatch-logs");
+import { SecretsManagerClient } from "@aws-sdk/client-secrets-manager";
+import { LambdaClient } from "@aws-sdk/client-lambda";
+import {
+  account,
+  roleName,
+  region,
+} from "../config.json" with { type: "json" };
+import { S3Client } from "@aws-sdk/client-s3";
+import { getCredentials } from "./get-credentials";
+import { CloudWatchLogsClient } from "@aws-sdk/client-cloudwatch-logs";
 
 const arn = `arn:aws:iam::${account}:role/${roleName}`;
 
-let secretsManagerClient;
-const getSecretsManagerClient = async () => {
+let secretsManagerClient: any;
+const getSecretsManagerClient = async (): Promise<any> => {
   if (!secretsManagerClient) {
     secretsManagerClient = new SecretsManagerClient({
       credentials: getCredentials(arn),
@@ -18,10 +22,8 @@ const getSecretsManagerClient = async () => {
   return secretsManagerClient;
 };
 
-exports.getSecretsManagerClient = getSecretsManagerClient;
-
-let lambdaClient;
-const getLambdaClient = async () => {
+let lambdaClient: any;
+const getLambdaClient = async (): Promise<any> => {
   if (!lambdaClient) {
     lambdaClient = new LambdaClient({
       credentials: getCredentials(arn),
@@ -33,10 +35,8 @@ const getLambdaClient = async () => {
   return lambdaClient;
 };
 
-exports.getLambdaClient = getLambdaClient;
-
-let s3Client;
-const getS3Client = async () => {
+let s3Client: any;
+const getS3Client = async (): Promise<any> => {
   if (!s3Client) {
     s3Client = new S3Client({
       credentials: getCredentials(arn),
@@ -46,10 +46,8 @@ const getS3Client = async () => {
   return s3Client;
 };
 
-exports.getS3Client = getS3Client;
-
-let logsClient;
-const getLogsClient = () => {
+let logsClient: any;
+const getLogsClient = (): any => {
   if (!logsClient) {
     logsClient = new CloudWatchLogsClient({
       credentials: getCredentials(arn),
@@ -59,4 +57,4 @@ const getLogsClient = () => {
   return logsClient;
 };
 
-exports.getLogsClient = getLogsClient;
+export { getSecretsManagerClient, getLambdaClient, getS3Client, getLogsClient };

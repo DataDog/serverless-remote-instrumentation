@@ -1,3 +1,15 @@
+interface TestJSONParams {
+  configVersion: number;
+  entityType: string;
+  extensionVersion?: number;
+  nodeLayerVersion?: number;
+  pythonLayerVersion?: number;
+  ddTraceEnabled?: boolean;
+  ddServerlessLogsEnabled?: boolean;
+  priority: number;
+  ruleFilters: any[];
+}
+
 function constructTestJSON({
   configVersion,
   entityType,
@@ -8,7 +20,7 @@ function constructTestJSON({
   ddServerlessLogsEnabled,
   priority,
   ruleFilters,
-}) {
+}: TestJSONParams): any {
   return {
     config_version: configVersion,
     entity_type: entityType,
@@ -23,9 +35,8 @@ function constructTestJSON({
     rule_filters: ruleFilters,
   };
 }
-exports.constructTestJSON = constructTestJSON;
 
-const sampleRcTestJSON = constructTestJSON({
+export const sampleRcTestJSON = constructTestJSON({
   configVersion: 1,
   entityType: "lambda",
   extensionVersion: 10,
@@ -49,12 +60,10 @@ const sampleRcTestJSON = constructTestJSON({
     },
   ],
 });
-exports.sampleRcTestJSON = sampleRcTestJSON;
 
-const sampleRcConfigID = "datadog/2/abc-123-def";
-exports.sampleRcConfigID = sampleRcConfigID;
+export const sampleRcConfigID = "datadog/2/abc-123-def";
 
-const sampleRcMetadata = {
+export const sampleRcMetadata = {
   custom: {
     c: ["abc-def-ghi"],
     "tracer-predicates": {
@@ -71,10 +80,10 @@ const sampleRcMetadata = {
   },
   length: 500,
 };
-exports.sampleRcMetadata = sampleRcMetadata;
 
-const baseInstrumentOutcome = {
+export const baseInstrumentOutcome = {
   instrument: { succeeded: {}, failed: {}, skipped: {} },
   uninstrument: { succeeded: {}, failed: {}, skipped: {} },
 };
-exports.baseInstrumentOutcome = baseInstrumentOutcome;
+
+export { constructTestJSON };

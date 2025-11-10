@@ -1,11 +1,15 @@
-const axios = require("axios");
-const { account, ddSite, region } = require("../config.json");
-const { getApiKey, getAppKey } = require("./datadog-keys");
-const { sleep } = require("./sleep");
+import axios from "axios";
+import { account, ddSite, region } from "../config.json" with { type: "json" };
+import { getApiKey, getAppKey } from "./datadog-keys";
+import { sleep } from "./sleep";
 
-const remoteConfigIds = [];
+const remoteConfigIds: string[] = [];
 
-const getRemoteConfig = async () => {
+interface RemoteConfigData {
+  data: any[];
+}
+
+const getRemoteConfig = async (): Promise<RemoteConfigData> => {
   const [apiKey, appKey] = await Promise.all([getApiKey(), getAppKey()]);
 
   const url =
@@ -22,17 +26,27 @@ const getRemoteConfig = async () => {
         "dd-application-key": appKey,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     if (error.response && error.response.status === 404) {
       return { data: [] };
     }
     throw error;
   }
-  remoteConfigIds.push(...remoteConfig.data.data.map((item) => item.id));
+  remoteConfigIds.push(...remoteConfig.data.data.map((item: any) => item.id));
   return remoteConfig.data;
 };
 
-exports.getRemoteConfig = getRemoteConfig;
+interface SetRemoteConfigOptions {
+  waitForEventualConsistency?: boolean;
+  waitForCacheInvalidation?: boolean;
+  extensionVersion?: number;
+  pythonLayerVersion?: number;
+  nodeLayerVersion?: number;
+  ruleFilters?: any[];
+  ddTraceEnabled?: boolean;
+  ddServerlessLogsEnabled?: boolean;
+  id?: string;
+}
 
 const setRemoteConfig = async ({
   waitForEventualConsistency = true,
@@ -51,10 +65,10 @@ const setRemoteConfig = async ({
   ddTraceEnabled = true,
   ddServerlessLogsEnabled = true,
   id,
-} = {}) => {
+}: SetRemoteConfigOptions = {}): Promise<any> => {
   const [apiKey, appKey] = await Promise.all([getApiKey(), getAppKey()]);
 
-  const rc = {
+  const rc: any = {
     data: {
       type: "instrumentation_config",
       attributes: {
@@ -113,9 +127,7 @@ const setRemoteConfig = async ({
   return remoteConfig.data.data;
 };
 
-exports.setRemoteConfig = setRemoteConfig;
-
-const deleteRemoteConfig = async (id) => {
+const deleteRemoteConfig = async (id: string): Promise<any> => {
   const [apiKey, appKey] = await Promise.all([getApiKey(), getAppKey()]);
 
   const url = `https://${ddSite}/api/v2/remote_config/products/serverless_remote_instrumentation/config/${id}`;
@@ -128,12 +140,15 @@ const deleteRemoteConfig = async (id) => {
   });
 };
 
-exports.deleteRemoteConfig = deleteRemoteConfig;
+interface ClearRemoteConfigsOptions {
+  waitForEventualConsistency?: boolean;
+  waitForCacheInvalidation?: boolean;
+}
 
 const clearRemoteConfigs = async ({
   waitForEventualConsistency = false,
   waitForCacheInvalidation = false,
-} = {}) => {
+}: ClearRemoteConfigsOptions = {}): Promise<void> => {
   const rcs = await getRemoteConfig();
   const ids = rcs.data.map((item) => item.id);
   const results = ids.map((id) => deleteRemoteConfig(id));
@@ -148,9 +163,7 @@ const clearRemoteConfigs = async ({
   }
 };
 
-exports.clearRemoteConfigs = clearRemoteConfigs;
-
-const clearKnownRemoteConfigs = async () => {
+const clearKnownRemoteConfigs = async (): Promise<void> => {
   const ids = new Set(remoteConfigIds);
   const results = [...ids].map((id) => deleteRemoteConfig(id));
   await Promise.all(results);
@@ -159,4 +172,10 @@ const clearKnownRemoteConfigs = async () => {
   }
 };
 
-exports.clearKnownRemoteConfigs = clearKnownRemoteConfigs;
+export {
+  getRemoteConfig,
+  setRemoteConfig,
+  deleteRemoteConfig,
+  clearRemoteConfigs,
+  clearKnownRemoteConfigs,
+};

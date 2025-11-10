@@ -1,22 +1,20 @@
-const {
+import {
   PutObjectCommand,
   HeadObjectCommand,
   DeleteObjectCommand,
   NotFound,
-} = require("@aws-sdk/client-s3");
-const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
-const { bucketName } = require("../config.json");
-const { getS3Client } = require("./aws-resources");
+} from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { bucketName } from "../config.json" with { type: "json" };
+import { getS3Client } from "./aws-resources";
 
-const createPresignedUrl = async (key) => {
+const createPresignedUrl = async (key: string): Promise<string> => {
   const s3 = await getS3Client();
   const command = new PutObjectCommand({ Bucket: bucketName, Key: key });
   return getSignedUrl(s3, command, { expiresIn: 3600 });
 };
 
-exports.createPresignedUrl = createPresignedUrl;
-
-const doesObjectExist = async (key) => {
+const doesObjectExist = async (key: string): Promise<boolean> => {
   const s3 = await getS3Client();
   const command = new HeadObjectCommand({
     Bucket: bucketName,
@@ -32,9 +30,8 @@ const doesObjectExist = async (key) => {
     throw error;
   }
 };
-exports.doesObjectExist = doesObjectExist;
 
-const deleteObject = async (key) => {
+const deleteObject = async (key: string): Promise<any> => {
   const s3 = await getS3Client();
   const command = new DeleteObjectCommand({
     Bucket: bucketName,
@@ -44,4 +41,4 @@ const deleteObject = async (key) => {
   return s3.send(command);
 };
 
-exports.deleteObject = deleteObject;
+export { createPresignedUrl, doesObjectExist, deleteObject };

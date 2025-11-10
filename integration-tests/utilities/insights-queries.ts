@@ -1,12 +1,12 @@
-const {
+import {
   GetQueryResultsCommand,
   StartQueryCommand,
-} = require("@aws-sdk/client-cloudwatch-logs");
-const { sleep } = require("./sleep");
-const { getLogsClient } = require("./aws-resources");
-const { functionName } = require("../config.json");
+} from "@aws-sdk/client-cloudwatch-logs";
+import { sleep } from "./sleep";
+import { getLogsClient } from "./aws-resources";
+import { functionName } from "../config.json" with { type: "json" };
 
-const runQuery = async (queryString) => {
+const runQuery = async (queryString: string): Promise<any[]> => {
   const queryParams = {
     logGroupName: `/aws/lambda/${functionName}`,
     startTime: Date.now() - 30 * 60 * 1000, // 30 minutes ago in ms
@@ -37,19 +37,18 @@ const runQuery = async (queryString) => {
   throw new Error(`Timed out while waiting for query ${queryString}`);
 };
 
-exports.runQuery = runQuery;
-
-const getFieldValueFromResults = (fieldName, results) =>
+const getFieldValueFromResults = (
+  fieldName: string,
+  results: any[],
+): string[] =>
   results
-    .map((result) => result.find((item) => item.field === fieldName))
+    .map((result) => result.find((item: any) => item.field === fieldName))
     .map((item) => item.value);
 
-const getTimestampsFromResults = (results) =>
+const getTimestampsFromResults = (results: any[]): string[] =>
   getFieldValueFromResults("@timestamp", results);
 
-exports.getTimestampsFromResults = getTimestampsFromResults;
-
-const getMessageFromResults = (results) =>
+const getMessageFromResults = (results: any[]): string[] =>
   getFieldValueFromResults("@message", results);
 
-exports.getMessageFromResults = getMessageFromResults;
+export { runQuery, getTimestampsFromResults, getMessageFromResults };

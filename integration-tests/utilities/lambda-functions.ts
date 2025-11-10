@@ -1,5 +1,5 @@
-const JSZip = require("jszip");
-const {
+import JSZip from "jszip";
+import {
   CreateFunctionCommand,
   DeleteFunctionCommand,
   GetFunctionConfigurationCommand,
@@ -7,22 +7,25 @@ const {
   ResourceNotFoundException,
   Runtime,
   TagResourceCommand,
-} = require("@aws-sdk/client-lambda");
-const {
+} from "@aws-sdk/client-lambda";
+import {
   account,
   region,
   namingSeed,
   testLambdaRole,
-} = require("../config.json");
-const { getLambdaClient } = require("./aws-resources");
-const { sleep } = require("./sleep");
+} from "../config.json" with { type: "json" };
+import { getLambdaClient } from "./aws-resources";
+import { sleep } from "./sleep";
 
-const functionNamesToCleanUp = [];
-const functionNameCount = {};
+const functionNamesToCleanUp: string[] = [];
+const functionNameCount: Record<string, number> = {};
 
-const createFunctions = async (lambdaProps, numFunctions = 1) => {
+const createFunctions = async (
+  lambdaProps: any,
+  numFunctions: number = 1,
+): Promise<any[]> => {
   const lambdaClient = await getLambdaClient();
-  const createdFunctions = new Set();
+  const createdFunctions = new Set<any>();
   for (let i = 0; i < numFunctions; i++) {
     const functionName = generateTestFunctionName();
 
@@ -33,7 +36,9 @@ const createFunctions = async (lambdaProps, numFunctions = 1) => {
     );
     const zippedHandler = await zip
       .generateAsync({ type: "blob" })
-      .then(async (content) => new Uint8Array(await content.arrayBuffer()));
+      .then(
+        async (content: any) => new Uint8Array(await content.arrayBuffer()),
+      );
     const command = new CreateFunctionCommand({
       Code: {
         ZipFile: zippedHandler,
@@ -57,7 +62,7 @@ const createFunctions = async (lambdaProps, numFunctions = 1) => {
 
   // When new functions are created they are in a pending state for a little bit,
   // wait until they are active since they cannot be modified in this pending state
-  const readyFunctions = [];
+  const readyFunctions: any[] = [];
   while (createdFunctions.size > 0) {
     const lambda = createdFunctions.values().next().value;
     const functionStatus = await lambdaClient.send(
@@ -75,15 +80,13 @@ const createFunctions = async (lambdaProps, numFunctions = 1) => {
   }
   return readyFunctions;
 };
-exports.createFunctions = createFunctions;
 
-const createFunction = async (lambdaProps) => {
+const createFunction = async (lambdaProps: any): Promise<any> => {
   const functions = await createFunctions(lambdaProps);
   return functions[0];
 };
-exports.createFunction = createFunction;
 
-function generateTestFunctionName() {
+function generateTestFunctionName(): string {
   // Name the function after the test, picking the last 64 characters since
   // lambda limits function name length and that is probably the most descriptive
   let functionName =
@@ -110,7 +113,7 @@ function generateTestFunctionName() {
   return functionName;
 }
 
-const deleteFunction = async (functionName) => {
+const deleteFunction = async (functionName: string): Promise<boolean> => {
   const command = new DeleteFunctionCommand({ FunctionName: functionName });
   try {
     const lambdaClient = await getLambdaClient();
@@ -124,18 +127,17 @@ const deleteFunction = async (functionName) => {
   }
 };
 
-exports.deleteFunction = deleteFunction;
-
-const deleteTestFunctions = async () => {
+const deleteTestFunctions = async (): Promise<void> => {
   await Promise.all(functionNamesToCleanUp.map((name) => deleteFunction(name)));
   while (functionNamesToCleanUp.length) {
     functionNamesToCleanUp.pop();
   }
 };
 
-exports.deleteTestFunctions = deleteTestFunctions;
-
-const tagFunction = async (functionName, tags) => {
+const tagFunction = async (
+  functionName: string,
+  tags: Record<string, string>,
+): Promise<void> => {
   const lambdaClient = await getLambdaClient();
   await lambdaClient.send(
     new TagResourceCommand({
@@ -145,9 +147,7 @@ const tagFunction = async (functionName, tags) => {
   );
 };
 
-exports.tagFunction = tagFunction;
-
-const isFunctionInvokable = async (functionName) => {
+const isFunctionInvokable = async (functionName: string): Promise<boolean> => {
   const command = new InvokeCommand({
     FunctionName: functionName,
     Payload: "{}",
@@ -157,4 +157,11 @@ const isFunctionInvokable = async (functionName) => {
   return StatusCode === 200;
 };
 
-exports.isFunctionInvokable = isFunctionInvokable;
+export {
+  createFunctions,
+  createFunction,
+  deleteFunction,
+  deleteTestFunctions,
+  tagFunction,
+  isFunctionInvokable,
+};

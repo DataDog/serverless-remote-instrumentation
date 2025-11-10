@@ -1,8 +1,11 @@
-const { GetSecretValueCommand } = require("@aws-sdk/client-secrets-manager");
-const { getSecretsManagerClient } = require("./aws-resources");
-const { apiSecretName, appSecretName } = require("../config.json");
+import { GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
+import { getSecretsManagerClient } from "./aws-resources";
+import {
+  apiSecretName,
+  appSecretName,
+} from "../config.json" with { type: "json" };
 
-const getSecret = async (name) => {
+const getSecret = async (name: string): Promise<string> => {
   const secretsManager = await getSecretsManagerClient();
   const response = await secretsManager.send(
     new GetSecretValueCommand({
@@ -12,14 +15,12 @@ const getSecret = async (name) => {
   return response.SecretString;
 };
 
-const getApiKey = async () => {
+const getApiKey = async (): Promise<string> => {
   return getSecret(apiSecretName);
 };
 
-exports.getApiKey = getApiKey;
-
-const getAppKey = async () => {
+const getAppKey = async (): Promise<string> => {
   return getSecret(appSecretName);
 };
 
-exports.getAppKey = getAppKey;
+export { getApiKey, getAppKey };

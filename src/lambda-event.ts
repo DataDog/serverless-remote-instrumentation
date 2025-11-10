@@ -1,9 +1,7 @@
-const { getLambdaFunction } = require("./functions");
-const { DD_SLS_REMOTE_INSTRUMENTER_CHECK } = require("./tag");
-const { DD_SLS_REMOTE_INSTRUMENTER_VERSION } = require("./consts");
-const { logger } = require("./logger");
-
-const { ResourceNotFoundException } = require("@aws-sdk/client-lambda");
+import { getLambdaFunction } from "./functions";
+import { DD_SLS_REMOTE_INSTRUMENTER_VERSION } from "./consts";
+import { logger } from "./logger";
+import { ResourceNotFoundException } from "@aws-sdk/client-lambda";
 
 const UPDATE_FUNCTION_CONFIGURATION_EVENT_NAME =
   "UpdateFunctionConfiguration20150331v2";
@@ -11,31 +9,28 @@ const CREATE_FUNCTION_EVENT_NAME = "CreateFunction20150331";
 const UNTAG_RESOURCE_EVENT_NAME = "UntagResource20170331v2";
 const TAG_RESOURCE_EVENT_NAME = "TagResource20170331v2";
 
-function isScheduledInvocationEvent(event) {
+export function isScheduledInvocationEvent(event: any): boolean {
   return (
     Object.prototype.hasOwnProperty.call(event, "event-type") &&
     event["event-type"] === "Scheduled Instrumenter Invocation"
   );
 }
-exports.isScheduledInvocationEvent = isScheduledInvocationEvent;
 
-function isStackDeletedEvent(event) {
+export function isStackDeletedEvent(event: any): boolean {
   return (
     Object.prototype.hasOwnProperty.call(event, "RequestType") &&
     event.RequestType === "Delete"
   );
 }
-exports.isStackDeletedEvent = isStackDeletedEvent;
 
-function isStackCreatedEvent(event) {
+export function isStackCreatedEvent(event: any): boolean {
   return (
     Object.prototype.hasOwnProperty.call(event, "RequestType") &&
     event.RequestType === "Create"
   );
 }
-exports.isStackCreatedEvent = isStackCreatedEvent;
 
-function isLambdaManagementEvent(event) {
+export function isLambdaManagementEvent(event: any): boolean {
   return (
     Object.prototype.hasOwnProperty.call(event, "detail-type") &&
     event["detail-type"] === "AWS API Call via CloudTrail" &&
@@ -43,32 +38,27 @@ function isLambdaManagementEvent(event) {
     event.source === "aws.lambda"
   );
 }
-exports.isLambdaManagementEvent = isLambdaManagementEvent;
 
-function isUpdateConfigurationEvent(event) {
+export function isUpdateConfigurationEvent(event: any): boolean {
   // TODO: [Followup] Do additional checks to only reinstrument if the important fields have changed
   // (e.g. reinstrument if layers, memory size, env vars, runtime, handler have changed,
   //       don't reinstrument if description changed)
   return event.detail?.eventName === UPDATE_FUNCTION_CONFIGURATION_EVENT_NAME;
 }
-exports.isUpdateConfigurationEvent = isUpdateConfigurationEvent;
 
-function isCreateFunctionEvent(event) {
+export function isCreateFunctionEvent(event: any): boolean {
   return event.detail?.eventName === CREATE_FUNCTION_EVENT_NAME;
 }
-exports.isCreateFunctionEvent = isCreateFunctionEvent;
 
-function isTagResourceEvent(event) {
+export function isTagResourceEvent(event: any): boolean {
   return event.detail?.eventName === TAG_RESOURCE_EVENT_NAME;
 }
-exports.isTagResourceEvent = isTagResourceEvent;
 
-function isUntagResourceEvent(event) {
+export function isUntagResourceEvent(event: any): boolean {
   return event.detail?.eventName === UNTAG_RESOURCE_EVENT_NAME;
 }
-exports.isUntagResourceEvent = isUntagResourceEvent;
 
-function shouldSkipEvent(event) {
+function shouldSkipEvent(event: any): boolean {
   // Skip any events for the remote instrumenter itself
   const instrumenterFunctionName = process.env.AWS_LAMBDA_FUNCTION_NAME;
   if (
@@ -80,7 +70,7 @@ function shouldSkipEvent(event) {
     return true;
   }
 
-  /* 
+  /*
   Ensure event name is supported.
   Not supported events include:
     - AddPermission20150331
@@ -124,9 +114,12 @@ function shouldSkipEvent(event) {
 
   return false;
 }
-exports.shouldSkipEvent = shouldSkipEvent;
+export { shouldSkipEvent };
 
-async function getFunctionFromLambdaEvent(lambdaClient, event) {
+export async function getFunctionFromLambdaEvent(
+  lambdaClient: any,
+  event: any,
+): Promise<any> {
   // If it's not a supported event type, skip it
   if (shouldSkipEvent(event)) {
     return;
@@ -146,7 +139,6 @@ async function getFunctionFromLambdaEvent(lambdaClient, event) {
       : new Set(event.detail.requestParameters.tagKeys);
     functionName = event.detail.requestParameters.resource.split(":")[6];
     tagKeys.delete(DD_SLS_REMOTE_INSTRUMENTER_VERSION);
-    tagKeys.delete(DD_SLS_REMOTE_INSTRUMENTER_CHECK);
     if (tagKeys.size === 0) {
       logger.log(
         `Skipping event '${event.detail.eventName}' because the modified tags are caused by the remote instrumenter.`,
@@ -173,9 +165,8 @@ async function getFunctionFromLambdaEvent(lambdaClient, event) {
     throw e;
   }
 }
-exports.getFunctionFromLambdaEvent = getFunctionFromLambdaEvent;
 
-function selectEventFieldsForLogging(event) {
+export function selectEventFieldsForLogging(event: any): any {
   return {
     eventName: event.detail?.eventName,
     requestType: event.RequestType,
@@ -189,4 +180,3 @@ function selectEventFieldsForLogging(event) {
     tags: event.detail?.requestParameters?.tags,
   };
 }
-exports.selectEventFieldsForLogging = selectEventFieldsForLogging;

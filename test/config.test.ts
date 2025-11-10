@@ -1,4 +1,4 @@
-const {
+import {
   isCacheValid,
   updateCache,
   RcConfig,
@@ -6,26 +6,25 @@ const {
   getConfigs,
   CONFIG_CACHE,
   getConfigsWithRetry,
-} = require("../src/config");
-const {
+} from "../src/config";
+import {
   FILTER_TYPES,
   CONFIG_CACHE_TTL_MS,
   CONFIG_STATUS_EXPIRED,
   CONFIG_STATUS_OK,
-} = require("../src/consts");
-const {
+} from "../src/consts";
+import {
   constructTestJSON,
   sampleRcConfigID,
   sampleRcMetadata,
   sampleRcTestJSON,
-} = require("./test-utils");
+} from "./test-utils";
+import axios from "axios";
+import { sleep } from "../src/sleep";
+import { createHash } from "crypto";
 
-jest.mock("axios", () => ({
-  post: jest.fn(),
-}));
-jest.mock("../src/sleep", () => ({
-  sleep: jest.fn().mockResolvedValue(),
-}));
+jest.mock("axios");
+jest.mock("../src/sleep");
 
 describe("Config constructor", () => {
   it("creates an RcConfig object out of well-formed JSON", () => {
@@ -73,7 +72,7 @@ describe("Config constructor", () => {
 
   it("rejects invalid config version", () => {
     const testJSON = constructTestJSON({
-      configVersion: "invalid",
+      configVersion: "invalid" as any,
       entityType: "lambda",
       extensionVersion: 10,
       nodeLayerVersion: 20,
@@ -113,7 +112,7 @@ describe("Config constructor", () => {
     const testJSON = constructTestJSON({
       configVersion: 1,
       entityType: "lambda",
-      extensionVersion: "invalid",
+      extensionVersion: "invalid" as any,
       nodeLayerVersion: 20,
       pythonLayerVersion: 30,
       ddTraceEnabled: true,
@@ -134,7 +133,7 @@ describe("Config constructor", () => {
       entityType: "lambda",
       extensionVersion: 10,
       nodeLayerVersion: 20,
-      pythonLayerVersion: "invalid",
+      pythonLayerVersion: "invalid" as any,
       ddTraceEnabled: true,
       ddServerlessLogsEnabled: false,
       priority: 1,
@@ -152,7 +151,7 @@ describe("Config constructor", () => {
       configVersion: 1,
       entityType: "lambda",
       extensionVersion: 10,
-      nodeLayerVersion: "invalid",
+      nodeLayerVersion: "invalid" as any,
       pythonLayerVersion: 30,
       ddTraceEnabled: true,
       ddServerlessLogsEnabled: false,
@@ -173,7 +172,7 @@ describe("Config constructor", () => {
       extensionVersion: 10,
       nodeLayerVersion: 20,
       pythonLayerVersion: 30,
-      ddTraceEnabled: "invalid",
+      ddTraceEnabled: "invalid" as any,
       ddServerlessLogsEnabled: false,
       priority: 1,
       ruleFilters: [],
@@ -193,7 +192,7 @@ describe("Config constructor", () => {
       nodeLayerVersion: 20,
       pythonLayerVersion: 30,
       ddTraceEnabled: true,
-      ddServerlessLogsEnabled: "invalid",
+      ddServerlessLogsEnabled: "invalid" as any,
       priority: 1,
       ruleFilters: [],
     });
@@ -213,7 +212,7 @@ describe("Config constructor", () => {
       pythonLayerVersion: 30,
       ddTraceEnabled: true,
       ddServerlessLogsEnabled: false,
-      priority: "invalid",
+      priority: "invalid" as any,
       ruleFilters: [],
     });
     expect(
@@ -231,7 +230,7 @@ describe("Config constructor", () => {
       ddTraceEnabled: true,
       ddServerlessLogsEnabled: false,
       priority: 1,
-      ruleFilters: "invalid",
+      ruleFilters: "invalid" as any,
     });
     expect(
       () => new RcConfig(sampleRcConfigID, testJSON, sampleRcMetadata),
@@ -635,7 +634,7 @@ describe("Config cache", () => {
       CONFIG_CACHE.configs = [sampleRcConfig];
       CONFIG_CACHE.expirationTime = Date.now() - 1000;
 
-      const newConfigs = [];
+      const newConfigs: any[] = [];
       updateCache(newConfigs);
 
       expect(CONFIG_CACHE.configs).toEqual(newConfigs);
@@ -648,9 +647,9 @@ describe("Config cache", () => {
 });
 
 describe("getConfigs", () => {
-  let mockS3Client;
-  let mockContext;
-  let mockedAxios;
+  let mockS3Client: any;
+  let mockContext: any;
+  const mockedAxios = jest.mocked(axios);
 
   beforeEach(() => {
     mockS3Client = {
@@ -662,7 +661,6 @@ describe("getConfigs", () => {
     };
     CONFIG_CACHE.configs = null;
     CONFIG_CACHE.expirationTime = null;
-    mockedAxios = require("axios");
     mockedAxios.post.mockReset();
     process.env.AWS_REGION = "us-east-1";
   });
@@ -717,8 +715,8 @@ describe("getConfigs", () => {
     expect(mockedAxios.post).toHaveBeenCalledTimes(1);
 
     // Check that cache was updated
-    expect(CONFIG_CACHE.configs.length).toBe(1);
-    expect(CONFIG_CACHE.configs[0].configID).toBe("new-id");
+    expect(CONFIG_CACHE.configs?.length).toBe(1);
+    expect(CONFIG_CACHE.configs?.[0].configID).toBe("new-id");
     expect(CONFIG_CACHE.expirationTime).toBeGreaterThan(Date.now());
     expect(CONFIG_CACHE.expirationTime).toBeLessThanOrEqual(
       Date.now() + CONFIG_CACHE_TTL_MS,
@@ -763,8 +761,8 @@ describe("getConfigs", () => {
     expect(mockedAxios.post).toHaveBeenCalledTimes(1);
 
     // Check that cache was updated
-    expect(CONFIG_CACHE.configs.length).toBe(1);
-    expect(CONFIG_CACHE.configs[0].configID).toBe("new-id");
+    expect(CONFIG_CACHE.configs?.length).toBe(1);
+    expect(CONFIG_CACHE.configs?.[0].configID).toBe("new-id");
     expect(CONFIG_CACHE.expirationTime).toBeGreaterThan(Date.now());
     expect(CONFIG_CACHE.expirationTime).toBeLessThanOrEqual(
       Date.now() + CONFIG_CACHE_TTL_MS,
@@ -783,7 +781,7 @@ describe("getConfigs", () => {
   });
 
   test("should throw error when account ID is missing", async () => {
-    let mockContext = {
+    let mockContext: any = {
       invokedFunctionArn: "",
     };
     await expect(getConfigs(mockS3Client, mockContext)).rejects.toThrow(
@@ -851,9 +849,10 @@ describe("getConfigs", () => {
 });
 
 describe("getConfigsWithRetry", () => {
-  let mockS3Client;
-  let mockContext;
-  let mockedAxios;
+  let mockS3Client: any;
+  let mockContext: any;
+  const mockedAxios = jest.mocked(axios);
+  const mockedSleep = jest.mocked(sleep);
 
   beforeEach(() => {
     mockS3Client = {
@@ -865,13 +864,11 @@ describe("getConfigsWithRetry", () => {
     };
     CONFIG_CACHE.configs = null;
     CONFIG_CACHE.expirationTime = null;
-    mockedAxios = require("axios");
     mockedAxios.post.mockReset();
     mockS3Client.send.mockReset();
-    const { sleep } = require("../src/sleep");
-    sleep.mockClear();
+    mockedSleep.mockClear();
     // Setup sleep mock to invalidate cache when called (simulates waiting for cache TTL)
-    sleep.mockImplementation(() => {
+    mockedSleep.mockImplementation(() => {
       CONFIG_CACHE.configs = null;
       CONFIG_CACHE.expirationTime = null;
       return Promise.resolve();
@@ -915,8 +912,11 @@ describe("getConfigsWithRetry", () => {
     };
     mockedAxios.post.mockResolvedValueOnce(rcResponse);
 
-    const existingConfigHash = require("crypto")
-      .createHash("sha256", "datadog-remote-instrumenter")
+    // @ts-expect-error fix this call
+    const existingConfigHash = createHash(
+      "sha256",
+      "datadog-remote-instrumenter",
+    )
       .update(JSON.stringify(existingConfigs))
       .digest("hex");
 
@@ -976,8 +976,11 @@ describe("getConfigsWithRetry", () => {
     };
     mockedAxios.post.mockResolvedValueOnce(rcResponse);
 
-    const existingConfigHash = require("crypto")
-      .createHash("sha256", "datadog-remote-instrumenter")
+    // @ts-expect-error fix this call
+    const existingConfigHash = createHash(
+      "sha256",
+      "datadog-remote-instrumenter",
+    )
       .update(JSON.stringify([{}]))
       .digest("hex");
 
@@ -1017,8 +1020,11 @@ describe("getConfigsWithRetry", () => {
     };
     mockedAxios.post.mockResolvedValueOnce(rcResponse);
 
-    const existingConfigHash = require("crypto")
-      .createHash("sha256", "datadog-remote-instrumenter")
+    // @ts-expect-error fix this call
+    const existingConfigHash = createHash(
+      "sha256",
+      "datadog-remote-instrumenter",
+    )
       .update(JSON.stringify([]))
       .digest("hex");
 
@@ -1091,8 +1097,11 @@ describe("getConfigsWithRetry", () => {
     mockedAxios.post.mockResolvedValueOnce(noConfigsResponse);
     mockedAxios.post.mockResolvedValueOnce(rcResponse);
 
-    const existingConfigHash = require("crypto")
-      .createHash("sha256", "datadog-remote-instrumenter")
+    // @ts-expect-error fix this call
+    const existingConfigHash = createHash(
+      "sha256",
+      "datadog-remote-instrumenter",
+    )
       .update(JSON.stringify(existingConfigs))
       .digest("hex");
 
@@ -1142,8 +1151,11 @@ describe("getConfigsWithRetry", () => {
     };
     mockedAxios.post.mockResolvedValue(noConfigsResponse);
 
-    const existingConfigHash = require("crypto")
-      .createHash("sha256", "datadog-remote-instrumenter")
+    // @ts-expect-error fix this call
+    const existingConfigHash = createHash(
+      "sha256",
+      "datadog-remote-instrumenter",
+    )
       .update(JSON.stringify(existingConfigs))
       .digest("hex");
 

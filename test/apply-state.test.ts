@@ -1,11 +1,11 @@
-const { createApplyStateObject } = require("../src/apply-state");
-const { RcConfig } = require("../src/config");
-const { RC_PRODUCT, RC_ACKNOWLEDGED, RC_ERROR } = require("../src/consts");
-const {
+import { createApplyStateObject } from "../src/apply-state";
+import { RcConfig } from "../src/config";
+import { RC_PRODUCT, RC_ACKNOWLEDGED, RC_ERROR } from "../src/consts";
+import {
   sampleRcConfigID,
   sampleRcTestJSON,
   sampleRcMetadata,
-} = require("./test-utils");
+} from "./test-utils";
 
 describe("createApplyStateObject", () => {
   test("should create an apply state object with apply error", () => {

@@ -1,39 +1,41 @@
-const cfnResponse = require("cfn-response"); // file will be auto-injected by CloudFormation
-const {
+const cfnResponse =
+  typeof require !== "undefined" ? require("cfn-response") : ({} as any);
+
+import {
   deleteConfigHash,
   getConfigsWithRetry,
   updateConfigHash,
-} = require("./config");
-const { logger } = require("./logger");
-const {
+} from "./config";
+import { logger } from "./logger";
+import {
   isLambdaManagementEvent,
   isStackDeletedEvent,
   isStackCreatedEvent,
   isScheduledInvocationEvent,
   getFunctionFromLambdaEvent,
   selectEventFieldsForLogging,
-} = require("./lambda-event");
-const {
+} from "./lambda-event";
+import {
   deleteError,
   identifyNewErrorsAndResolvedErrors,
   putError,
   listErrors,
   emptyBucket,
-} = require("./error-storage");
-const { ResourceNotFoundException } = require("@aws-sdk/client-lambda");
-const {
+} from "./error-storage";
+import { ResourceNotFoundException } from "@aws-sdk/client-lambda";
+import {
   getLambdaFunction,
   getAllFunctions,
   enrichFunctionsWithTags,
   getFunctionCount,
-} = require("./functions");
-const {
+} from "./functions";
+import {
   getLambdaClient,
   getS3Client,
   getTaggingClient,
-} = require("./aws-resources");
-const { instrumentFunctions } = require("./instrument");
-const {
+} from "./aws-resources";
+import { instrumentFunctions } from "./instrument";
+import {
   LAMBDA_EVENT,
   SCHEDULED_INVOCATION_EVENT,
   CLOUDFORMATION_CREATE_EVENT,
@@ -41,15 +43,31 @@ const {
   FUNCTION_NOT_FOUND,
   INSTRUMENT,
   SKIPPED,
-} = require("./consts");
+} from "./consts";
+
+interface InstrumentOutcome {
+  instrument: {
+    succeeded: Record<string, any>;
+    failed: Record<string, any>;
+    skipped: Record<string, any>;
+  };
+  uninstrument: {
+    succeeded: Record<string, any>;
+    failed: Record<string, any>;
+    skipped: Record<string, any>;
+  };
+}
 
 const lambdaClient = getLambdaClient();
 const taggingClient = getTaggingClient();
 const s3Client = getS3Client();
 
-exports.handler = async (event, context) => {
+export const handler = async (
+  event: any,
+  context: any,
+): Promise<InstrumentOutcome> => {
   logger.logObject(selectEventFieldsForLogging(event));
-  const instrumentOutcome = {
+  const instrumentOutcome: InstrumentOutcome = {
     instrument: { succeeded: {}, failed: {}, skipped: {} },
     uninstrument: { succeeded: {}, failed: {}, skipped: {} },
   };
@@ -73,7 +91,7 @@ exports.handler = async (event, context) => {
         CLOUDFORMATION_CREATE_EVENT,
       );
     } catch (e) {
-      logger.error(e);
+      logger.error(e as any);
     }
     // Any failure should be and we should still send a CFN SUCCESS response since failing stack
     // creation will be painful for a user, and the functions that didn't succeed will be retried
@@ -119,18 +137,18 @@ exports.handler = async (event, context) => {
       event,
     );
     if (!functionFromEvent) {
-      return;
+      return instrumentOutcome;
     }
 
     const functionsToCheck = await enrichFunctionsWithTags(lambdaClient, [
       functionFromEvent,
     ]);
 
-    let configs;
+    let configs: any;
     try {
       const configResult = await getConfigsWithRetry(s3Client, context);
       configs = configResult.configs;
-    } catch (error) {
+    } catch (error: any) {
       // This pulls the reason from the error, just stringifying it does not return the message
       const errorDetails = JSON.parse(
         JSON.stringify(error, Object.getOwnPropertyNames(error)),
@@ -158,20 +176,20 @@ exports.handler = async (event, context) => {
       context,
     );
 
-    let functionsToCheck = [];
+    let functionsToCheck: any[] = [];
     if (configChanged) {
       await deleteConfigHash(s3Client);
       // If the config has changed, check all functions for instrumentation
       // Get all functions in the customer's account
       const allFunctions = await getAllFunctions(lambdaClient);
       const deletedErrorFunctions = errors.filter(
-        (functionName) =>
+        (functionName: string) =>
           !allFunctions.some(
-            (element) => element.FunctionName === functionName,
+            (element: any) => element.FunctionName === functionName,
           ),
       );
 
-      deletedErrorFunctions.forEach((functionName) => {
+      deletedErrorFunctions.forEach((functionName: string) => {
         const reasonCode = FUNCTION_NOT_FOUND;
         const reason = `The function '${functionName}' does not exist`;
         instrumentOutcome.instrument.skipped[functionName] = {
@@ -208,7 +226,7 @@ exports.handler = async (event, context) => {
       );
       const functionsToCheck = (
         await Promise.all(
-          errors.map(async (lambdaFunctionName) => {
+          errors.map(async (lambdaFunctionName: string) => {
             try {
               const lambdaFunction = await getLambdaFunction(
                 lambdaClient,
@@ -245,6 +263,7 @@ exports.handler = async (event, context) => {
         lambdaClient,
         functionsToCheck,
       );
+      // @ts-expect-error Need to fix later
       await instrumentFunctions(
         s3Client,
         configs,
@@ -264,10 +283,10 @@ exports.handler = async (event, context) => {
 
     await Promise.all(
       [
-        newErrors.map(async ({ functionName, reason }) =>
+        newErrors.map(async ({ functionName, reason }: any) =>
           putError(s3Client, functionName, reason),
         ),
-        resolvedErrors.map(async (functionName) =>
+        resolvedErrors.map(async (functionName: string) =>
           deleteError(s3Client, functionName),
         ),
       ].flat(),

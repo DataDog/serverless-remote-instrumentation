@@ -1,20 +1,20 @@
-const instrument = require("../src/instrument");
-const applyState = require("../src/apply-state");
-const { RcConfig } = require("../src/config");
-const {
+import * as instrument from "../src/instrument";
+import * as applyState from "../src/apply-state";
+import { RcConfig } from "../src/config";
+import {
   sampleRcConfigID,
   sampleRcTestJSON,
   sampleRcMetadata,
   baseInstrumentOutcome,
-} = require("./test-utils");
-const {
+} from "./test-utils";
+import {
   DD_SLS_REMOTE_INSTRUMENTER_VERSION,
   VERSION,
   RC_PRODUCT,
   RC_ACKNOWLEDGED,
   SCHEDULED_INVOCATION_EVENT,
   LAMBDA_EVENT,
-} = require("../src/consts");
+} from "../src/consts";
 
 jest.mock("../src/functions", () => ({
   ...jest.requireActual("../src/functions"),
@@ -77,6 +77,8 @@ describe("getExtensionAndRuntimeLayerVersion", () => {
 
 jest.mock("../src/apply-state");
 
+const mockedApplyState = applyState as any;
+
 describe("instrumentFunctions", () => {
   // Sample functions to (un)instrument
   const functionFoo = {
@@ -120,11 +122,11 @@ describe("instrumentFunctions", () => {
     apply_state: RC_ACKNOWLEDGED,
     apply_error: "",
   };
-  applyState.createApplyStateObject.mockReturnValue(applyStateObject);
+  mockedApplyState.createApplyStateObject.mockReturnValue(applyStateObject);
 
   beforeEach(() => {
     // Mock datadog-ci command
-    instrument.cli.run = jest.fn().mockReturnValue(0);
+    (instrument.cli as any).run = jest.fn().mockReturnValue(0);
 
     jest.clearAllMocks();
   });
@@ -136,6 +138,7 @@ describe("instrumentFunctions", () => {
       [functionFoo],
       baseInstrumentOutcome,
       mockTaggingClient,
+      SCHEDULED_INVOCATION_EVENT,
     );
     expect(instrument.cli.run).toHaveBeenCalledTimes(1);
     expect(instrument.cli.run).toHaveBeenCalledWith(
@@ -172,6 +175,7 @@ describe("instrumentFunctions", () => {
       [functionBar],
       baseInstrumentOutcome,
       mockTaggingClient,
+      SCHEDULED_INVOCATION_EVENT,
     );
     expect(instrument.cli.run).toHaveBeenCalledTimes(1);
     expect(instrument.cli.run).toHaveBeenCalledWith(
@@ -203,6 +207,7 @@ describe("instrumentFunctions", () => {
       [functionFoo, functionBar],
       baseInstrumentOutcome,
       mockTaggingClient,
+      SCHEDULED_INVOCATION_EVENT,
     );
     expect(instrument.cli.run).toHaveBeenCalledTimes(1);
     expect(instrument.cli.run).toHaveBeenCalledWith(
@@ -225,7 +230,7 @@ describe("instrumentFunctions", () => {
         },
       }),
     );
-    expect(applyState.deleteApplyState).toHaveBeenCalledTimes(1);
+    expect(mockedApplyState.deleteApplyState).toHaveBeenCalledTimes(1);
   });
   test("should write apply state if triggered by scheduled invocation", async () => {
     await instrument.instrumentFunctions(
@@ -236,10 +241,11 @@ describe("instrumentFunctions", () => {
       mockTaggingClient,
       SCHEDULED_INVOCATION_EVENT,
     );
-    expect(applyState.putApplyState).toHaveBeenCalledTimes(1);
-    expect(applyState.putApplyState).toHaveBeenCalledWith(expect.anything(), [
-      applyStateObject,
-    ]);
+    expect(mockedApplyState.putApplyState).toHaveBeenCalledTimes(1);
+    expect(mockedApplyState.putApplyState).toHaveBeenCalledWith(
+      expect.anything(),
+      [applyStateObject],
+    );
   });
   test("should not write apply state if triggered by lambda management event", async () => {
     await instrument.instrumentFunctions(
@@ -250,16 +256,17 @@ describe("instrumentFunctions", () => {
       mockTaggingClient,
       LAMBDA_EVENT,
     );
-    expect(applyState.putApplyState).toHaveBeenCalledTimes(0);
+    expect(mockedApplyState.putApplyState).toHaveBeenCalledTimes(0);
   });
   test("should track datadog-ci command errors", async () => {
-    instrument.cli.run.mockReturnValue(1);
+    (instrument.cli as any).run = jest.fn().mockReturnValue(1);
     await instrument.instrumentFunctions(
       mockS3Client,
       [rcConfig],
       [functionFoo],
       baseInstrumentOutcome,
       mockTaggingClient,
+      SCHEDULED_INVOCATION_EVENT,
     );
     expect(instrument.cli.run).toHaveBeenCalledTimes(1);
     expect(instrument.cli.run).toHaveBeenCalledWith(
@@ -296,7 +303,7 @@ describe("removeRemoteInstrumentation", () => {
     send: jest.fn(),
   };
   beforeEach(() => {
-    instrument.cli.run.mockReturnValue(0);
+    (instrument.cli as any).run = jest.fn().mockReturnValue(0);
     jest.clearAllMocks();
   });
   test("should uninstrument and untag remotely instrumented functions", async () => {
@@ -357,7 +364,7 @@ describe("removeRemoteInstrumentation", () => {
         },
       }),
     );
-    expect(applyState.deleteApplyState).toHaveBeenCalledTimes(1);
+    expect(mockedApplyState.deleteApplyState).toHaveBeenCalledTimes(1);
   });
   test("should not uninstrument or untag functions that are not remotely instrumented", async () => {
     const functionFoo = {
@@ -374,7 +381,7 @@ describe("removeRemoteInstrumentation", () => {
     );
     expect(instrument.cli.run).toHaveBeenCalledTimes(0);
     expect(mockTaggingClient.send).toHaveBeenCalledTimes(0);
-    expect(applyState.deleteApplyState).toHaveBeenCalledTimes(1);
+    expect(mockedApplyState.deleteApplyState).toHaveBeenCalledTimes(1);
   });
 });
 

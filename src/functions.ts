@@ -1,16 +1,14 @@
-const {
-  GetResourcesCommand,
-} = require("@aws-sdk/client-resource-groups-tagging-api");
-const { sleep } = require("./sleep");
-const {
+import { GetResourcesCommand } from "@aws-sdk/client-resource-groups-tagging-api";
+import { sleep } from "./sleep";
+import {
   GetFunctionCommand,
   GetFunctionConfigurationCommand,
   ListFunctionsCommand,
   GetAccountSettingsCommand,
-} = require("@aws-sdk/client-lambda");
-const { getLambdaClient } = require("./aws-resources");
-const { logger } = require("./logger");
-const {
+} from "@aws-sdk/client-lambda";
+import { getLambdaClient } from "./aws-resources";
+import { logger } from "./logger";
+import {
   DD_SLS_REMOTE_INSTRUMENTER_VERSION,
   ALREADY_MANUALLY_INSTRUMENTED,
   DD_API_KEY,
@@ -28,21 +26,58 @@ const {
   ALREADY_CORRECT_EXTENSION_AND_LAYER,
   SUPPORTED_RUNTIME_CONFIGURATIONS,
   getRuntimeConfig,
-} = require("./consts");
+} from "./consts";
+
+interface LambdaFunction {
+  FunctionName: string;
+  FunctionArn: string;
+  Runtime: string;
+  Tags?: Set<string> | Record<string, string>;
+  Layers?: any[];
+  Environment?: {
+    Variables?: Record<string, string>;
+  };
+  Architectures?: string[];
+  needsInstrumentation?: boolean;
+  needsTagging?: boolean;
+  needsUninstrumentation?: boolean;
+  needsUntagging?: boolean;
+}
+
+interface InstrumentOutcome {
+  instrument: {
+    skipped: Record<string, any>;
+    [key: string]: Record<string, any>;
+  };
+  uninstrument: {
+    [key: string]: Record<string, any>;
+  };
+}
+
+interface Config {
+  ruleFilters: any[];
+  instrumenterFunctionName?: string;
+  extensionVersion?: number;
+  ddTraceEnabled?: boolean;
+  ddServerlessLogsEnabled?: boolean;
+  [key: string]: any;
+}
 
 /**
  * Get the ARNs of all functions that have been remotely instrumented.
  * (i.e. functions that have the DD_SLS_REMOTE_INSTRUMENTER_VERSION tag)
  */
-async function getRemotelyInstrumentedFunctionArns(client) {
+export async function getRemotelyInstrumentedFunctionArns(
+  client: any,
+): Promise<string[]> {
   const input = {
     TagFilters: [
-      { Key: DD_SLS_REMOTE_INSTRUMENTER_VERSION, Values: [VERSION] },
+      { Key: DD_SLS_REMOTE_INSTRUMENTER_VERSION, Values: [VERSION as any] },
     ],
     ResourceTypeFilters: ["lambda:function"],
   };
   const getResourcesCommand = new GetResourcesCommand(input);
-  let getResourcesCommandOutput = { ResourceTagMappingList: [] };
+  let getResourcesCommandOutput: any = { ResourceTagMappingList: [] };
   try {
     getResourcesCommandOutput = await client.send(getResourcesCommand);
   } catch (error) {
@@ -50,20 +85,18 @@ async function getRemotelyInstrumentedFunctionArns(client) {
     return [];
   }
 
-  const functionArns = [];
+  const functionArns: string[] = [];
   for (const resourceTagMapping of getResourcesCommandOutput.ResourceTagMappingList) {
     functionArns.push(resourceTagMapping.ResourceARN);
   }
   logger.log(`Found remotely instrumented function ARNs: '${functionArns}'`);
   return functionArns;
 }
-exports.getRemotelyInstrumentedFunctionArns =
-  getRemotelyInstrumentedFunctionArns;
 
-async function getAllFunctions(client) {
-  let allFunctions = [];
+export async function getAllFunctions(client: any): Promise<any[]> {
+  let allFunctions: any[] = [];
   const listFunctionsCommand = new ListFunctionsCommand({});
-  let listFunctionsCommandOutput = {};
+  let listFunctionsCommandOutput: any = {};
 
   listFunctionsCommandOutput = await client.send(listFunctionsCommand);
   allFunctions.push(...listFunctionsCommandOutput.Functions);
@@ -88,9 +121,11 @@ async function getAllFunctions(client) {
   );
   return allFunctions;
 }
-exports.getAllFunctions = getAllFunctions;
 
-async function getAWSResourceTagsForFunction(client, lambdaFunctionName) {
+async function getAWSResourceTagsForFunction(
+  client: any,
+  lambdaFunctionName: string,
+): Promise<Record<string, string>> {
   const getFunctionCommandOutput = await getLambdaFunction(
     client,
     lambdaFunctionName,
@@ -99,20 +134,25 @@ async function getAWSResourceTagsForFunction(client, lambdaFunctionName) {
   return awsResourceTags;
 }
 
-async function getLambdaFunction(client, lambdaFunctionName) {
+export async function getLambdaFunction(
+  client: any,
+  lambdaFunctionName: string,
+): Promise<any> {
   const params = {
     FunctionName: lambdaFunctionName,
   };
   const getFunctionCommand = new GetFunctionCommand(params);
-  let getFunctionCommandOutput = {};
+  let getFunctionCommandOutput: any = {};
   getFunctionCommandOutput = await client.send(getFunctionCommand);
   return getFunctionCommandOutput;
 }
-exports.getLambdaFunction = getLambdaFunction;
 
-async function enrichFunctionsWithTags(client, functions) {
+async function enrichFunctionsWithTags(
+  client: any,
+  functions: LambdaFunction[],
+): Promise<LambdaFunction[]> {
   // Loop through the functions and collect each one's tags
-  const enrichedFunctions = [];
+  const enrichedFunctions: LambdaFunction[] = [];
   for (const lambdaFunc of functions) {
     const functionTagArray =
       lambdaFunc.Environment?.Variables?.DD_TAGS?.split(" ") || [];
@@ -146,9 +186,13 @@ async function enrichFunctionsWithTags(client, functions) {
   );
   return enrichedFunctions;
 }
-exports.enrichFunctionsWithTags = enrichFunctionsWithTags;
+export { enrichFunctionsWithTags };
 
-function satisfiesTargetingRules(functionName, functionTags, ruleFilters) {
+export function satisfiesTargetingRules(
+  functionName: string,
+  functionTags: Set<string>,
+  ruleFilters: any[],
+): boolean {
   functionTags = new Set(
     Array.from(functionTags).map((tag) => tag.toLowerCase()),
   );
@@ -161,7 +205,7 @@ function satisfiesTargetingRules(functionName, functionTags, ruleFilters) {
   for (const ruleFilter of ruleFilters) {
     if (ruleFilter.filterType === TAG) {
       const ruleFilterKey = ruleFilter.key.toLowerCase();
-      const ruleFilterValues = ruleFilter.values.map((value) =>
+      const ruleFilterValues = ruleFilter.values.map((value: string) =>
         value.toLowerCase(),
       );
       if (ruleFilter.allow) {
@@ -197,20 +241,24 @@ function satisfiesTargetingRules(functionName, functionTags, ruleFilters) {
   }
   return true;
 }
-exports.satisfiesTargetingRules = satisfiesTargetingRules;
 
-function isRemoteInstrumenter(functionName, instrumenterName) {
+export function isRemoteInstrumenter(
+  functionName: string,
+  instrumenterName?: string,
+): boolean {
   return functionName === instrumenterName;
 }
-exports.isRemoteInstrumenter = isRemoteInstrumenter;
 
-function filterFunctionsToChangeInstrumentation(
-  functions,
-  config,
-  instrumentOutcome,
-) {
-  const functionsToInstrumentOrTag = [];
-  const functionsToUninstrumentOrUntag = [];
+export function filterFunctionsToChangeInstrumentation(
+  functions: LambdaFunction[],
+  config: Config,
+  instrumentOutcome: InstrumentOutcome,
+): {
+  functionsToInstrumentOrTag: LambdaFunction[];
+  functionsToUninstrumentOrUntag: LambdaFunction[];
+} {
+  const functionsToInstrumentOrTag: LambdaFunction[] = [];
+  const functionsToUninstrumentOrUntag: LambdaFunction[] = [];
   const emitProcessingLogs = functions.length === 1;
   for (const lambdaFunc of functions) {
     const { instrument, uninstrument, tag, untag } = needsInstrumentationUpdate(
@@ -234,21 +282,18 @@ function filterFunctionsToChangeInstrumentation(
     functionsToUninstrumentOrUntag,
   };
 }
-exports.filterFunctionsToChangeInstrumentation =
-  filterFunctionsToChangeInstrumentation;
 
-function isRemotelyInstrumented(lambdaFunc) {
+export function isRemotelyInstrumented(lambdaFunc: LambdaFunction): boolean {
   const tagKeys = new Set(
-    Array.from(lambdaFunc.Tags).map((tag) => tag.split(":")[0]),
+    Array.from(lambdaFunc.Tags as Set<string>).map((tag) => tag.split(":")[0]),
   );
   return tagKeys.has(DD_SLS_REMOTE_INSTRUMENTER_VERSION);
 }
-exports.isRemotelyInstrumented = isRemotelyInstrumented;
 
-const hasLayerMatching = (l, matcher) =>
-  l?.Layers?.some((layer) => layer.Arn.includes(matcher));
+const hasLayerMatching = (l: LambdaFunction, matcher: string): boolean =>
+  l?.Layers?.some((layer) => layer.Arn.includes(matcher))!;
 
-function isInstrumented(lambdaFunc) {
+export function isInstrumented(lambdaFunc: LambdaFunction): boolean {
   const envVars = new Set(
     Object.keys(lambdaFunc?.Environment?.Variables || {}),
   );
@@ -264,7 +309,7 @@ function isInstrumented(lambdaFunc) {
   // Since the above environment variables can be configured
   // in a datadog.yaml file, check if a datadog layer is present
   const hasDatadogLayer =
-    Object.values(SUPPORTED_RUNTIME_CONFIGURATIONS).some((runtimeConfig) =>
+    Object.values(SUPPORTED_RUNTIME_CONFIGURATIONS).some((runtimeConfig: any) =>
       hasLayerMatching(lambdaFunc, runtimeConfig.layerName),
     ) || hasLayerMatching(lambdaFunc, "Datadog-Extension");
 
@@ -273,15 +318,20 @@ function isInstrumented(lambdaFunc) {
   }
   return false;
 }
-exports.isInstrumented = isInstrumented;
 
-function isCorrectlyInstrumented({
+export function isCorrectlyInstrumented({
   layers,
   config,
   targetLambdaRuntime,
   ddTraceEnabledValue,
   ddServerlessLogsEnabledValue,
-}) {
+}: {
+  layers: any[];
+  config: Config;
+  targetLambdaRuntime: string;
+  ddTraceEnabledValue?: string;
+  ddServerlessLogsEnabledValue?: string;
+}): boolean {
   // Check if the extension is correct
   let targetLambdaExtensionLayerVersion = -1;
   for (const layer of layers) {
@@ -309,7 +359,7 @@ function isCorrectlyInstrumented({
   // Check if the lambda layer version is correct
   const runtimeConfig = getRuntimeConfig(targetLambdaRuntime);
   const expectedLayerName = runtimeConfig?.layerName;
-  const expectedLayerVersion = config[runtimeConfig?.configField];
+  const expectedLayerVersion = config[(runtimeConfig as any)?.configField];
 
   let foundLayerVersion;
   for (const layer of layers) {
@@ -336,16 +386,20 @@ function isCorrectlyInstrumented({
   }
   return true;
 }
-exports.isCorrectlyInstrumented = isCorrectlyInstrumented;
 
-function needsInstrumentationUpdate(
-  lambdaFunc,
-  config,
-  instrumentOutcome,
-  emitProcessingLogs,
-) {
+export function needsInstrumentationUpdate(
+  lambdaFunc: LambdaFunction,
+  config: Config,
+  instrumentOutcome: InstrumentOutcome,
+  emitProcessingLogs: boolean,
+): {
+  instrument: boolean;
+  uninstrument: boolean;
+  tag: boolean;
+  untag: boolean;
+} {
   const functionName = lambdaFunc.FunctionName;
-  const tags = lambdaFunc.Tags;
+  const tags = lambdaFunc.Tags as Set<string>;
   const functionArn = lambdaFunc.FunctionArn;
   const isCurrentlyRemotelyInstrumented = isRemotelyInstrumented(lambdaFunc);
   const runtime = lambdaFunc.Runtime;
@@ -523,9 +577,10 @@ function needsInstrumentationUpdate(
   // Otherwise, instrument it
   return { instrument: true, uninstrument: false, tag: true, untag: false };
 }
-exports.needsInstrumentationUpdate = needsInstrumentationUpdate;
 
-const waitUntilFunctionIsActive = async (functionName) => {
+export const waitUntilFunctionIsActive = async (
+  functionName: string,
+): Promise<boolean> => {
   // Attempting to edit a function that is in a pending state will cause
   // a resource conflict exception to be thrown, and they usually exit that
   // state after a few seconds
@@ -549,23 +604,21 @@ const waitUntilFunctionIsActive = async (functionName) => {
   return isFunctionReady;
 };
 
-exports.waitUntilFunctionIsActive = waitUntilFunctionIsActive;
-
-function selectFunctionFieldsForLogging(lambdaFunction) {
+export function selectFunctionFieldsForLogging(
+  lambdaFunction: LambdaFunction,
+): any {
   return {
     FunctionName: lambdaFunction.FunctionName,
     FunctionArn: lambdaFunction.FunctionArn,
-    Tags: Array.from(lambdaFunction.Tags ?? {}),
+    Tags: Array.from(lambdaFunction.Tags ?? ({} as any)), // TODO: Fix typing
     Runtime: lambdaFunction.Runtime,
     Layers: lambdaFunction.Layers,
     Architectures: lambdaFunction.Architectures,
   };
 }
-exports.selectFunctionFieldsForLogging = selectFunctionFieldsForLogging;
 
-async function getFunctionCount(client) {
+export async function getFunctionCount(client: any): Promise<number> {
   const command = new GetAccountSettingsCommand({});
   const response = await client.send(command);
   return response.AccountUsage.FunctionCount;
 }
-exports.getFunctionCount = getFunctionCount;

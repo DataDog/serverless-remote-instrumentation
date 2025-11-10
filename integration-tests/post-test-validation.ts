@@ -1,9 +1,9 @@
-const {
+import {
   getTimestampsFromResults,
   runQuery,
-} = require("./utilities/insights-queries");
+} from "./utilities/insights-queries";
 
-const assertNoSecretsInLogs = async () => {
+const assertNoSecretsInLogs = async (): Promise<void> => {
   const secretKeys = [
     "DD_API_KEY",
     "DATADOG_API_KEY",
@@ -24,7 +24,7 @@ const assertNoSecretsInLogs = async () => {
   }
 };
 
-const postTestValidations = async () => {
+const postTestValidations = async (): Promise<boolean> => {
   console.log("Post test validations running");
   const tests = [assertNoSecretsInLogs];
   const results = await Promise.allSettled(tests.map((func) => func()));
@@ -43,4 +43,4 @@ const postTestValidations = async () => {
   return true;
 };
 
-module.exports = postTestValidations;
+export default postTestValidations;

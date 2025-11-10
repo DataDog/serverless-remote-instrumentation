@@ -1,8 +1,14 @@
-const { execSync } = require("child_process");
+import { execSync } from "child_process";
 
-const creds = {};
+interface Credentials {
+  accessKeyId: string;
+  secretAccessKey: string;
+  sessionToken: string;
+}
 
-const getCredentials = (arn) => {
+const creds: Record<string, Credentials> = {};
+
+const getCredentials = (arn: string): Credentials => {
   if (!creds[arn]) {
     let command = `aws sts assume-role --role-arn ${arn} --role-session-name testing`;
     if (!process.env.GITLAB_CI) {
@@ -20,4 +26,4 @@ const getCredentials = (arn) => {
   return creds[arn];
 };
 
-exports.getCredentials = getCredentials;
+export { getCredentials };

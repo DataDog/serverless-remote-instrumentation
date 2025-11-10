@@ -1,9 +1,9 @@
-const { InvokeCommand } = require("@aws-sdk/client-lambda");
-const { getLambdaClient } = require("./aws-resources");
-const { functionName } = require("../config.json");
-const { createPresignedUrl, deleteObject } = require("./s3-helpers");
+import { InvokeCommand } from "@aws-sdk/client-lambda";
+import { getLambdaClient } from "./aws-resources";
+import { functionName } from "../config.json" with { type: "json" };
+import { createPresignedUrl, deleteObject } from "./s3-helpers";
 
-const invokeLambdaWithScheduledEvent = async () => {
+const invokeLambdaWithScheduledEvent = async (): Promise<any> => {
   // Delete the last hash so that the remote instrumenter will more consistently check
   // if the function is supposed to be instrumented or not, instead of skipping it
   await deleteObject("datadog_remote_instrumentation_config.txt");
@@ -19,12 +19,20 @@ const invokeLambdaWithScheduledEvent = async () => {
   return JSON.parse(Buffer.from(Payload).toString());
 };
 
-exports.invokeLambdaWithScheduledEvent = invokeLambdaWithScheduledEvent;
+interface InvokeLambdaWithLambdaManagementEventOptions {
+  eventName?: string;
+  targetFunctionName?: string;
+}
+
+interface InvokeLambdaWithLambdaManagementEventResult {
+  payload: any;
+  errors: any;
+}
 
 const invokeLambdaWithLambdaManagementEvent = async ({
   eventName = "UpdateFunctionConfiguration20150331v2",
   targetFunctionName,
-}) => {
+}: InvokeLambdaWithLambdaManagementEventOptions): Promise<InvokeLambdaWithLambdaManagementEventResult> => {
   const command = new InvokeCommand({
     FunctionName: functionName,
     Payload: JSON.stringify({
@@ -51,10 +59,15 @@ const invokeLambdaWithLambdaManagementEvent = async ({
   };
 };
 
-exports.invokeLambdaWithLambdaManagementEvent =
-  invokeLambdaWithLambdaManagementEvent;
+interface InvokeLambdaWithCFNEventResult {
+  payload: any;
+  errors: any;
+  s3Key: string;
+}
 
-const invokeLambdaWithCFNEvent = async (eventType) => {
+const invokeLambdaWithCFNEvent = async (
+  eventType: string,
+): Promise<InvokeLambdaWithCFNEventResult> => {
   const s3Key = `cloudformationDelete/${new Date()}`;
   const command = new InvokeCommand({
     FunctionName: functionName,
@@ -78,14 +91,19 @@ const invokeLambdaWithCFNEvent = async (eventType) => {
   };
 };
 
-const invokeLambdaWithCFNDeleteEvent = async () => {
-  return invokeLambdaWithCFNEvent("Delete");
+const invokeLambdaWithCFNDeleteEvent =
+  async (): Promise<InvokeLambdaWithCFNEventResult> => {
+    return invokeLambdaWithCFNEvent("Delete");
+  };
+
+const invokeLambdaWithCFNCreateEvent =
+  async (): Promise<InvokeLambdaWithCFNEventResult> => {
+    return invokeLambdaWithCFNEvent("Create");
+  };
+
+export {
+  invokeLambdaWithScheduledEvent,
+  invokeLambdaWithLambdaManagementEvent,
+  invokeLambdaWithCFNDeleteEvent,
+  invokeLambdaWithCFNCreateEvent,
 };
-
-exports.invokeLambdaWithCFNDeleteEvent = invokeLambdaWithCFNDeleteEvent;
-
-const invokeLambdaWithCFNCreateEvent = async () => {
-  return invokeLambdaWithCFNEvent("Create");
-};
-
-exports.invokeLambdaWithCFNCreateEvent = invokeLambdaWithCFNCreateEvent;

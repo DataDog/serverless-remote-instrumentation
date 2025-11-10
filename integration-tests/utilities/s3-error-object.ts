@@ -1,10 +1,10 @@
-const { PutObjectCommand } = require("@aws-sdk/client-s3");
-const { getS3Client } = require("./aws-resources");
-const { deleteObject, doesObjectExist } = require("./s3-helpers");
+import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { getS3Client } from "./aws-resources";
+import { deleteObject, doesObjectExist } from "./s3-helpers";
 
-const { bucketName } = require("../config.json");
+import { bucketName } from "../config.json" with { type: "json" };
 
-const putErrorObject = async (functionName) => {
+const putErrorObject = async (functionName: string): Promise<any> => {
   const s3 = await getS3Client();
   const command = new PutObjectCommand({
     Bucket: bucketName,
@@ -15,16 +15,12 @@ const putErrorObject = async (functionName) => {
   return s3.send(command);
 };
 
-exports.putErrorObject = putErrorObject;
-
-const deleteErrorObject = async (functionName) => {
+const deleteErrorObject = async (functionName: string): Promise<any> => {
   return deleteObject(`errors/${functionName}.json`);
 };
 
-exports.deleteErrorObject = deleteErrorObject;
-
-const doesErrorObjectExist = async (functionName) => {
+const doesErrorObjectExist = async (functionName: string): Promise<boolean> => {
   return doesObjectExist(`errors/${functionName}.json`);
 };
 
-exports.doesErrorObjectExist = doesErrorObjectExist;
+export { putErrorObject, deleteErrorObject, doesErrorObjectExist };

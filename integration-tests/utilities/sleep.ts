@@ -1,3 +1,4 @@
-const sleep = async (ms) => new Promise((res) => setTimeout(res, ms));
+const sleep = async (ms: number): Promise<void> =>
+  new Promise((res) => setTimeout(res, ms));
 
-exports.sleep = sleep;
+export { sleep };
