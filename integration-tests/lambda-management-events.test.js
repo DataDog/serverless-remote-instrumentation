@@ -121,6 +121,40 @@ describe("Remote instrumenter lambda management event tests", () => {
     expect(isUninstrumented).toStrictEqual(true);
   });
 
+  it("can instrument a lambda function by its runtime", async () => {
+    // When there are two lambdas created with different runtimes
+    const { FunctionName: nodejsFunctionName } = await createFunction({
+      Runtime: "nodejs20.x",
+    });
+    const { FunctionName: pythonFunctionName } = await createFunction({
+      Runtime: "python3.10",
+    });
+
+    // And the config targets functions by runtime
+    await setRemoteConfig({
+      ruleFilters: [
+        {
+          key: "runtime",
+          values: ["nodejs20.x"],
+          filter_type: "tag",
+          allow: true,
+        },
+      ],
+    });
+
+    // After some time
+    const areCorrectlyInstrumented = await pollUntilTrue(
+      60000,
+      5000,
+      () =>
+        isFunctionInstrumented(nodejsFunctionName) &&
+        isFunctionUninstrumented(pythonFunctionName),
+    );
+
+    // The functions are instrumented and uninstrumented respectively
+    expect(areCorrectlyInstrumented).toStrictEqual(true);
+  });
+
   it("can instrument multiple new lambda functions", async () => {
     // When there is a remote config
     await setRemoteConfig();

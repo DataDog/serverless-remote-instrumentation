@@ -131,6 +131,10 @@ async function enrichFunctionsWithTags(client, functions) {
     for (const [key, value] of Object.entries(awsResourceTags)) {
       functionTags.push(key + ":" + value);
     }
+
+    // Also add the runtime as a tag
+    functionTags.push("runtime:" + lambdaFunc.Runtime);
+
     const functionTagsSet = new Set(functionTags);
     lambdaFunc.Tags = functionTagsSet;
     enrichedFunctions.push(lambdaFunc);

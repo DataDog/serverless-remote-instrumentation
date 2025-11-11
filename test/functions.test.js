@@ -7,6 +7,7 @@ const {
   isInstrumented,
   waitUntilFunctionIsActive,
   selectFunctionFieldsForLogging,
+  enrichFunctionsWithTags,
 } = require("../src/functions");
 const {
   DD_SLS_REMOTE_INSTRUMENTER_VERSION,
@@ -1469,5 +1470,155 @@ describe("selectFunctionFieldsForLogging", () => {
       Tags: Array.from(lambdaFunc.Tags),
       Layers: lambdaFunc.Layers,
     });
+  });
+});
+
+describe("enrichFunctionsWithTags", () => {
+  let mockClient;
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    mockClient = {
+      send: jest.fn(),
+    };
+  });
+
+  test("should include tags from DD_TAGS env var, AWS resource tags, and runtime", async () => {
+    const functions = [
+      createTestLambdaFunction({
+        functionName: "functionA",
+        functionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionA",
+        runtime: "nodejs14.x",
+        tags: { env: "prod", team: "backend" },
+        layers: [],
+        envVars: {
+          DD_TAGS: "service:api version:1.0.0",
+        },
+      }),
+      createTestLambdaFunction({
+        functionName: "functionB",
+        functionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionB",
+        runtime: "python3.8",
+        tags: { env: "staging", team: "frontend" },
+        layers: [],
+        envVars: {},
+      }),
+    ];
+
+    const enrichedFunctions = await enrichFunctionsWithTags(
+      mockClient,
+      functions,
+    );
+
+    expect(enrichedFunctions[0].Tags).toEqual(
+      new Set([
+        "service:api",
+        "version:1.0.0",
+        "env:prod",
+        "team:backend",
+        "runtime:nodejs14.x",
+      ]),
+    );
+    expect(enrichedFunctions[1].Tags).toEqual(
+      new Set(["env:staging", "team:frontend", "runtime:python3.8"]),
+    );
+  });
+
+  test("should fetch AWS resource tags when Tags property is not present", async () => {
+    const functions = [
+      createTestLambdaFunction({
+        functionName: "functionA",
+        functionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionA",
+        runtime: "nodejs14.x",
+        layers: [],
+        envVars: {},
+      }),
+    ];
+
+    mockClient.send.mockResolvedValue({
+      Tags: {
+        env: "staging",
+        owner: "devops",
+      },
+    });
+
+    const enrichedFunctions = await enrichFunctionsWithTags(
+      mockClient,
+      functions,
+    );
+
+    expect(enrichedFunctions[0].Tags).toEqual(
+      new Set(["env:staging", "owner:devops", "runtime:nodejs14.x"]),
+    );
+  });
+
+  test("should not fetch AWS resource tags when Tags property is already present", async () => {
+    const functions = [
+      createTestLambdaFunction({
+        functionName: "functionA",
+        functionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionA",
+        runtime: "nodejs14.x",
+        tags: { env: "prod" },
+        layers: [],
+        envVars: {},
+      }),
+    ];
+
+    const enrichedFunctions = await enrichFunctionsWithTags(
+      mockClient,
+      functions,
+    );
+
+    expect(mockClient.send).not.toHaveBeenCalled();
+    expect(enrichedFunctions[0].Tags).toEqual(
+      new Set(["env:prod", "runtime:nodejs14.x"]),
+    );
+  });
+
+  test("should deduplicate tags correctly", async () => {
+    const functions = [
+      createTestLambdaFunction({
+        functionName: "functionA",
+        functionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionA",
+        runtime: "nodejs14.x",
+        tags: { env: "prod", service: "api" },
+        layers: [],
+        envVars: {
+          DD_TAGS: "env:prod service:web",
+        },
+      }),
+    ];
+
+    const enrichedFunctions = await enrichFunctionsWithTags(
+      mockClient,
+      functions,
+    );
+
+    // env:prod should appear only once, service:api and service:web should both appear
+    expect(enrichedFunctions[0].Tags).toEqual(
+      new Set(["env:prod", "service:api", "service:web", "runtime:nodejs14.x"]),
+    );
+  });
+
+  test("should handle AWS resource tags with empty object", async () => {
+    const functions = [
+      createTestLambdaFunction({
+        functionName: "functionA",
+        functionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionA",
+        runtime: "nodejs14.x",
+        layers: [],
+        envVars: {},
+      }),
+    ];
+
+    mockClient.send.mockResolvedValue({
+      Tags: {},
+    });
+
+    const enrichedFunctions = await enrichFunctionsWithTags(
+      mockClient,
+      functions,
+    );
+    expect(enrichedFunctions[0].Tags).toEqual(new Set(["runtime:nodejs14.x"]));
   });
 });
