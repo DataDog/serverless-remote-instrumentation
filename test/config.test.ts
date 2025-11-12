@@ -912,9 +912,9 @@ describe("getConfigsWithRetry", () => {
     };
     mockedAxios.post.mockResolvedValueOnce(rcResponse);
 
-    // @ts-expect-error fix this call
     const existingConfigHash = createHash(
       "sha256",
+      // @ts-expect-error fix this cal
       "datadog-remote-instrumenter",
     )
       .update(JSON.stringify(existingConfigs))
@@ -976,9 +976,9 @@ describe("getConfigsWithRetry", () => {
     };
     mockedAxios.post.mockResolvedValueOnce(rcResponse);
 
-    // @ts-expect-error fix this call
     const existingConfigHash = createHash(
       "sha256",
+      // @ts-expect-error fix this cal
       "datadog-remote-instrumenter",
     )
       .update(JSON.stringify([{}]))
@@ -1020,9 +1020,9 @@ describe("getConfigsWithRetry", () => {
     };
     mockedAxios.post.mockResolvedValueOnce(rcResponse);
 
-    // @ts-expect-error fix this call
     const existingConfigHash = createHash(
       "sha256",
+      // @ts-expect-error fix this cal
       "datadog-remote-instrumenter",
     )
       .update(JSON.stringify([]))
@@ -1097,9 +1097,9 @@ describe("getConfigsWithRetry", () => {
     mockedAxios.post.mockResolvedValueOnce(noConfigsResponse);
     mockedAxios.post.mockResolvedValueOnce(rcResponse);
 
-    // @ts-expect-error fix this call
     const existingConfigHash = createHash(
       "sha256",
+      // @ts-expect-error fix this cal
       "datadog-remote-instrumenter",
     )
       .update(JSON.stringify(existingConfigs))
@@ -1151,9 +1151,9 @@ describe("getConfigsWithRetry", () => {
     };
     mockedAxios.post.mockResolvedValue(noConfigsResponse);
 
-    // @ts-expect-error fix this call
     const existingConfigHash = createHash(
       "sha256",
+      // @ts-expect-error fix this cal
       "datadog-remote-instrumenter",
     )
       .update(JSON.stringify(existingConfigs))

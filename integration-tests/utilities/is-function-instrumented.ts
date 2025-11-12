@@ -5,7 +5,7 @@ import {
 import { getRemoteConfig } from "./remote-config";
 import { getLambdaClient } from "./aws-resources";
 import { isFunctionInvokable } from "./lambda-functions";
-import { ddSite } from "../config.json" with { type: "json" };
+import { ddSite } from "../config.json";
 import { pollUntilTrue } from "./poll-until-true";
 
 const hasLayerMatching = (l: any, matcher: string, version: number): boolean =>

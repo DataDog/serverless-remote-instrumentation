@@ -1,6 +1,6 @@
 import { client, v2 } from "@datadog/datadog-api-client";
 import type { MetricsAggregator } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2";
-import config from "../integration-tests/config.json" with { type: "json" };
+import config from "../integration-tests/config.json";
 import {
   getApiKey,
   getAppKey,

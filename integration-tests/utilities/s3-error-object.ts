@@ -2,7 +2,7 @@ import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getS3Client } from "./aws-resources";
 import { deleteObject, doesObjectExist } from "./s3-helpers";
 
-import { bucketName } from "../config.json" with { type: "json" };
+import { bucketName } from "../config.json";
 
 const putErrorObject = async (functionName: string): Promise<any> => {
   const s3 = await getS3Client();

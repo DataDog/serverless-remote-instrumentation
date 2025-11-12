@@ -1,5 +1,5 @@
 import axios from "axios";
-import { account, ddSite, region } from "../config.json" with { type: "json" };
+import { account, ddSite, region } from "../config.json";
 import { getApiKey, getAppKey } from "./datadog-keys";
 import { sleep } from "./sleep";
 

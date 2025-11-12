@@ -22,7 +22,7 @@ import {
   putErrorObject,
   doesErrorObjectExist,
 } from "./utilities/s3-error-object";
-import { region } from "./config.json" with { type: "json" };
+import { region } from "./config.json";
 
 describe("Remote instrumenter scheduled event tests", () => {
   const functionThatDoesntExist = "ThisDoesNotExist";

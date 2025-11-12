@@ -1,5 +1,6 @@
-const cfnResponse =
-  typeof require !== "undefined" ? require("cfn-response") : ({} as any);
+import { createRequire } from "module";
+const _require = createRequire(import.meta.url);
+const cfnResponse = _require("cfn-response"); // file will be auto-injected by CloudFormation, so it must use `require`
 
 import {
   deleteConfigHash,

@@ -8,12 +8,7 @@ import {
   Runtime,
   TagResourceCommand,
 } from "@aws-sdk/client-lambda";
-import {
-  account,
-  region,
-  namingSeed,
-  testLambdaRole,
-} from "../config.json" with { type: "json" };
+import { account, region, namingSeed, testLambdaRole } from "../config.json";
 import { getLambdaClient } from "./aws-resources";
 import { sleep } from "./sleep";
 

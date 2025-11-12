@@ -118,21 +118,22 @@ describe("log", () => {
     ["info", true],
     ["warn", false],
     ["error", false],
-  ])("should log", async (logLevel: string, expectToLog: boolean) => {
+  ])("should log", (logLevel: string, expectToLog: boolean) => {
     process.env.DD_LOG_LEVEL = logLevel;
     // Reload the logger module to pick up the new environment variable
-    jest.resetModules();
-    const { logger: freshLogger } = await import("../src/logger");
-    const consoleLogSpy = jest.spyOn(console, "log");
-    freshLogger.log("test");
-    if (expectToLog) {
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        expect.stringContaining("test"),
-      );
-    } else {
-      expect(consoleLogSpy).not.toHaveBeenCalled();
-    }
-    consoleLogSpy.mockRestore();
+    jest.isolateModules(() => {
+      const { logger: freshLogger } = require("../src/logger");
+      const consoleLogSpy = jest.spyOn(console, "log");
+      freshLogger.log("test");
+      if (expectToLog) {
+        expect(consoleLogSpy).toHaveBeenCalledWith(
+          expect.stringContaining("test"),
+        );
+      } else {
+        expect(consoleLogSpy).not.toHaveBeenCalled();
+      }
+      consoleLogSpy.mockRestore();
+    });
   });
 });
 
@@ -148,21 +149,22 @@ describe("warn", () => {
     ["info", true],
     ["warn", true],
     ["error", false],
-  ])("should log", async (logLevel: string, expectToLog: boolean) => {
+  ])("should log", (logLevel: string, expectToLog: boolean) => {
     process.env.DD_LOG_LEVEL = logLevel;
     // Reload the logger module to pick up the new environment variable
-    jest.resetModules();
-    const { logger: freshLogger } = await import("../src/logger");
-    const consoleLogSpy = jest.spyOn(console, "warn");
-    freshLogger.warn("test");
-    if (expectToLog) {
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        expect.stringContaining("test"),
-      );
-    } else {
-      expect(consoleLogSpy).not.toHaveBeenCalled();
-    }
-    consoleLogSpy.mockRestore();
+    jest.isolateModules(() => {
+      const { logger: freshLogger } = require("../src/logger");
+      const consoleLogSpy = jest.spyOn(console, "warn");
+      freshLogger.warn("test");
+      if (expectToLog) {
+        expect(consoleLogSpy).toHaveBeenCalledWith(
+          expect.stringContaining("test"),
+        );
+      } else {
+        expect(consoleLogSpy).not.toHaveBeenCalled();
+      }
+      consoleLogSpy.mockRestore();
+    });
   });
 });
 
@@ -178,21 +180,22 @@ describe("error", () => {
     ["info", true],
     ["warn", true],
     ["error", true],
-  ])("should log", async (logLevel: string, expectToLog: boolean) => {
+  ])("should log", (logLevel: string, expectToLog: boolean) => {
     process.env.DD_LOG_LEVEL = logLevel;
     // Reload the logger module to pick up the new environment variable
-    jest.resetModules();
-    const { logger: freshLogger } = await import("../src/logger");
-    const consoleLogSpy = jest.spyOn(console, "error");
-    freshLogger.error("test");
-    if (expectToLog) {
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        expect.stringContaining("test"),
-      );
-    } else {
-      expect(consoleLogSpy).not.toHaveBeenCalled();
-    }
-    consoleLogSpy.mockRestore();
+    jest.isolateModules(() => {
+      const { logger: freshLogger } = require("../src/logger");
+      const consoleLogSpy = jest.spyOn(console, "error");
+      freshLogger.error("test");
+      if (expectToLog) {
+        expect(consoleLogSpy).toHaveBeenCalledWith(
+          expect.stringContaining("test"),
+        );
+      } else {
+        expect(consoleLogSpy).not.toHaveBeenCalled();
+      }
+      consoleLogSpy.mockRestore();
+    });
   });
 });
 

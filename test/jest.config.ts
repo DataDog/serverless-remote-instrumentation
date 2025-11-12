@@ -1,5 +1,9 @@
-const config = {
-  testMatch: ["**/test/**+(test|spec).[jt]s?(x)"],
-};
+import { Config } from "jest";
 
-module.exports = config;
+export default {
+  rootDir: "..",
+  testMatch: ["**/test/**+(test|spec).[jt]s?(x)"],
+  transform: {
+    "^.+\\.tsx?$": "<rootDir>/test/import-meta-transformer.cjs",
+  },
+} satisfies Config;

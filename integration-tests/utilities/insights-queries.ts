@@ -4,7 +4,7 @@ import {
 } from "@aws-sdk/client-cloudwatch-logs";
 import { sleep } from "./sleep";
 import { getLogsClient } from "./aws-resources";
-import { functionName } from "../config.json" with { type: "json" };
+import { functionName } from "../config.json";
 
 const runQuery = async (queryString: string): Promise<any[]> => {
   const queryParams = {

@@ -1,10 +1,6 @@
 import { SecretsManagerClient } from "@aws-sdk/client-secrets-manager";
 import { LambdaClient } from "@aws-sdk/client-lambda";
-import {
-  account,
-  roleName,
-  region,
-} from "../config.json" with { type: "json" };
+import { account, roleName, region } from "../config.json";
 import { S3Client } from "@aws-sdk/client-s3";
 import { getCredentials } from "./get-credentials";
 import { CloudWatchLogsClient } from "@aws-sdk/client-cloudwatch-logs";

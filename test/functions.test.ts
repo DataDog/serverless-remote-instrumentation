@@ -7,6 +7,7 @@ import {
   isInstrumented,
   waitUntilFunctionIsActive,
   selectFunctionFieldsForLogging,
+  enrichFunctionsWithTags,
 } from "../src/functions";
 import {
   DD_SLS_REMOTE_INSTRUMENTER_VERSION,
@@ -1514,7 +1515,7 @@ describe("selectFunctionFieldsForLogging", () => {
 });
 
 describe("enrichFunctionsWithTags", () => {
-  let mockClient;
+  let mockClient: any;
 
   beforeEach(() => {
     jest.resetAllMocks();

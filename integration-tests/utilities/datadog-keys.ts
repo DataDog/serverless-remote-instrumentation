@@ -1,9 +1,6 @@
 import { GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
 import { getSecretsManagerClient } from "./aws-resources";
-import {
-  apiSecretName,
-  appSecretName,
-} from "../config.json" with { type: "json" };
+import { apiSecretName, appSecretName } from "../config.json";
 
 const getSecret = async (name: string): Promise<string> => {
   const secretsManager = await getSecretsManagerClient();

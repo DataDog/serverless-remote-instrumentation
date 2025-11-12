@@ -1,6 +1,6 @@
 import { InvokeCommand } from "@aws-sdk/client-lambda";
 import { getLambdaClient } from "./aws-resources";
-import { functionName } from "../config.json" with { type: "json" };
+import { functionName } from "../config.json";
 import { createPresignedUrl, deleteObject } from "./s3-helpers";
 
 const invokeLambdaWithScheduledEvent = async (): Promise<any> => {

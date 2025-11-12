@@ -5,7 +5,7 @@ import {
   NotFound,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { bucketName } from "../config.json" with { type: "json" };
+import { bucketName } from "../config.json";
 import { getS3Client } from "./aws-resources";
 
 const createPresignedUrl = async (key: string): Promise<string> => {
