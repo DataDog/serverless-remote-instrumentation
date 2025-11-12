@@ -117,7 +117,9 @@ describe("Remote instrumenter lambda management event tests", () => {
 
     await invokeLambdaWithScheduledEvent();
 
-    const isUninstrumented = await isFunctionUninstrumented(functionName);
+    const isUninstrumented = await pollUntilTrue(60000, 5000, () =>
+      isFunctionUninstrumented(functionName),
+    );
     expect(isUninstrumented).toStrictEqual(true);
   });
 
