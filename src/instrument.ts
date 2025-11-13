@@ -96,7 +96,8 @@ export async function instrumentWithDatadogCi(
   const functionArn = functionToInstrument.FunctionArn;
   const runtime = functionToInstrument.Runtime;
 
-  const layerVersionObj = getExtensionAndRuntimeLayerVersion(runtime!, config);
+  const { extensionVersion, runtimeLayerVersion } =
+    getExtensionAndRuntimeLayerVersion(runtime!, config);
 
   const operationName = instrument ? INSTRUMENT : UNINSTRUMENT;
   const operation = instrument ? "instrument" : "uninstrument";
@@ -108,11 +109,10 @@ export async function instrumentWithDatadogCi(
     outcome: IN_PROGRESS,
     targetFunctionName: functionName,
     targetFunctionArn: functionArn,
-    expectedExtensionVersion: layerVersionObj.extensionVersion?.toString(),
+    expectedExtensionVersion: extensionVersion?.toString(),
     runtime,
   });
 
-  // Create AWS clients
   const lambdaClient = getLambdaClient();
   const cloudWatchLogsClient = getCloudWatchLogsClient();
 
@@ -123,27 +123,15 @@ export async function instrumentWithDatadogCi(
     let functionConfig;
 
     if (instrument) {
-      // Build instrumentation settings
       const settings = {
-        extensionVersion: layerVersionObj.extensionVersion,
-        layerVersion: layerVersionObj.runtimeLayerVersion,
+        ...config,
+        loggingEnabled: config.ddServerlessLogsEnabled,
         flushMetricsToLogs: config.flushMetricsToLogs !== false,
         tracingEnabled: config.ddTraceEnabled !== false,
         mergeXrayTraces: config.mergeXrayTraces !== false,
-        loggingEnabled: config.ddServerlessLogsEnabled,
-        service: config.service,
-        environment: config.environment,
-        version: config.version,
-        extraTags: config.extraTags,
-        logLevel: config.logLevel,
-        apmFlushDeadline: config.apmFlushDeadline,
-        captureLambdaPayload: config.captureLambdaPayload,
-        appsecEnabled: config.appsecEnabled,
-        lambdaFips: config.lambdaFips,
-        llmobsMlApp: config.llmobsMlApp,
+        extensionVersion,
+        layerVersion: runtimeLayerVersion,
       };
-
-      // Get the instrumented function configuration
       functionConfig = await getInstrumentedFunctionConfig(
         lambdaClient,
         cloudWatchLogsClient,
@@ -151,23 +139,15 @@ export async function instrumentWithDatadogCi(
         process.env.AWS_REGION!,
         settings,
       );
-
-      logger.log(
-        `Instrumenting function ${functionName} with settings: ${JSON.stringify(settings)}`,
-      );
     } else {
-      // Get the uninstrumented function configuration
       functionConfig = await getUninstrumentedFunctionConfig(
         lambdaClient,
         cloudWatchLogsClient,
         functionToInstrument,
         undefined, // forwarderARN
       );
-
-      logger.log(`Uninstrumenting function ${functionName}`);
     }
 
-    // Apply the configuration update
     await updateFunctionConfiguration(lambdaClient, {
       // insert the function name as a default in case it's missing from the config for some reason
       FunctionName: functionName,
@@ -184,7 +164,7 @@ export async function instrumentWithDatadogCi(
     outcome: outcome,
     targetFunctionName: functionName,
     targetFunctionArn: functionArn,
-    expectedExtensionVersion: layerVersionObj.extensionVersion?.toString(),
+    expectedExtensionVersion: extensionVersion?.toString(),
     runtime: runtime,
     reason: reason,
     reasonCode: reasonCode,
