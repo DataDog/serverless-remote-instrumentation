@@ -1,0 +1,13 @@
+{
+    // Extends the base config
+    "extends": "./tsconfig",
+    // Loose some configs for testing
+    "compilerOptions": {
+        "module": "node16",
+        "moduleResolution": "node16",
+        "sourceMap": true,
+        "inlineSourceMap": false,
+        "isolatedModules": false,
+        "allowJs": true,
+    },
+}

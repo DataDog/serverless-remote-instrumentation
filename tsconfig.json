@@ -1,12 +1,17 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
-    "module": "commonjs",
+    "target": "es2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "moduleDetection": "force",
+    "isolatedModules": true,
     "lib": [
       "es2020",
       "dom"
     ],
-    "declaration": true,
+    "outDir": "./dist",
+    "rootDir": "./",
+    "declaration": false,
     "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
@@ -21,12 +26,22 @@
     "inlineSources": true,
     "experimentalDecorators": true,
     "strictPropertyInitialization": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
     "typeRoots": [
       "./node_modules/@types"
     ]
   },
+  "include": [
+    "src/**/*",
+    "test/**/*",
+    "integration-tests/**/*",
+    "metrics-validations/**/*"
+  ],
   "exclude": [
     "node_modules",
-    "cdk.out"
+    "cdk.out",
+    "dist",
+    "integration-tests/infrastructure/**/*"
   ]
 }
