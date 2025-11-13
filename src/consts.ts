@@ -1,3 +1,5 @@
+import { FunctionConfiguration } from "@aws-sdk/client-lambda";
+
 // Runtimes
 export const NODE = "node";
 export const PYTHON = "python";
@@ -96,3 +98,12 @@ export const CONFIG_STATUS_OK = 0;
 
 // Config cache constants
 export const CONFIG_CACHE_TTL_MS = 6000;
+
+export interface LambdaFunction extends FunctionConfiguration {
+  FunctionName: string;
+  Tags?: Set<string>;
+  needsInstrumentation?: boolean;
+  needsUninstrumentation?: boolean;
+  needsTagging?: boolean;
+  needsUntagging?: boolean;
+}

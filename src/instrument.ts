@@ -1,6 +1,6 @@
-import { Cli } from "clipanion";
-import { InstrumentCommand } from "@datadog/datadog-ci-base/commands/lambda/instrument";
-import { UninstrumentCommand } from "@datadog/datadog-ci-base/commands/lambda/uninstrument";
+import { getInstrumentedFunctionConfig } from "@datadog/datadog-ci-plugin-lambda/functions/instrument";
+import { getUninstrumentedFunctionConfig } from "@datadog/datadog-ci-plugin-lambda/functions/uninstrument";
+import { updateFunctionConfiguration } from "@datadog/datadog-ci-plugin-lambda/functions/commons";
 import {
   INSTRUMENT,
   UNINSTRUMENT,
@@ -13,6 +13,7 @@ import {
   REMOTE_INSTRUMENTATION_STARTED,
   REMOTE_INSTRUMENTATION_ENDED,
   getRuntimeConfig,
+  type LambdaFunction,
 } from "./consts";
 import { RcConfig } from "./config";
 import { logger } from "./logger";
@@ -27,20 +28,11 @@ import {
   createApplyStateObject,
   deleteApplyState,
 } from "./apply-state";
+import { getCloudWatchLogsClient, getLambdaClient } from "./aws-resources";
 
 interface LayerVersionObj {
   runtimeLayerVersion?: number;
   extensionVersion?: number;
-}
-
-interface LambdaFunction {
-  FunctionName: string;
-  FunctionArn: string;
-  Runtime: string;
-  needsInstrumentation?: boolean;
-  needsTagging?: boolean;
-  needsUninstrumentation?: boolean;
-  needsUntagging?: boolean;
 }
 
 interface Config {
@@ -66,14 +58,6 @@ interface InstrumentOutcome {
     skipped: Record<string, any>;
   };
 }
-
-// Create a CLI instance with the instrument and uninstrument commands
-export const cli = new Cli({
-  binaryName: "datadog-ci",
-});
-cli.register(InstrumentCommand);
-cli.register(UninstrumentCommand);
-
 export function getExtensionAndRuntimeLayerVersion(
   runtime: string,
   config: Config,
@@ -112,29 +96,10 @@ export async function instrumentWithDatadogCi(
   const functionArn = functionToInstrument.FunctionArn;
   const runtime = functionToInstrument.Runtime;
 
-  const layerVersionObj = getExtensionAndRuntimeLayerVersion(runtime, config);
+  const layerVersionObj = getExtensionAndRuntimeLayerVersion(runtime!, config);
 
   const operationName = instrument ? INSTRUMENT : UNINSTRUMENT;
   const operation = instrument ? "instrument" : "uninstrument";
-
-  // Construct datadog-ci command
-  let command: any[] = ["lambda", operation, "-f", functionArn];
-  if (instrument) {
-    if (layerVersionObj.runtimeLayerVersion) {
-      command.push("-v", layerVersionObj.runtimeLayerVersion.toString());
-    }
-    if (layerVersionObj.extensionVersion) {
-      command.push("-e", layerVersionObj.extensionVersion.toString());
-    }
-    if (config.ddTraceEnabled !== undefined) {
-      command.push("--tracing", config.ddTraceEnabled.toString());
-    }
-    if (config.ddServerlessLogsEnabled !== undefined) {
-      command.push("--logging", config.ddServerlessLogsEnabled.toString());
-    }
-  } else {
-    command.push("-r", config.awsRegion);
-  }
 
   await waitUntilFunctionIsActive(functionName);
 
@@ -146,23 +111,71 @@ export async function instrumentWithDatadogCi(
     expectedExtensionVersion: layerVersionObj.extensionVersion?.toString(),
     runtime,
   });
-  logger.log(`Sending datadog-ci command: ${JSON.stringify(command)}`);
 
-  let out = "";
-  const commandExitCode = await cli.run(command, {
-    // Override stdout to capture the output of the command
-    stdout: {
-      write: (data: string) => {
-        out += data;
-      },
-    },
-  } as any);
+  // Create AWS clients
+  const lambdaClient = getLambdaClient();
+  const cloudWatchLogsClient = getCloudWatchLogsClient();
 
   let outcome = SUCCEEDED;
   let reason, reasonCode;
-  if (commandExitCode !== 0) {
+
+  try {
+    let functionConfig;
+
+    if (instrument) {
+      // Build instrumentation settings
+      const settings = {
+        extensionVersion: layerVersionObj.extensionVersion,
+        layerVersion: layerVersionObj.runtimeLayerVersion,
+        flushMetricsToLogs: config.flushMetricsToLogs !== false,
+        tracingEnabled: config.ddTraceEnabled !== false,
+        mergeXrayTraces: config.mergeXrayTraces !== false,
+        loggingEnabled: config.ddServerlessLogsEnabled,
+        service: config.service,
+        environment: config.environment,
+        version: config.version,
+        extraTags: config.extraTags,
+        logLevel: config.logLevel,
+        apmFlushDeadline: config.apmFlushDeadline,
+        captureLambdaPayload: config.captureLambdaPayload,
+        appsecEnabled: config.appsecEnabled,
+        lambdaFips: config.lambdaFips,
+        llmobsMlApp: config.llmobsMlApp,
+      };
+
+      // Get the instrumented function configuration
+      functionConfig = await getInstrumentedFunctionConfig(
+        lambdaClient,
+        cloudWatchLogsClient,
+        functionToInstrument,
+        process.env.AWS_REGION!,
+        settings,
+      );
+
+      logger.log(
+        `Instrumenting function ${functionName} with settings: ${JSON.stringify(settings)}`,
+      );
+    } else {
+      // Get the uninstrumented function configuration
+      functionConfig = await getUninstrumentedFunctionConfig(
+        lambdaClient,
+        cloudWatchLogsClient,
+        functionToInstrument,
+        undefined, // forwarderARN
+      );
+
+      logger.log(`Uninstrumenting function ${functionName}`);
+    }
+
+    // Apply the configuration update
+    await updateFunctionConfiguration(lambdaClient, {
+      // insert the function name as a default in case it's missing from the config for some reason
+      FunctionName: functionName,
+      ...functionConfig,
+    });
+  } catch (error) {
     outcome = FAILED;
-    reason = out?.split("[Error] ")[1]?.replace(/\n$/, "");
+    reason = error instanceof Error ? error.message : String(error);
     reasonCode = DATADOG_CI_ERROR;
   }
 
@@ -247,7 +260,7 @@ export async function instrumentFunctions(
 
       await tagResourcesWithSlsTag(
         taggingClient,
-        functionsToTagInBatch.map((f) => f.FunctionArn),
+        functionsToTagInBatch.map((f) => f.FunctionArn!),
       );
 
       // Then, instrument all functions in this batch that need instrumentation
@@ -301,7 +314,7 @@ export async function instrumentFunctions(
 
       await untagResourcesOfSlsTag(
         taggingClient,
-        functionsToUntagInBatch.map((f) => f.FunctionArn),
+        functionsToUntagInBatch.map((f) => f.FunctionArn!),
       );
     }
     // Add the config apply state to the list
