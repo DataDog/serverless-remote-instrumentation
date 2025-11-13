@@ -35,9 +35,15 @@ jest.mock("@datadog/datadog-ci-plugin-lambda/functions/commons", () => ({
   updateFunctionConfiguration: jest.fn(),
 }));
 
-const { getInstrumentedFunctionConfig } = require("@datadog/datadog-ci-plugin-lambda/functions/instrument");
-const { getUninstrumentedFunctionConfig } = require("@datadog/datadog-ci-plugin-lambda/functions/uninstrument");
-const { updateFunctionConfiguration } = require("@datadog/datadog-ci-plugin-lambda/functions/commons");
+const {
+  getInstrumentedFunctionConfig,
+} = require("@datadog/datadog-ci-plugin-lambda/functions/instrument");
+const {
+  getUninstrumentedFunctionConfig,
+} = require("@datadog/datadog-ci-plugin-lambda/functions/uninstrument");
+const {
+  updateFunctionConfiguration,
+} = require("@datadog/datadog-ci-plugin-lambda/functions/commons");
 
 describe("getExtensionAndRuntimeLayerVersion", () => {
   it("should return the layer and runtime version for node", () => {
