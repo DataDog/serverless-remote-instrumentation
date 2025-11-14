@@ -32,7 +32,7 @@ jest.mock("@datadog/datadog-ci-plugin-lambda/functions/uninstrument", () => ({
 }));
 
 jest.mock("@datadog/datadog-ci-plugin-lambda/functions/commons", () => ({
-  updateFunctionConfiguration: jest.fn(),
+  updateLambdaFunctionConfig: jest.fn(),
 }));
 
 const {
@@ -42,7 +42,7 @@ const {
   getUninstrumentedFunctionConfig,
 } = require("@datadog/datadog-ci-plugin-lambda/functions/uninstrument");
 const {
-  updateFunctionConfiguration,
+  updateLambdaFunctionConfig,
 } = require("@datadog/datadog-ci-plugin-lambda/functions/commons");
 
 describe("getExtensionAndRuntimeLayerVersion", () => {
@@ -163,7 +163,7 @@ describe("instrumentFunctions", () => {
       lambdaConfig: functionBar,
       updateFunctionConfigurationCommandInput: {},
     });
-    updateFunctionConfiguration.mockResolvedValue();
+    updateLambdaFunctionConfig.mockResolvedValue();
 
     jest.clearAllMocks();
   });
@@ -190,7 +190,7 @@ describe("instrumentFunctions", () => {
         loggingEnabled: false,
       }),
     );
-    expect(updateFunctionConfiguration).toHaveBeenCalledTimes(1);
+    expect(updateLambdaFunctionConfig).toHaveBeenCalledTimes(1);
     expect(mockTaggingClient.send).toHaveBeenCalledTimes(1);
     expect(mockTaggingClient.send).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -218,7 +218,7 @@ describe("instrumentFunctions", () => {
       functionBar,
       undefined, // forwarderARN
     );
-    expect(updateFunctionConfiguration).toHaveBeenCalledTimes(1);
+    expect(updateLambdaFunctionConfig).toHaveBeenCalledTimes(1);
     expect(mockTaggingClient.send).toHaveBeenCalledTimes(1);
     expect(mockTaggingClient.send).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -241,7 +241,7 @@ describe("instrumentFunctions", () => {
       SCHEDULED_INVOCATION_EVENT,
     );
     expect(getUninstrumentedFunctionConfig).toHaveBeenCalledTimes(1);
-    expect(updateFunctionConfiguration).toHaveBeenCalledTimes(1);
+    expect(updateLambdaFunctionConfig).toHaveBeenCalledTimes(1);
     expect(mockTaggingClient.send).toHaveBeenCalledTimes(1);
     expect(mockTaggingClient.send).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -283,7 +283,7 @@ describe("instrumentFunctions", () => {
   });
 
   test("should track datadog-ci command errors", async () => {
-    updateFunctionConfiguration.mockRejectedValue(
+    updateLambdaFunctionConfig.mockRejectedValue(
       new Error("Failed to update function configuration"),
     );
     await instrument.instrumentFunctions(
@@ -295,7 +295,7 @@ describe("instrumentFunctions", () => {
       SCHEDULED_INVOCATION_EVENT,
     );
     expect(getInstrumentedFunctionConfig).toHaveBeenCalledTimes(1);
-    expect(updateFunctionConfiguration).toHaveBeenCalledTimes(1);
+    expect(updateLambdaFunctionConfig).toHaveBeenCalledTimes(1);
     expect(baseInstrumentOutcome.instrument.failed).toEqual({
       [functionFoo.FunctionName]: {
         functionArn: functionFoo.FunctionArn,
@@ -322,7 +322,7 @@ describe("removeRemoteInstrumentation", () => {
       lambdaConfig: {},
       updateFunctionConfigurationCommandInput: {},
     });
-    updateFunctionConfiguration.mockResolvedValue();
+    updateLambdaFunctionConfig.mockResolvedValue();
     jest.clearAllMocks();
   });
 
@@ -353,7 +353,7 @@ describe("removeRemoteInstrumentation", () => {
       mockTaggingClient,
     );
     expect(getUninstrumentedFunctionConfig).toHaveBeenCalledTimes(2);
-    expect(updateFunctionConfiguration).toHaveBeenCalledTimes(2);
+    expect(updateLambdaFunctionConfig).toHaveBeenCalledTimes(2);
     expect(mockTaggingClient.send).toHaveBeenCalledTimes(1);
     expect(mockTaggingClient.send).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -380,7 +380,7 @@ describe("removeRemoteInstrumentation", () => {
       mockTaggingClient,
     );
     expect(getUninstrumentedFunctionConfig).toHaveBeenCalledTimes(0);
-    expect(updateFunctionConfiguration).toHaveBeenCalledTimes(0);
+    expect(updateLambdaFunctionConfig).toHaveBeenCalledTimes(0);
     expect(mockTaggingClient.send).toHaveBeenCalledTimes(0);
     expect(mockedApplyState.deleteApplyState).toHaveBeenCalledTimes(1);
   });
