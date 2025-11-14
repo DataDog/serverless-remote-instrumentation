@@ -1,6 +1,6 @@
 import { getInstrumentedFunctionConfig } from "@datadog/datadog-ci-plugin-lambda/functions/instrument";
 import { getUninstrumentedFunctionConfig } from "@datadog/datadog-ci-plugin-lambda/functions/uninstrument";
-import { updateFunctionConfiguration } from "@datadog/datadog-ci-plugin-lambda/functions/commons";
+import { updateLambdaFunctionConfig } from "@datadog/datadog-ci-plugin-lambda/functions/commons";
 import {
   INSTRUMENT,
   UNINSTRUMENT,
@@ -30,10 +30,10 @@ import {
 } from "./apply-state";
 import { getCloudWatchLogsClient, getLambdaClient } from "./aws-resources";
 
-interface LayerVersionObj {
-  runtimeLayerVersion?: number;
-  extensionVersion?: number;
-}
+// Types are currently not exported from datadog-ci-plugin-lambda
+type DatadogCiFunctionConfiguration = Parameters<
+  typeof updateLambdaFunctionConfig
+>[2];
 
 interface Config {
   ruleFilters?: any[];
@@ -61,8 +61,11 @@ interface InstrumentOutcome {
 export function getExtensionAndRuntimeLayerVersion(
   runtime: string,
   config: Config,
-): LayerVersionObj {
-  const result: LayerVersionObj = {
+): {
+  runtimeLayerVersion: number | undefined;
+  extensionVersion: number | undefined;
+} {
+  const result = {
     runtimeLayerVersion: undefined,
     extensionVersion: config.extensionVersion,
   };
@@ -120,7 +123,7 @@ export async function instrumentWithDatadogCi(
   let reason, reasonCode;
 
   try {
-    let functionConfig;
+    let functionConfig: DatadogCiFunctionConfiguration;
 
     if (instrument) {
       const settings = {
@@ -148,11 +151,11 @@ export async function instrumentWithDatadogCi(
       );
     }
 
-    await updateFunctionConfiguration(lambdaClient, {
-      // insert the function name as a default in case it's missing from the config for some reason
-      FunctionName: functionName,
-      ...functionConfig,
-    });
+    await updateLambdaFunctionConfig(
+      lambdaClient,
+      cloudWatchLogsClient,
+      functionConfig,
+    );
   } catch (error) {
     outcome = FAILED;
     reason = error instanceof Error ? error.message : String(error);
