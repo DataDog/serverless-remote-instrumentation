@@ -1,3 +1,15 @@
+jest.mock("@datadog/datadog-ci-plugin-lambda/functions/instrument", () => ({
+  getInstrumentedFunctionConfig: jest.fn(),
+}));
+
+jest.mock("@datadog/datadog-ci-plugin-lambda/functions/uninstrument", () => ({
+  getUninstrumentedFunctionConfig: jest.fn(),
+}));
+
+jest.mock("@datadog/datadog-ci-plugin-lambda/functions/commons", () => ({
+  updateFunctionConfiguration: jest.fn(),
+}));
+
 import * as handler from "../src/handler";
 import * as functions from "../src/functions";
 import * as config from "../src/config";

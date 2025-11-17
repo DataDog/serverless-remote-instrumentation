@@ -26,23 +26,8 @@ import {
   ALREADY_CORRECT_EXTENSION_AND_LAYER,
   SUPPORTED_RUNTIME_CONFIGURATIONS,
   getRuntimeConfig,
+  type LambdaFunction,
 } from "./consts";
-
-interface LambdaFunction {
-  FunctionName: string;
-  FunctionArn: string;
-  Runtime: string;
-  Tags?: Set<string> | Record<string, string>;
-  Layers?: any[];
-  Environment?: {
-    Variables?: Record<string, string>;
-  };
-  Architectures?: string[];
-  needsInstrumentation?: boolean;
-  needsTagging?: boolean;
-  needsUninstrumentation?: boolean;
-  needsUntagging?: boolean;
-}
 
 interface InstrumentOutcome {
   instrument: {
@@ -160,12 +145,12 @@ async function enrichFunctionsWithTags(
       functionTag?.replace(/"/g, ""),
     );
 
-    let awsResourceTags = lambdaFunc.Tags;
+    let awsResourceTags: Record<string, string> = (lambdaFunc as any).Tags;
     if (!awsResourceTags) {
       awsResourceTags =
         (await getAWSResourceTagsForFunction(
           client,
-          lambdaFunc.FunctionName,
+          lambdaFunc.FunctionName!,
         )) ?? {};
     }
     for (const [key, value] of Object.entries(awsResourceTags)) {
@@ -291,7 +276,7 @@ export function isRemotelyInstrumented(lambdaFunc: LambdaFunction): boolean {
 }
 
 const hasLayerMatching = (l: LambdaFunction, matcher: string): boolean =>
-  l?.Layers?.some((layer) => layer.Arn.includes(matcher))!;
+  l?.Layers?.some((layer) => layer.Arn!.includes(matcher))!;
 
 export function isInstrumented(lambdaFunc: LambdaFunction): boolean {
   const envVars = new Set(
@@ -402,7 +387,7 @@ export function needsInstrumentationUpdate(
   const tags = lambdaFunc.Tags as Set<string>;
   const functionArn = lambdaFunc.FunctionArn;
   const isCurrentlyRemotelyInstrumented = isRemotelyInstrumented(lambdaFunc);
-  const runtime = lambdaFunc.Runtime;
+  const runtime = lambdaFunc.Runtime!;
   const isCurrentlyInstrumented = isInstrumented(lambdaFunc);
 
   // If it is instrumented but not by the remote instrumenter
