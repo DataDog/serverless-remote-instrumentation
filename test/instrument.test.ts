@@ -22,7 +22,6 @@ jest.mock("../src/functions", () => ({
   waitUntilFunctionIsActive: jest.fn(),
 }));
 
-// Mock the datadog-ci-plugin-lambda functions
 jest.mock("@datadog/datadog-ci-plugin-lambda/functions/instrument", () => ({
   getInstrumentedFunctionConfig: jest.fn(),
 }));

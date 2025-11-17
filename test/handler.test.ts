@@ -1,4 +1,3 @@
-// Mock the datadog-ci-plugin-lambda functions before any imports
 jest.mock("@datadog/datadog-ci-plugin-lambda/functions/instrument", () => ({
   getInstrumentedFunctionConfig: jest.fn(),
 }));
