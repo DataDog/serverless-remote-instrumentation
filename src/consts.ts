@@ -46,21 +46,24 @@ export const SUPPORTED_RUNTIME_CONFIGURATIONS: Record<
     configField: "rubyLayerVersion",
     getFromJsonConfig: (configJSON: any) =>
       configJSON.instrumentation_settings?.ruby_layer_version,
-    isSupportedRuntime: (runtime: string) => runtime.toLowerCase().includes(RUBY),
+    isSupportedRuntime: (runtime: string) =>
+      runtime.toLowerCase().includes(RUBY),
   },
   [JAVA]: {
     layerName: "dd-trace-java",
     configField: "javaLayerVersion",
     getFromJsonConfig: (configJSON: any) =>
       configJSON.instrumentation_settings?.java_layer_version,
-    isSupportedRuntime: (runtime: string) => runtime.toLowerCase().includes(JAVA),
+    isSupportedRuntime: (runtime: string) =>
+      runtime.toLowerCase().includes(JAVA),
   },
   [DOTNET]: {
     layerName: "dd-trace-dotnet",
     configField: "dotnetLayerVersion",
     getFromJsonConfig: (configJSON: any) =>
       configJSON.instrumentation_settings?.dotnet_layer_version,
-    isSupportedRuntime: (runtime: string) => runtime.toLowerCase().includes(DOTNET),
+    isSupportedRuntime: (runtime: string) =>
+      runtime.toLowerCase().includes(DOTNET),
   },
   [PROVIDED_AL2]: {
     getFromJsonConfig: () => undefined,
