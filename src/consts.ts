@@ -3,16 +3,11 @@ import { FunctionConfiguration } from "@aws-sdk/client-lambda";
 // Runtimes
 export const NODE = "node";
 export const PYTHON = "python";
-const RUBY = "ruby";
-exports.RUBY = RUBY;
-const JAVA = "java";
-exports.JAVA = JAVA;
-const DOTNET = "dotnet";
-exports.DOTNET = DOTNET;
-const PROVIDED_AL2 = "provided.al2";
-exports.PROVIDED_AL2 = PROVIDED_AL2;
-const PROVIDED_AL2023 = "provided.al2023";
-exports.PROVIDED_AL2023 = PROVIDED_AL2023;
+export const RUBY = "ruby";
+export const JAVA = "java";
+export const DOTNET = "dotnet";
+export const PROVIDED_AL2 = "provided.al2";
+export const PROVIDED_AL2023 = "provided.al2023";
 
 interface RuntimeConfiguration {
   layerName?: string;
