@@ -1,8 +1,13 @@
 import { client, v2 } from "@datadog/datadog-api-client";
-import { MetricsAggregator } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2";
-const { account, region, functionName, ddSite } = require("../integration-tests/config.json");
-const { getApiKey, getAppKey } = require("../integration-tests/utilities/datadog-keys.js");
+import type { MetricsAggregator } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2";
+import config from "../integration-tests/config.json";
+import {
+  getApiKey,
+  getAppKey,
+} from "../integration-tests/utilities/datadog-keys";
 import { get } from "lodash";
+
+const { account, region, functionName, ddSite } = config;
 
 let metricsClient: v2.MetricsApi;
 
@@ -23,9 +28,13 @@ const getDDApiMetricsClient = async () => {
   return metricsClient;
 };
 
-exports.getDDApiMetricsClient = getDDApiMetricsClient;
+export { getDDApiMetricsClient };
 
-const getDDMetricValue = async ({ aggregator="sum", metricName, size }: {
+const getDDMetricValue = async ({
+  aggregator = "sum",
+  metricName,
+  size,
+}: {
   metricName: string;
   size?: number; // time range size in ms, defaults to 30 minutes,
   aggregator?: MetricsAggregator;
@@ -58,7 +67,9 @@ const getDDMetricValue = async ({ aggregator="sum", metricName, size }: {
     },
   };
   const result = await metricsClient.queryScalarData(query);
-  const metricValue = result.data?.attributes?.columns?.find(item => get(item, 'name') === "metricValue");
+  const metricValue = result.data?.attributes?.columns?.find(
+    (item) => get(item, "name") === "metricValue",
+  );
   return get(metricValue, ["values", 0], 0);
 };
 
