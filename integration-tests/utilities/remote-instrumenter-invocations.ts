@@ -101,9 +101,31 @@ const invokeLambdaWithCFNCreateEvent =
     return invokeLambdaWithCFNEvent("Create");
   };
 
+const invokeLambdaWithUpdateEvent =
+  async ({ version }: { version: string }): Promise<InvokeLambdaWithLambdaManagementEventResult> => {
+    const command = new InvokeCommand({
+      FunctionName: functionName,
+      Payload: JSON.stringify({
+        "event-type": "UpdateEvent",
+        prefix: "https://remote-instrumenter-testing-bucket-eu-north-1-alexangelillo.s3.eu-north-1.amazonaws.com/",
+        suffix: ".yaml",
+        version: "modified_template",
+        name: `integration-tests${process.env.USER}`,
+      }),
+    });
+    const lambdaClient = await getLambdaClient();
+    const res = await lambdaClient.send(command);
+    const payload = JSON.parse(Buffer.from(res.Payload).toString());
+    return {
+      payload,
+      errors: res.FunctionError,
+    };
+  };
+
 export {
   invokeLambdaWithScheduledEvent,
   invokeLambdaWithLambdaManagementEvent,
   invokeLambdaWithCFNDeleteEvent,
   invokeLambdaWithCFNCreateEvent,
+  invokeLambdaWithUpdateEvent,
 };

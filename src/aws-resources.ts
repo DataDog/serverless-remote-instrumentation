@@ -2,6 +2,7 @@ import { CloudWatchLogsClient } from "@aws-sdk/client-cloudwatch-logs";
 import { LambdaClient } from "@aws-sdk/client-lambda";
 import { ResourceGroupsTaggingAPIClient } from "@aws-sdk/client-resource-groups-tagging-api";
 import { S3Client } from "@aws-sdk/client-s3";
+import { CloudFormationClient } from "@aws-sdk/client-cloudformation";
 
 let lambdaClient: LambdaClient;
 export const getLambdaClient = () => {
@@ -49,4 +50,16 @@ export const getCloudWatchLogsClient = () => {
     });
   }
   return cloudWatchLogsClient;
+};
+
+let cloudformationClient: CloudFormationClient;
+export const getCloudFormationClient = () => {
+  if (!cloudformationClient) {
+    cloudformationClient = new CloudFormationClient({
+      region: process.env.AWS_REGION,
+      retryMode: "adaptive",
+      maxAttempts: 5,
+    });
+  }
+  return cloudformationClient;
 };

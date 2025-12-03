@@ -39,6 +39,13 @@ export function isLambdaManagementEvent(event: any): boolean {
   );
 }
 
+export function isUpdateEvent(event: any): boolean {
+  return (
+    Object.prototype.hasOwnProperty.call(event, "event-type") &&
+    event["event-type"] === "UpdateEvent"
+  );
+}
+
 export function isUpdateConfigurationEvent(event: any): boolean {
   // TODO: [Followup] Do additional checks to only reinstrument if the important fields have changed
   // (e.g. reinstrument if layers, memory size, env vars, runtime, handler have changed,

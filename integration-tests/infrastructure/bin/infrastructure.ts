@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { App, SecretValue, Stack, Tags } from 'aws-cdk-lib';
+import { App, NestedStack, SecretValue, Stack, Tags } from 'aws-cdk-lib';
 import { AccountRootPrincipal, Role, ServicePrincipal, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { CfnInclude } from 'aws-cdk-lib/cloudformation-include';
 import { Construct } from 'constructs';
@@ -54,7 +54,8 @@ class TestingStack extends Stack {
       roleName: testLambdaRole,
     });
 
-    new CfnInclude(this, 'ImportedRemoteInstrumenterTemplate', { 
+    const nestedStack = new NestedStack(this, 'RemoteInstrumenterNestedStack');
+    new CfnInclude(nestedStack, 'ImportedRemoteInstrumenterTemplate', { 
       templateFile: this.modifyTemplate(),
       parameters: {
         EnableCodeSigningConfigurations: false,

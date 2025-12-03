@@ -139,6 +139,7 @@ Resources:
           DD_EXTENSION_VERSION: compatibility
           DD_TAGS: !Join ["", ["template_version:", !FindInMap [ Constants, DdRemoteInstrumentApp, Version ]] ]
           DD_INSTRUMENTER_VERSION: !FindInMap [ Constants, DdRemoteInstrumentApp, Version ]
+          STACK_NAME: !Ref AWS::StackName
       Tags:
         - Key: "dd_serverless_service"
           Value: "remote_instrumenter"
@@ -197,6 +198,13 @@ Resources:
               - s3:PutObject
             Resource:
               - !Join ["", [!GetAtt S3Bucket.Arn, '*']]
+          - Effect: Allow
+            Action:
+              - cloudformation:UpdateStack
+              - cloudformation:DescribeStacks
+            Resource:
+              - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}/*
+              - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}
           - Effect: Allow
             Action:
               - tag:GetResources

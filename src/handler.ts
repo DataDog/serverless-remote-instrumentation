@@ -7,12 +7,14 @@ import {
   getConfigsWithRetry,
   updateConfigHash,
 } from "./config";
+import { sleep } from "./sleep";
 import { logger } from "./logger";
 import {
   isLambdaManagementEvent,
   isStackDeletedEvent,
   isStackCreatedEvent,
   isScheduledInvocationEvent,
+  isUpdateEvent,
   getFunctionFromLambdaEvent,
   selectEventFieldsForLogging,
 } from "./lambda-event";
@@ -33,6 +35,7 @@ import {
 import {
   getLambdaClient,
   getS3Client,
+  getCloudFormationClient,
   getTaggingClient,
 } from "./aws-resources";
 import { instrumentFunctions } from "./instrument";
@@ -44,7 +47,9 @@ import {
   FUNCTION_NOT_FOUND,
   INSTRUMENT,
   SKIPPED,
+  VERSION,
 } from "./consts";
+import { DescribeStacksCommand, UpdateStackCommand } from "@aws-sdk/client-cloudformation";
 
 interface InstrumentOutcome {
   instrument: {
@@ -295,6 +300,79 @@ export const handler = async (
 
     const functionCount = await getFunctionCount(lambdaClient);
     logger.emitFrontendAccountStateEvent({ functionCount });
+  }
+  else if (isUpdateEvent(event)) {
+    const { prefix, suffix, version } = event;
+    const url = `${prefix}${version}${suffix}`;
+    logger.log(`Received an update event. Version: ${version}, current version is ${VERSION}`);
+
+    logger.log(`Using template from ${url}`);
+    
+    
+    const cloudformationClient = getCloudFormationClient();
+    const describeResult = await cloudformationClient.send(new DescribeStacksCommand({
+      StackName: process.env.STACK_NAME,
+    }));
+
+    logger.log(`Describe stack result: ${JSON.stringify(describeResult)}`);
+    const existingStack = describeResult?.Stacks?.[0]
+    const parameters = existingStack?.Parameters?.map((parameter: any): any => ({
+      ParameterKey: parameter.ParameterKey,
+      UsePreviousValue: true,
+    })) || [];
+    // Anything with NoEcho: true needs to be specified here
+    const hasDdApiKey = parameters.some((parameter: any) => parameter.ParameterKey === "DdApiKey");
+    if (!hasDdApiKey) {
+      parameters.push({
+        ParameterKey: "DdApiKey",
+        ParameterValue: process.env.DD_API_KEY,
+      });
+    }
+    const hasBucketName = parameters.some((parameter: any) => parameter.ParameterKey === "BucketName");
+    if (!hasBucketName) {
+      parameters.push({
+        ParameterKey: "BucketName",
+        ParameterValue: process.env.DD_S3_BUCKET,
+      });
+    }
+
+    const updateInput = {
+      StackName: process.env.STACK_NAME,
+      Parameters: parameters,
+      TemplateURL: url,
+      Tags: existingStack?.Tags,
+      Capabilities: existingStack?.Capabilities,
+    };
+    logger.log(`Update input: ${JSON.stringify(updateInput)}`);
+
+    try {
+      const command = new UpdateStackCommand(updateInput);
+      logger.log(`Sending update command ${JSON.stringify(command)}`);
+      const response = await cloudformationClient.send(command);
+      console.log(`Response: ${JSON.stringify(response)}`);
+
+      let i = 0;
+      while (i < 10) {
+        await sleep(30000);
+        i++;
+        const describeResult = await cloudformationClient.send(new DescribeStacksCommand({
+          StackName: process.env.STACK_NAME,
+        }));
+        const status = describeResult?.Stacks?.[0]?.StackStatus
+        logger.log(JSON.stringify(describeResult));
+        if (["UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE", "UPDATE_ROLLBACK_FAILED"].includes(status || "")) {
+          logger.log(`done in i iterations: ${i}`);
+          break;
+        }
+      }
+      logger.log(`DONE!`);
+    } catch (error: any) {
+      if (error.name === 'ValidationError' && error.message === 'No updates are to be performed.') {
+        logger.log(`No updates are to be performed.`);
+      } else {
+        throw error;
+      }
+    }
   }
 
   // If it's a different event type, log an error
