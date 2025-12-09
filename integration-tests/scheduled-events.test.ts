@@ -113,6 +113,11 @@ describe("Remote instrumenter scheduled event tests", () => {
   it.each([
     ["nodejs20.x", Runtime.nodejs20x],
     ["python3.10", Runtime.python310],
+    ["ruby3.2", Runtime.ruby32],
+    ["java21", Runtime.java21],
+    ["dotnet8.0", Runtime.dotnet8],
+    ["provided.al2", Runtime.providedal2],
+    ["provided.al2023", Runtime.providedal2023],
   ])(
     "function with runtime %s gets instrumented",
     async (runtimeName: string, runtimeValue: any) => {
@@ -127,26 +132,6 @@ describe("Remote instrumenter scheduled event tests", () => {
       expect(isInstrumented).toStrictEqual(true);
     },
   );
-
-  it("function with unsupported runtime does not get instrumented", async () => {
-    const { FunctionName: functionName } = await createFunction({
-      Tags: { foo: "bar" },
-      Runtime: Runtime.providedal2,
-    });
-    await setRemoteConfig();
-
-    const res = await invokeLambdaWithScheduledEvent();
-
-    expect(Object.keys(res.instrument.skipped)).toEqual(
-      expect.arrayContaining([functionName]),
-    );
-    expect(res.instrument.skipped[functionName].reasonCode).toStrictEqual(
-      "unsupported-runtime",
-    );
-
-    const isUninstrumented = await isFunctionUninstrumented(functionName);
-    expect(isUninstrumented).toStrictEqual(true);
-  });
 
   it("handles function name deny rules", async () => {
     const { FunctionName: excludedFunctionName } = await createFunction({

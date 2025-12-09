@@ -3,10 +3,15 @@ import { FunctionConfiguration } from "@aws-sdk/client-lambda";
 // Runtimes
 export const NODE = "node";
 export const PYTHON = "python";
+export const RUBY = "ruby";
+export const JAVA = "java";
+export const DOTNET = "dotnet";
+export const PROVIDED_AL2 = "provided.al2";
+export const PROVIDED_AL2023 = "provided.al2023";
 
 interface RuntimeConfiguration {
-  layerName: string;
-  configField: string;
+  layerName?: string;
+  configField?: string;
   getFromJsonConfig: (configJSON: any) => any;
   isSupportedRuntime: (runtime: string) => boolean;
 }
@@ -30,6 +35,40 @@ export const SUPPORTED_RUNTIME_CONFIGURATIONS: Record<
       configJSON.instrumentation_settings?.python_layer_version,
     isSupportedRuntime: (runtime: string) =>
       runtime.toLowerCase().includes(PYTHON),
+  },
+  [RUBY]: {
+    layerName: "Datadog-Ruby",
+    configField: "rubyLayerVersion",
+    getFromJsonConfig: (configJSON: any) =>
+      configJSON.instrumentation_settings?.ruby_layer_version,
+    isSupportedRuntime: (runtime: string) =>
+      runtime.toLowerCase().includes(RUBY),
+  },
+  [JAVA]: {
+    layerName: "dd-trace-java",
+    configField: "javaLayerVersion",
+    getFromJsonConfig: (configJSON: any) =>
+      configJSON.instrumentation_settings?.java_layer_version,
+    isSupportedRuntime: (runtime: string) =>
+      runtime.toLowerCase().includes(JAVA),
+  },
+  [DOTNET]: {
+    layerName: "dd-trace-dotnet",
+    configField: "dotnetLayerVersion",
+    getFromJsonConfig: (configJSON: any) =>
+      configJSON.instrumentation_settings?.dotnet_layer_version,
+    isSupportedRuntime: (runtime: string) =>
+      runtime.toLowerCase().includes(DOTNET),
+  },
+  [PROVIDED_AL2]: {
+    getFromJsonConfig: () => undefined,
+    isSupportedRuntime: (runtime: string) =>
+      runtime.toLowerCase().includes(PROVIDED_AL2),
+  },
+  [PROVIDED_AL2023]: {
+    getFromJsonConfig: () => undefined,
+    isSupportedRuntime: (runtime: string) =>
+      runtime.toLowerCase().includes(PROVIDED_AL2023),
   },
 };
 
