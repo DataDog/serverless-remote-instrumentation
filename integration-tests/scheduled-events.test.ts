@@ -112,8 +112,11 @@ describe("Remote instrumenter scheduled event tests", () => {
 
   it.each([
     ["nodejs20.x", Runtime.nodejs20x],
+    ["nodejs24.x", Runtime.nodejs24x],
     ["python3.10", Runtime.python310],
+    ["python3.14", Runtime.python314],
     ["ruby3.2", Runtime.ruby32],
+    ["ruby3.4", Runtime.ruby34],
     ["java21", Runtime.java21],
     ["dotnet8.0", Runtime.dotnet8],
     ["provided.al2", Runtime.providedal2],
