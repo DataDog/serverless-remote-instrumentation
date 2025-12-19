@@ -100,7 +100,7 @@ export async function instrumentWithDatadogCi(
   const runtime = functionToInstrument.Runtime;
 
   const { extensionVersion, runtimeLayerVersion } =
-    getExtensionAndRuntimeLayerVersion(runtime!, config);
+    getExtensionAndRuntimeLayerVersion(runtime ?? "", config);
 
   const operationName = instrument ? INSTRUMENT : UNINSTRUMENT;
   const operation = instrument ? "instrument" : "uninstrument";
