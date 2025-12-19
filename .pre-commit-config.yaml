@@ -1,0 +1,14 @@
+repos:
+  - repo: local
+    hooks:
+      - id: format
+        name: format
+        entry: yarn format
+        language: system
+        types: [ts, javascript]
+      - id: format-yaml
+        name: format yaml
+        entry: yarn format-yaml
+        language: system
+        types: [yaml]
+        pass_filenames: false
