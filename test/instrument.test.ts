@@ -320,8 +320,6 @@ describe("instrumentFunctions", () => {
       },
     });
   });
-
-
 });
 
 describe("instrumentWithDatadogCi", () => {
