@@ -72,7 +72,7 @@ export function getExtensionAndRuntimeLayerVersion(
 
   const runtimeConfig = getRuntimeConfig(runtime);
   if (runtimeConfig) {
-    result.runtimeLayerVersion = config[runtimeConfig.configField];
+    result.runtimeLayerVersion = config[runtimeConfig.configField!];
   }
 
   return result;
