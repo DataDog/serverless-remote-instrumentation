@@ -96,6 +96,23 @@ describe("getExtensionAndRuntimeLayerVersion", () => {
     );
     expect(actual).toEqual(expected);
   });
+  it("should handle undefined runtime by using empty string fallback", () => {
+    const runtime = "";
+    const config = {
+      extensionVersion: 1,
+      nodeLayerVersion: 2,
+      pythonLayerVersion: 3,
+    };
+    const expected = {
+      runtimeLayerVersion: undefined,
+      extensionVersion: 1,
+    };
+    const actual = instrument.getExtensionAndRuntimeLayerVersion(
+      runtime,
+      config,
+    );
+    expect(actual).toEqual(expected);
+  });
 });
 
 jest.mock("../src/apply-state");
@@ -302,6 +319,59 @@ describe("instrumentFunctions", () => {
         reasonCode: "datadog-ci-error",
       },
     });
+  });
+});
+
+describe("instrumentWithDatadogCi", () => {
+  beforeEach(() => {
+    process.env.AWS_REGION = "us-east-2";
+    getInstrumentedFunctionConfig.mockResolvedValue({
+      functionARN: "arn:aws:lambda:us-east-2:123456789:function:test",
+      lambdaConfig: {},
+      updateFunctionConfigurationCommandInput: {},
+    });
+    updateLambdaFunctionConfig.mockResolvedValue();
+    jest.clearAllMocks();
+  });
+
+  test("should handle function with undefined runtime gracefully", async () => {
+    const config = {
+      extensionVersion: 10,
+      nodeLayerVersion: 20,
+    };
+    const functionWithoutRuntime: LambdaFunction = {
+      FunctionName: "no-runtime-func",
+      FunctionArn:
+        "arn:aws:lambda:us-east-2:123456789:function:no-runtime-func",
+      Runtime: undefined,
+      Tags: new Set(),
+    };
+    const outcome = baseInstrumentOutcome;
+
+    await instrument.instrumentWithDatadogCi(
+      functionWithoutRuntime,
+      true,
+      config as any,
+      outcome,
+    );
+
+    expect(getInstrumentedFunctionConfig).toHaveBeenCalledTimes(1);
+    expect(getInstrumentedFunctionConfig).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      functionWithoutRuntime,
+      "us-east-2",
+      expect.objectContaining({
+        extensionVersion: 10,
+        layerVersion: undefined, // empty string runtime should result in undefined layer version
+      }),
+    );
+    expect(updateLambdaFunctionConfig).toHaveBeenCalledTimes(1);
+    expect(
+      (outcome.instrument.succeeded as Record<string, unknown>)[
+        functionWithoutRuntime.FunctionName
+      ],
+    ).toBeDefined();
   });
 });
 
