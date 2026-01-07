@@ -1,4 +1,4 @@
 # Default codeowners
-*                                                                       @DataDog/serverless-onboarding-enablement
+*       @DataDog/serverless-onboarding-and-enablement
 
 /.adms/ @DataDog/dependency-management
