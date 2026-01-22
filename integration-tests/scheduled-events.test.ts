@@ -110,6 +110,62 @@ describe("Remote instrumenter scheduled event tests", () => {
     expect(isInstrumented).toStrictEqual(true);
   });
 
+  it("function gets instrumented without extension layer when extension version is undefined", async () => {
+    const { FunctionName: functionName } = await createFunction({
+      Tags: { foo: "bar" },
+    });
+
+    // Set remote config with undefined extension version but with language layer
+    await setRemoteConfig({
+      extensionVersion: undefined,
+      nodeLayerVersion: 112,
+      pythonLayerVersion: 99,
+    });
+
+    const res = await invokeLambdaWithScheduledEvent();
+
+    // The function should be successfully instrumented
+    expect(
+      Object.keys(res.instrument.succeeded).concat(
+        Object.keys(res.instrument.skipped),
+      ),
+    ).toEqual(expect.arrayContaining([functionName]));
+
+    // Verify the function is instrumented with language layer but without extension layer
+    const isInstrumented = await pollUntilTrue(60000, 5000, () =>
+      isFunctionInstrumented(functionName),
+    );
+    expect(isInstrumented).toStrictEqual(true);
+  });
+
+  it("function gets instrumented without language layer when layer version is undefined", async () => {
+    const { FunctionName: functionName } = await createFunction({
+      Tags: { foo: "bar" },
+    });
+
+    // Set remote config with undefined language layer versions but with extension
+    await setRemoteConfig({
+      extensionVersion: 67,
+      nodeLayerVersion: undefined,
+      pythonLayerVersion: undefined,
+    });
+
+    const res = await invokeLambdaWithScheduledEvent();
+
+    // The function should be successfully instrumented
+    expect(
+      Object.keys(res.instrument.succeeded).concat(
+        Object.keys(res.instrument.skipped),
+      ),
+    ).toEqual(expect.arrayContaining([functionName]));
+
+    // Verify the function is instrumented with extension layer but without language layer
+    const isInstrumented = await pollUntilTrue(60000, 5000, () =>
+      isFunctionInstrumented(functionName),
+    );
+    expect(isInstrumented).toStrictEqual(true);
+  });
+
   it.each([
     ["nodejs20.x", Runtime.nodejs20x],
     ["nodejs24.x", Runtime.nodejs24x],
@@ -118,7 +174,9 @@ describe("Remote instrumenter scheduled event tests", () => {
     ["ruby3.2", Runtime.ruby32],
     ["ruby3.4", Runtime.ruby34],
     ["java21", Runtime.java21],
+    ["java25", Runtime.java25],
     ["dotnet8.0", Runtime.dotnet8],
+    ["dotnet10.0", Runtime.dotnet10],
     ["provided.al2", Runtime.providedal2],
     ["provided.al2023", Runtime.providedal2023],
   ])(

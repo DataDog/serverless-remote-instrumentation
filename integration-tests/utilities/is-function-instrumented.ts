@@ -24,6 +24,19 @@ const hasEnvVar = (l: any, varName: string): boolean =>
 const hasEnvVarMatching = (l: any, varName: string, value: string): boolean =>
   l?.Environment?.Variables[varName] === value;
 
+const checkLayer = (
+  funConfig: any,
+  layerName: string,
+  layerVersion: number | undefined,
+): boolean => {
+  // If a version is specified, check for exact version match. Otherwise, ensure NO layer exists
+  if (layerVersion !== undefined) {
+    return hasLayerMatching(funConfig, layerName, layerVersion);
+  } else {
+    return !hasLayer(funConfig, layerName);
+  }
+};
+
 const hasRemoteInstrumenterTag = async (
   functionArn: string,
 ): Promise<boolean> => {
@@ -62,29 +75,40 @@ const isFunctionInstrumented = async (
     extension_version,
     node_layer_version,
     python_layer_version,
+    dotnet_layer_version,
+    ruby_layer_version,
+    java_layer_version,
     dd_trace_enabled,
     dd_serverless_logs_enabled,
   } = rc.data[0].attributes.instrumentation_settings;
 
-  if (
-    funConfig.Runtime.toLowerCase().includes("python") &&
-    python_layer_version
-  ) {
-    if (!hasLayerMatching(funConfig, "Datadog-Python", python_layer_version)) {
+  // Check language-specific layer based on runtime
+  const runtime = funConfig.Runtime.toLowerCase();
+  if (runtime.includes("python")) {
+    if (!checkLayer(funConfig, "Datadog-Python", python_layer_version)) {
+      return false;
+    }
+  } else if (runtime.includes("node")) {
+    if (!checkLayer(funConfig, "Datadog-Node", node_layer_version)) {
+      return false;
+    }
+  } else if (runtime.includes("dotnet")) {
+    if (!checkLayer(funConfig, "dd-trace-dotnet", dotnet_layer_version)) {
+      return false;
+    }
+  } else if (runtime.includes("ruby")) {
+    if (!checkLayer(funConfig, "Datadog-Ruby", ruby_layer_version)) {
+      return false;
+    }
+  } else if (runtime.includes("java")) {
+    if (!checkLayer(funConfig, "dd-trace-java", java_layer_version)) {
       return false;
     }
   }
 
-  if (funConfig.Runtime.toLowerCase().includes("node") && node_layer_version) {
-    if (!hasLayerMatching(funConfig, "Datadog-Node", node_layer_version)) {
-      return false;
-    }
-  }
-
-  if (extension_version) {
-    if (!hasLayerMatching(funConfig, "Datadog-Extension", extension_version)) {
-      return false;
-    }
+  // Check extension layer
+  if (!checkLayer(funConfig, "Datadog-Extension", extension_version)) {
+    return false;
   }
 
   if (
