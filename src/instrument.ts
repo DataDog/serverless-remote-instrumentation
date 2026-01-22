@@ -132,8 +132,14 @@ export async function instrumentWithDatadogCi(
         flushMetricsToLogs: config.flushMetricsToLogs !== false,
         tracingEnabled: config.ddTraceEnabled !== false,
         mergeXrayTraces: config.mergeXrayTraces !== false,
-        extensionVersion,
-        layerVersion: runtimeLayerVersion,
+        extensionVersion: (extensionVersion ?? "none") as
+          | number
+          | "latest"
+          | "none",
+        layerVersion: (runtimeLayerVersion ?? "none") as
+          | number
+          | "latest"
+          | "none",
       };
       functionConfig = await getInstrumentedFunctionConfig(
         lambdaClient,
