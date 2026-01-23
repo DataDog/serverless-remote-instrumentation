@@ -42,6 +42,9 @@ interface SetRemoteConfigOptions {
   extensionVersion?: number;
   pythonLayerVersion?: number;
   nodeLayerVersion?: number;
+  dotnetLayerVersion?: number;
+  rubyLayerVersion?: number;
+  javaLayerVersion?: number;
   ruleFilters?: any[];
   ddTraceEnabled?: boolean;
   ddServerlessLogsEnabled?: boolean;
@@ -54,6 +57,9 @@ const setRemoteConfig = async ({
   extensionVersion = 67,
   pythonLayerVersion = 99,
   nodeLayerVersion = 112,
+  dotnetLayerVersion = 23,
+  rubyLayerVersion = 27,
+  javaLayerVersion = 25,
   ruleFilters = [
     {
       key: "foo",
@@ -68,18 +74,37 @@ const setRemoteConfig = async ({
 }: SetRemoteConfigOptions = {}): Promise<any> => {
   const [apiKey, appKey] = await Promise.all([getApiKey(), getAppKey()]);
 
+  const instrumentation_settings: any = {
+    dd_trace_enabled: ddTraceEnabled,
+    dd_serverless_logs_enabled: ddServerlessLogsEnabled,
+  };
+
+  // Only include version fields if they are not explicitly undefined
+  if (extensionVersion !== undefined) {
+    instrumentation_settings.extension_version = extensionVersion;
+  }
+  if (pythonLayerVersion !== undefined) {
+    instrumentation_settings.python_layer_version = pythonLayerVersion;
+  }
+  if (nodeLayerVersion !== undefined) {
+    instrumentation_settings.node_layer_version = nodeLayerVersion;
+  }
+  if (dotnetLayerVersion !== undefined) {
+    instrumentation_settings.dotnet_layer_version = dotnetLayerVersion;
+  }
+  if (rubyLayerVersion !== undefined) {
+    instrumentation_settings.ruby_layer_version = rubyLayerVersion;
+  }
+  if (javaLayerVersion !== undefined) {
+    instrumentation_settings.java_layer_version = javaLayerVersion;
+  }
+
   const rc: any = {
     data: {
       type: "instrumentation_config",
       attributes: {
         entity_type: "lambda",
-        instrumentation_settings: {
-          extension_version: extensionVersion,
-          python_layer_version: pythonLayerVersion,
-          node_layer_version: nodeLayerVersion,
-          dd_trace_enabled: ddTraceEnabled,
-          dd_serverless_logs_enabled: ddServerlessLogsEnabled,
-        },
+        instrumentation_settings,
         priority: 1,
         rule_filters: ruleFilters,
       },

@@ -363,7 +363,7 @@ describe("instrumentWithDatadogCi", () => {
       "us-east-2",
       expect.objectContaining({
         extensionVersion: 10,
-        layerVersion: undefined, // empty string runtime should result in undefined layer version
+        layerVersion: "none", // empty string runtime should result in "none" layer version
       }),
     );
     expect(updateLambdaFunctionConfig).toHaveBeenCalledTimes(1);
