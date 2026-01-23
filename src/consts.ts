@@ -123,6 +123,7 @@ export const DD_SERVERLESS_LOGS_ENABLED = "DD_SERVERLESS_LOGS_ENABLED";
 export const DD_API_KEY = "DD_API_KEY";
 export const DD_KMS_API_KEY = "DD_KMS_API_KEY";
 export const DD_API_KEY_SECRET_ARN = "DD_API_KEY_SECRET_ARN";
+export const DD_API_KEY_SSM_ARN = "DD_API_KEY_SSM_ARN";
 export const DD_SITE = "DD_SITE";
 
 // Remote config constants

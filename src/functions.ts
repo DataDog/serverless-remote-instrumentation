@@ -14,6 +14,7 @@ import {
   DD_API_KEY,
   DD_KMS_API_KEY,
   DD_API_KEY_SECRET_ARN,
+  DD_API_KEY_SSM_ARN,
   DD_SITE,
   VERSION,
   INSTRUMENT,
@@ -286,6 +287,7 @@ export function isInstrumented(lambdaFunc: LambdaFunction): boolean {
   if (
     (envVars.has(DD_API_KEY) ||
       envVars.has(DD_API_KEY_SECRET_ARN) ||
+      envVars.has(DD_API_KEY_SSM_ARN) ||
       envVars.has(DD_KMS_API_KEY)) &&
     envVars.has(DD_SITE)
   ) {
