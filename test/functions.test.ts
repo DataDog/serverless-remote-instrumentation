@@ -1430,7 +1430,8 @@ describe("isInstrumented", () => {
       {
         Environment: {
           Variables: {
-            DD_API_KEY_SECRET_ARN: "arn:aws:secretsmanager:us-east-1:123456789012:secret:dd-api-key",
+            DD_API_KEY_SECRET_ARN:
+              "arn:aws:secretsmanager:us-east-1:123456789012:secret:dd-api-key",
             DD_SITE: "datadoghq.com",
           },
         },
@@ -1442,7 +1443,8 @@ describe("isInstrumented", () => {
       {
         Environment: {
           Variables: {
-            DD_API_KEY_SSM_ARN: "arn:aws:ssm:us-east-2:425362996713:parameter/dev/DD_API_KEY",
+            DD_API_KEY_SSM_ARN:
+              "arn:aws:ssm:us-east-2:425362996713:parameter/dev/DD_API_KEY",
             DD_SITE: "datadoghq.com",
           },
         },
