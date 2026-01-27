@@ -1426,6 +1426,44 @@ describe("isInstrumented", () => {
       false,
     ],
     [
+      "Is instrumented with DD_API_KEY_SECRET_ARN and DD_SITE",
+      {
+        Environment: {
+          Variables: {
+            DD_API_KEY_SECRET_ARN:
+              "arn:aws:secretsmanager:us-east-1:123456789012:secret:dd-api-key",
+            DD_SITE: "datadoghq.com",
+          },
+        },
+      },
+      true,
+    ],
+    [
+      "Is instrumented with DD_API_KEY_SSM_ARN and DD_SITE",
+      {
+        Environment: {
+          Variables: {
+            DD_API_KEY_SSM_ARN:
+              "arn:aws:ssm:us-east-2:425362996713:parameter/dev/DD_API_KEY",
+            DD_SITE: "datadoghq.com",
+          },
+        },
+      },
+      true,
+    ],
+    [
+      "Is instrumented with DD_KMS_API_KEY and DD_SITE",
+      {
+        Environment: {
+          Variables: {
+            DD_KMS_API_KEY: "encrypted-key",
+            DD_SITE: "datadoghq.com",
+          },
+        },
+      },
+      true,
+    ],
+    [
       "Has datadog layers, others potentially configured in yaml",
       {
         Layers: [
