@@ -21,8 +21,8 @@
     "@types/jest": "^30.0.0",
     "@types/lodash": "^4.17.23",
     "@types/node": "^24.6.2",
-    "@typescript-eslint/eslint-plugin": "^8.46.4",
-    "@typescript-eslint/parser": "^8.46.3",
+    "@typescript-eslint/eslint-plugin": "^8.55.0",
+    "@typescript-eslint/parser": "^8.55.0",
     "aws-cdk": "^2.1029.4",
     "aws-cdk-lib": "^2.237.1",
     "cfn-response": "^1.0.1",
@@ -43,8 +43,12 @@
     "typescript": "^5.9.2",
     "yaml-cfn": "^0.3.2"
   },
+  "resolutions": {
+    "@aws-cdk/cloud-assembly-schema": ">=52.0.0"
+  },
+  "packageManager": "yarn@4.12.0",
   "engines": {
-    "node": ">=20.0.0 <21.0.0"
+    "node": ">=24.0.0 <25.0.0"
   },
   "scripts": {
     "prebuild": "rm -rf dist",
