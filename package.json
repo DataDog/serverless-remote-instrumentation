@@ -62,7 +62,7 @@
     "test": "jest --silent --config test/jest.config.ts",
     "integ": "jest -i --config integration-tests/jest.config.ts",
     "metrics-validations": "jest -i --config metrics-validations/jest.config.ts",
-    "integ-test-setup": "if [ -n \"$CI_PROJECT_DIR\" ]; then node ${SCRIPTS_PATH}/test_setup.js; else node scripts/test_setup.js; fi",
-    "integ-test-teardown": "if [ -n \"$CI_PROJECT_DIR\" ]; then node ${SCRIPTS_PATH}/test_teardown.js; else node scripts/test_teardown.js; fi"
+    "integ-test-setup": "bash -c 'if [ -n \"$CI_PROJECT_DIR\" ]; then node ${SCRIPTS_PATH}/test_setup.js; else node scripts/test_setup.js; fi'",
+    "integ-test-teardown": "bash -c 'if [ -n \"$CI_PROJECT_DIR\" ]; then node ${SCRIPTS_PATH}/test_teardown.js; else node scripts/test_teardown.js; fi'"
   }
 }
