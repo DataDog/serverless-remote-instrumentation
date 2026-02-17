@@ -41,7 +41,7 @@ const createFunctions = async (
       FunctionName: functionName,
       Handler: "index.handler",
       Role: `arn:aws:iam::${account}:role/${testLambdaRole}`,
-      Runtime: Runtime.nodejs20x,
+      Runtime: Runtime.nodejs24x,
       PackageType: "Zip",
       MemorySize: 128,
       Tags: {

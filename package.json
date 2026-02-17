@@ -21,8 +21,8 @@
     "@types/jest": "^30.0.0",
     "@types/lodash": "^4.17.23",
     "@types/node": "^24.6.2",
-    "@typescript-eslint/eslint-plugin": "^8.46.4",
-    "@typescript-eslint/parser": "^8.46.3",
+    "@typescript-eslint/eslint-plugin": "^8.55.0",
+    "@typescript-eslint/parser": "^8.55.0",
     "aws-cdk": "^2.1029.4",
     "aws-cdk-lib": "^2.237.1",
     "cfn-response": "^1.0.1",
@@ -43,12 +43,16 @@
     "typescript": "^5.9.2",
     "yaml-cfn": "^0.3.2"
   },
+  "resolutions": {
+    "@aws-cdk/cloud-assembly-schema": ">=52.0.0"
+  },
+  "packageManager": "yarn@4.12.0",
   "engines": {
-    "node": ">=20.0.0 <21.0.0"
+    "node": ">=24.0.0 <25.0.0"
   },
   "scripts": {
     "prebuild": "rm -rf dist",
-    "build": "esbuild src/handler.ts --bundle --platform=node --target=node20 --format=esm --outfile=dist/src/handler.mjs --packages=external",
+    "build": "esbuild src/handler.ts --bundle --platform=node --target=node24 --format=esm --outfile=dist/src/handler.mjs --packages=external",
     "typecheck": "tsc --noEmit",
     "format": "eslint --fix .",
     "lint": "eslint -c eslint.config.mjs . ",
@@ -58,7 +62,7 @@
     "test": "jest --silent --config test/jest.config.ts",
     "integ": "jest -i --config integration-tests/jest.config.ts",
     "metrics-validations": "jest -i --config metrics-validations/jest.config.ts",
-    "integ-test-setup": "if [ -n \"$CI_PROJECT_DIR\" ]; then node ${SCRIPTS_PATH}/test_setup.js; else node scripts/test_setup.js; fi",
-    "integ-test-teardown": "if [ -n \"$CI_PROJECT_DIR\" ]; then node ${SCRIPTS_PATH}/test_teardown.js; else node scripts/test_teardown.js; fi"
+    "integ-test-setup": "bash -c 'if [ -n \"$CI_PROJECT_DIR\" ]; then node ${SCRIPTS_PATH}/test_setup.js; else node scripts/test_setup.js; fi'",
+    "integ-test-teardown": "bash -c 'if [ -n \"$CI_PROJECT_DIR\" ]; then node ${SCRIPTS_PATH}/test_teardown.js; else node scripts/test_teardown.js; fi'"
   }
 }

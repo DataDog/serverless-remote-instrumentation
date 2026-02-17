@@ -104,7 +104,7 @@ Resources:
       FunctionName: !FindInMap [ Constants, InstrumenterFunctionName, Name ]
       Architectures:
       - arm64
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       CodeSigningConfigArn: !If [CreateCodeSigningConfig, !Ref InstrumenterCodeSigningConfig, !Ref "AWS::NoValue"]
       ReservedConcurrentExecutions: 1
       Timeout: 900
