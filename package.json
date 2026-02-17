@@ -52,7 +52,7 @@
   },
   "scripts": {
     "prebuild": "rm -rf dist",
-    "build": "esbuild src/handler.ts --bundle --platform=node --target=node20 --format=esm --outfile=dist/src/handler.mjs --packages=external",
+    "build": "esbuild src/handler.ts --bundle --platform=node --target=node24 --format=esm --outfile=dist/src/handler.mjs --packages=external",
     "typecheck": "tsc --noEmit",
     "format": "eslint --fix .",
     "lint": "eslint -c eslint.config.mjs . ",
