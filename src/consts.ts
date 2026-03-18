@@ -9,10 +9,51 @@ export const DOTNET = "dotnet";
 export const PROVIDED_AL2 = "provided.al2";
 export const PROVIDED_AL2023 = "provided.al2023";
 
+export interface ConfigJSON {
+  config_version: number;
+  entity_type: string;
+  instrumentation_settings?: {
+    node_layer_version?: number;
+    python_layer_version?: number;
+    ruby_layer_version?: number;
+    java_layer_version?: number;
+    dotnet_layer_version?: number;
+    extension_version?: number;
+    dd_trace_enabled?: boolean;
+    dd_serverless_logs_enabled?: boolean;
+  };
+  priority: number;
+  rule_filters: Array<{
+    key: string;
+    values: string[];
+    allow: boolean;
+    filter_type: string;
+  }>;
+}
+
+export interface InstrumentationResult {
+  functionArn?: string;
+  reason?: string;
+  reasonCode?: string;
+}
+
+export interface InstrumentOutcomeEntry {
+  succeeded: Record<string, InstrumentationResult>;
+  failed: Record<string, InstrumentationResult>;
+  skipped: Record<string, InstrumentationResult>;
+  [key: string]: Record<string, InstrumentationResult>;
+}
+
+export interface InstrumentOutcome {
+  instrument: InstrumentOutcomeEntry;
+  uninstrument: InstrumentOutcomeEntry;
+  [key: string]: InstrumentOutcomeEntry;
+}
+
 interface RuntimeConfiguration {
   layerName?: string;
   configField?: string;
-  getFromJsonConfig: (configJSON: any) => any;
+  getFromJsonConfig: (configJSON: ConfigJSON) => number | undefined;
   isSupportedRuntime: (runtime: string) => boolean;
 }
 
@@ -23,7 +64,7 @@ export const SUPPORTED_RUNTIME_CONFIGURATIONS: Record<
   [NODE]: {
     layerName: "Datadog-Node",
     configField: "nodeLayerVersion",
-    getFromJsonConfig: (configJSON: any) =>
+    getFromJsonConfig: (configJSON) =>
       configJSON.instrumentation_settings?.node_layer_version,
     isSupportedRuntime: (runtime: string) =>
       runtime.toLowerCase().includes(NODE),
@@ -31,7 +72,7 @@ export const SUPPORTED_RUNTIME_CONFIGURATIONS: Record<
   [PYTHON]: {
     layerName: "Datadog-Python",
     configField: "pythonLayerVersion",
-    getFromJsonConfig: (configJSON: any) =>
+    getFromJsonConfig: (configJSON) =>
       configJSON.instrumentation_settings?.python_layer_version,
     isSupportedRuntime: (runtime: string) =>
       runtime.toLowerCase().includes(PYTHON),
@@ -39,7 +80,7 @@ export const SUPPORTED_RUNTIME_CONFIGURATIONS: Record<
   [RUBY]: {
     layerName: "Datadog-Ruby",
     configField: "rubyLayerVersion",
-    getFromJsonConfig: (configJSON: any) =>
+    getFromJsonConfig: (configJSON) =>
       configJSON.instrumentation_settings?.ruby_layer_version,
     isSupportedRuntime: (runtime: string) =>
       runtime.toLowerCase().includes(RUBY),
@@ -47,7 +88,7 @@ export const SUPPORTED_RUNTIME_CONFIGURATIONS: Record<
   [JAVA]: {
     layerName: "dd-trace-java",
     configField: "javaLayerVersion",
-    getFromJsonConfig: (configJSON: any) =>
+    getFromJsonConfig: (configJSON) =>
       configJSON.instrumentation_settings?.java_layer_version,
     isSupportedRuntime: (runtime: string) =>
       runtime.toLowerCase().includes(JAVA),
@@ -55,7 +96,7 @@ export const SUPPORTED_RUNTIME_CONFIGURATIONS: Record<
   [DOTNET]: {
     layerName: "dd-trace-dotnet",
     configField: "dotnetLayerVersion",
-    getFromJsonConfig: (configJSON: any) =>
+    getFromJsonConfig: (configJSON) =>
       configJSON.instrumentation_settings?.dotnet_layer_version,
     isSupportedRuntime: (runtime: string) =>
       runtime.toLowerCase().includes(DOTNET),
@@ -138,6 +179,13 @@ export const CONFIG_STATUS_OK = 0;
 
 // Config cache constants
 export const CONFIG_CACHE_TTL_MS = 6000;
+
+export interface RuleFilter {
+  key: string;
+  values: string[];
+  allow: boolean;
+  filterType: string;
+}
 
 export interface LambdaFunction extends FunctionConfiguration {
   FunctionName: string;

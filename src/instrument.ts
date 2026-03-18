@@ -1,6 +1,8 @@
 import { getInstrumentedFunctionConfig } from "@datadog/datadog-ci-plugin-lambda/functions/instrument";
 import { getUninstrumentedFunctionConfig } from "@datadog/datadog-ci-plugin-lambda/functions/uninstrument";
 import { updateLambdaFunctionConfig } from "@datadog/datadog-ci-plugin-lambda/functions/commons";
+import { S3Client } from "@aws-sdk/client-s3";
+import { ResourceGroupsTaggingAPIClient } from "@aws-sdk/client-resource-groups-tagging-api";
 import {
   INSTRUMENT,
   UNINSTRUMENT,
@@ -14,6 +16,8 @@ import {
   REMOTE_INSTRUMENTATION_ENDED,
   getRuntimeConfig,
   type LambdaFunction,
+  type RuleFilter,
+  type InstrumentOutcome,
 } from "./consts";
 import { RcConfig } from "./config";
 import { logger } from "./logger";
@@ -36,28 +40,24 @@ type DatadogCiFunctionConfiguration = Parameters<
 >[2];
 
 interface Config {
-  ruleFilters?: any[];
+  ruleFilters?: RuleFilter[];
   extensionVersion?: number;
   ddTraceEnabled?: boolean;
   ddServerlessLogsEnabled?: boolean;
   awsRegion?: string;
   configID?: string;
   rcConfigVersion?: number;
-  [key: string]: any;
+  instrumenterFunctionName?: string;
+  nodeLayerVersion?: number;
+  pythonLayerVersion?: number;
+  rubyLayerVersion?: number;
+  javaLayerVersion?: number;
+  dotnetLayerVersion?: number;
+  flushMetricsToLogs?: boolean;
+  mergeXrayTraces?: boolean;
+  [key: string]: unknown;
 }
 
-interface InstrumentOutcome {
-  instrument: {
-    succeeded: Record<string, any>;
-    failed: Record<string, any>;
-    skipped: Record<string, any>;
-  };
-  uninstrument: {
-    succeeded: Record<string, any>;
-    failed: Record<string, any>;
-    skipped: Record<string, any>;
-  };
-}
 export function getExtensionAndRuntimeLayerVersion(
   runtime: string,
   config: Config,
@@ -65,14 +65,19 @@ export function getExtensionAndRuntimeLayerVersion(
   runtimeLayerVersion: number | undefined;
   extensionVersion: number | undefined;
 } {
-  const result = {
+  const result: {
+    runtimeLayerVersion: number | undefined;
+    extensionVersion: number | undefined;
+  } = {
     runtimeLayerVersion: undefined,
     extensionVersion: config.extensionVersion,
   };
 
   const runtimeConfig = getRuntimeConfig(runtime);
-  if (runtimeConfig) {
-    result.runtimeLayerVersion = config[runtimeConfig.configField!];
+  if (runtimeConfig?.configField) {
+    result.runtimeLayerVersion = config[runtimeConfig.configField] as
+      | number
+      | undefined;
   }
 
   return result;
@@ -178,7 +183,7 @@ export async function instrumentWithDatadogCi(
     reason: reason,
     reasonCode: reasonCode,
   });
-  (instrumentOutcome as any)[operation][outcome][functionName] = {
+  instrumentOutcome[operation][outcome][functionName] = {
     functionArn,
     ...(reason ? { reason } : {}),
     ...(reasonCode ? { reasonCode } : {}),
@@ -186,20 +191,20 @@ export async function instrumentWithDatadogCi(
 }
 
 export async function instrumentFunctions(
-  s3Client: any,
+  s3Client: S3Client,
   configs: RcConfig[],
   functionsToCheck: LambdaFunction[],
   instrumentOutcome: InstrumentOutcome,
-  taggingClient: any,
-  triggeredBy: string,
+  taggingClient: ResourceGroupsTaggingAPIClient,
+  triggeredBy?: string,
 ): Promise<void> {
   logger.emitFrontendStartOrEndEvent(
     REMOTE_INSTRUMENTATION_STARTED,
-    triggeredBy,
-    null as any,
+    triggeredBy ?? "",
+    null,
     configs,
   );
-  const configApplyStates: any[] = [];
+  const configApplyStates: ReturnType<typeof createApplyStateObject>[] = [];
 
   // If there are no configs, uninstrument anything that is remotely instrumented
   if (configs.length === 0) {
@@ -224,10 +229,10 @@ export async function instrumentFunctions(
         instrumentOutcome,
       );
     logger.log(
-      `Functions to instrument: ${functionsToInstrumentOrTag.map((f: any) => f.FunctionName)}`,
+      `Functions to instrument: ${functionsToInstrumentOrTag.map((f) => f.FunctionName)}`,
     );
     logger.log(
-      `Functions to uninstrument: ${functionsToUninstrumentOrUntag.map((f: any) => f.FunctionName)}`,
+      `Functions to uninstrument: ${functionsToUninstrumentOrUntag.map((f) => f.FunctionName)}`,
     );
     const batchSize = 50;
     const instrumentBatches = createFunctionBatches(
@@ -294,11 +299,9 @@ export async function instrumentFunctions(
 
       // Then, untag all functions in this batch that need untagging (but only if uninstrumentation didn't fail)
       const functionsToUntagInBatch = batch.filter(
-        (func: any) =>
+        (func) =>
           func.needsUntagging &&
-          !(
-            func.FunctionName in (instrumentOutcome.uninstrument as any)[FAILED]
-          ),
+          !(func.FunctionName in instrumentOutcome.uninstrument[FAILED]),
       );
 
       await untagResourcesOfSlsTag(
@@ -310,22 +313,25 @@ export async function instrumentFunctions(
     configApplyStates.push(createApplyStateObject(instrumentOutcome, config));
   }
   // Write the config apply states to S3 or skip for some events
-  if (![LAMBDA_EVENT, CLOUDFORMATION_DELETE_EVENT].includes(triggeredBy)) {
+  if (
+    triggeredBy &&
+    ![LAMBDA_EVENT, CLOUDFORMATION_DELETE_EVENT].includes(triggeredBy)
+  ) {
     await putApplyState(s3Client, configApplyStates);
   }
   logger.emitFrontendStartOrEndEvent(
     REMOTE_INSTRUMENTATION_ENDED,
-    triggeredBy,
-    instrumentOutcome as any,
+    triggeredBy ?? "",
+    instrumentOutcome,
     configs,
   );
 }
 
 export async function removeRemoteInstrumentation(
-  s3Client: any,
+  s3Client: S3Client,
   functionsToCheck: LambdaFunction[],
   instrumentOutcome: InstrumentOutcome,
-  taggingClient: any,
+  taggingClient: ResourceGroupsTaggingAPIClient,
 ): Promise<void> {
   const remotelyInstrumentedFunctions = functionsToCheck.filter((lambdaFunc) =>
     isRemotelyInstrumented(lambdaFunc),
@@ -334,15 +340,15 @@ export async function removeRemoteInstrumentation(
     await instrumentWithDatadogCi(
       lambdaFunc,
       false,
-      { awsRegion: process.env.AWS_REGION } as any,
+      { awsRegion: process.env.AWS_REGION } as Config,
       instrumentOutcome,
     );
   }
   await untagResourcesOfSlsTag(
     taggingClient,
-    remotelyInstrumentedFunctions.flatMap((f: any) =>
-      !(f.FunctionName in (instrumentOutcome.uninstrument as any)[FAILED])
-        ? f.FunctionArn
+    remotelyInstrumentedFunctions.flatMap((f) =>
+      !(f.FunctionName in instrumentOutcome.uninstrument[FAILED])
+        ? [f.FunctionArn!]
         : [],
     ),
   );

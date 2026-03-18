@@ -1,4 +1,9 @@
-import { LAMBDA_EVENT, SCHEDULED_INVOCATION_EVENT, PROCESSING } from "./consts";
+import {
+  LAMBDA_EVENT,
+  SCHEDULED_INVOCATION_EVENT,
+  PROCESSING,
+  type InstrumentOutcome,
+} from "./consts";
 const LOG_LEVEL = (process.env.DD_LOG_LEVEL || "WARN").toUpperCase();
 
 const LOG_INFO = ["TRACE", "DEBUG", "INFO"].includes(LOG_LEVEL);
@@ -53,7 +58,7 @@ class Logger {
   emitFrontendStartOrEndEvent(
     ddSlsEventName: string,
     triggeredBy: string,
-    instrumentOutcome: string,
+    instrumentOutcome: InstrumentOutcome | null,
     configs: Config[],
   ): void {
     console.log(
@@ -102,7 +107,7 @@ class Logger {
     );
   }
 
-  logObject(event: any): void {
+  logObject(event: unknown): void {
     if (LOG_INFO) {
       console.log(this.redact(JSON.stringify(event)));
     }

@@ -3237,6 +3237,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/aws-lambda@npm:^8.10.161":
+  version: 8.10.161
+  resolution: "@types/aws-lambda@npm:8.10.161"
+  checksum: 10c0/5a779901bb29a1989fe0ef30e4a515522af8fc66c237e0eedc954ab650651920540196b4629df25068c130a05a2a6142f661db7e26c7fbacc17ce11338367eb1
+  languageName: node
+  linkType: hard
+
 "@types/babel__core@npm:^7.20.5":
   version: 7.20.5
   resolution: "@types/babel__core@npm:7.20.5"
@@ -7952,6 +7959,7 @@ __metadata:
     "@datadog/datadog-api-client": "npm:^1.51.0"
     "@datadog/datadog-ci-base": "npm:^5.6.0"
     "@datadog/datadog-ci-plugin-lambda": "npm:^5.6.0"
+    "@types/aws-lambda": "npm:^8.10.161"
     "@types/cfn-response": "npm:^1.0.8"
     "@types/jest": "npm:^30.0.0"
     "@types/lodash": "npm:^4.17.23"

@@ -6,6 +6,7 @@ import {
   deleteConfigHash,
   getConfigsWithRetry,
   updateConfigHash,
+  RcConfig,
 } from "./config";
 import { logger } from "./logger";
 import {
@@ -15,6 +16,7 @@ import {
   isScheduledInvocationEvent,
   getFunctionFromLambdaEvent,
   selectEventFieldsForLogging,
+  type InstrumenterEvent,
 } from "./lambda-event";
 import {
   deleteError,
@@ -44,28 +46,18 @@ import {
   FUNCTION_NOT_FOUND,
   INSTRUMENT,
   SKIPPED,
+  type LambdaFunction,
+  type InstrumentOutcome,
 } from "./consts";
-
-interface InstrumentOutcome {
-  instrument: {
-    succeeded: Record<string, any>;
-    failed: Record<string, any>;
-    skipped: Record<string, any>;
-  };
-  uninstrument: {
-    succeeded: Record<string, any>;
-    failed: Record<string, any>;
-    skipped: Record<string, any>;
-  };
-}
+import type { Context } from "aws-lambda";
 
 const lambdaClient = getLambdaClient();
 const taggingClient = getTaggingClient();
 const s3Client = getS3Client();
 
 export const handler = async (
-  event: any,
-  context: any,
+  event: InstrumenterEvent,
+  context: Context,
 ): Promise<InstrumentOutcome> => {
   logger.logObject(selectEventFieldsForLogging(event));
   const instrumentOutcome: InstrumentOutcome = {
@@ -81,7 +73,7 @@ export const handler = async (
       const allFunctions = await getAllFunctions(lambdaClient);
       const functionsToCheck = await enrichFunctionsWithTags(
         lambdaClient,
-        allFunctions,
+        allFunctions as LambdaFunction[],
       );
       await instrumentFunctions(
         s3Client,
@@ -92,7 +84,7 @@ export const handler = async (
         CLOUDFORMATION_CREATE_EVENT,
       );
     } catch (e) {
-      logger.error(e as any);
+      logger.error(e instanceof Error ? e.message : String(e));
     }
     // Any failure should be and we should still send a CFN SUCCESS response since failing stack
     // creation will be painful for a user, and the functions that didn't succeed will be retried
@@ -104,7 +96,7 @@ export const handler = async (
     const allFunctions = await getAllFunctions(lambdaClient);
     const enrichedFunctions = await enrichFunctionsWithTags(
       lambdaClient,
-      allFunctions,
+      allFunctions as LambdaFunction[],
     );
     await instrumentFunctions(
       s3Client,
@@ -142,19 +134,19 @@ export const handler = async (
     }
 
     const functionsToCheck = await enrichFunctionsWithTags(lambdaClient, [
-      functionFromEvent,
+      functionFromEvent as LambdaFunction,
     ]);
 
-    let configs: any;
+    let configs: RcConfig[];
     try {
       const configResult = await getConfigsWithRetry(s3Client, context);
       configs = configResult.configs;
-    } catch (error: any) {
+    } catch (error: unknown) {
       // This pulls the reason from the error, just stringifying it does not return the message
       const errorDetails = JSON.parse(
         JSON.stringify(error, Object.getOwnPropertyNames(error)),
       );
-      await putError(s3Client, functionFromEvent.FunctionName, errorDetails);
+      await putError(s3Client, functionFromEvent.FunctionName!, errorDetails);
       throw error;
     }
 
@@ -177,7 +169,7 @@ export const handler = async (
       context,
     );
 
-    let functionsToCheck: any[] = [];
+    let functionsToCheck: LambdaFunction[] = [];
     if (configChanged) {
       await deleteConfigHash(s3Client);
       // If the config has changed, check all functions for instrumentation
@@ -186,7 +178,7 @@ export const handler = async (
       const deletedErrorFunctions = errors.filter(
         (functionName: string) =>
           !allFunctions.some(
-            (element: any) => element.FunctionName === functionName,
+            (element) => element.FunctionName === functionName,
           ),
       );
 
@@ -208,7 +200,7 @@ export const handler = async (
 
       functionsToCheck = await enrichFunctionsWithTags(
         lambdaClient,
-        allFunctions,
+        allFunctions as LambdaFunction[],
       );
 
       await instrumentFunctions(
@@ -236,7 +228,7 @@ export const handler = async (
               return {
                 ...lambdaFunction.Configuration,
                 Tags: lambdaFunction.Tags,
-              };
+              } as LambdaFunction;
             } catch (e) {
               if (e instanceof ResourceNotFoundException) {
                 // Function no longer exists, add it to skipped to get cleaned up
@@ -255,16 +247,16 @@ export const handler = async (
                 });
                 return undefined;
               }
+              throw e;
             }
           }),
         )
-      ).filter((item) => item);
+      ).filter((item): item is LambdaFunction => item !== undefined);
 
       const enrichedFunctions = await enrichFunctionsWithTags(
         lambdaClient,
         functionsToCheck,
       );
-      // @ts-expect-error Need to fix later
       await instrumentFunctions(
         s3Client,
         configs,
@@ -284,7 +276,7 @@ export const handler = async (
 
     await Promise.all(
       [
-        newErrors.map(async ({ functionName, reason }: any) =>
+        newErrors.map(async ({ functionName, reason }) =>
           putError(s3Client, functionName, reason),
         ),
         resolvedErrors.map(async (functionName: string) =>

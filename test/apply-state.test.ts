@@ -18,15 +18,23 @@ describe("createApplyStateObject", () => {
       {
         instrument: {
           succeeded: {
-            foo: "arn:aws:lambda:us-east-2:123456789:function:foo",
+            foo: {
+              functionArn: "arn:aws:lambda:us-east-2:123456789:function:foo",
+            },
           },
           failed: {},
-          skipped: { baz: "arn:aws:lambda:us-east-2:123456789:function:baz" },
+          skipped: {
+            baz: {
+              functionArn: "arn:aws:lambda:us-east-2:123456789:function:baz",
+            },
+          },
         },
         uninstrument: {
           succeeded: {},
           failed: {
-            bar: "arn:aws:lambda:us-east-2:123456789:function:bar",
+            bar: {
+              functionArn: "arn:aws:lambda:us-east-2:123456789:function:bar",
+            },
           },
           skipped: {},
         },
@@ -51,10 +59,16 @@ describe("createApplyStateObject", () => {
       {
         instrument: {
           succeeded: {
-            foo: "arn:aws:lambda:us-east-2:123456789:function:foo",
+            foo: {
+              functionArn: "arn:aws:lambda:us-east-2:123456789:function:foo",
+            },
           },
           failed: {},
-          skipped: { baz: "arn:aws:lambda:us-east-2:123456789:function:baz" },
+          skipped: {
+            baz: {
+              functionArn: "arn:aws:lambda:us-east-2:123456789:function:baz",
+            },
+          },
         },
         uninstrument: {
           succeeded: {},

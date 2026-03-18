@@ -1,10 +1,20 @@
-import { GetResourcesCommand } from "@aws-sdk/client-resource-groups-tagging-api";
+import {
+  ResourceGroupsTaggingAPIClient,
+  GetResourcesCommand,
+} from "@aws-sdk/client-resource-groups-tagging-api";
+import type { GetResourcesCommandOutput } from "@aws-sdk/client-resource-groups-tagging-api";
 import { sleep } from "./sleep";
 import {
   GetFunctionCommand,
   GetFunctionConfigurationCommand,
   ListFunctionsCommand,
   GetAccountSettingsCommand,
+  LambdaClient,
+} from "@aws-sdk/client-lambda";
+import type {
+  FunctionConfiguration,
+  GetFunctionCommandOutput,
+  ListFunctionsCommandOutput,
 } from "@aws-sdk/client-lambda";
 import { getLambdaClient } from "./aws-resources";
 import { logger } from "./logger";
@@ -28,25 +38,17 @@ import {
   SUPPORTED_RUNTIME_CONFIGURATIONS,
   getRuntimeConfig,
   type LambdaFunction,
+  type RuleFilter,
+  type InstrumentOutcome,
 } from "./consts";
 
-interface InstrumentOutcome {
-  instrument: {
-    skipped: Record<string, any>;
-    [key: string]: Record<string, any>;
-  };
-  uninstrument: {
-    [key: string]: Record<string, any>;
-  };
-}
-
 interface Config {
-  ruleFilters: any[];
+  ruleFilters: RuleFilter[];
   instrumenterFunctionName?: string;
   extensionVersion?: number;
   ddTraceEnabled?: boolean;
   ddServerlessLogsEnabled?: boolean;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**
@@ -54,16 +56,19 @@ interface Config {
  * (i.e. functions that have the DD_SLS_REMOTE_INSTRUMENTER_VERSION tag)
  */
 export async function getRemotelyInstrumentedFunctionArns(
-  client: any,
+  client: ResourceGroupsTaggingAPIClient,
 ): Promise<string[]> {
   const input = {
     TagFilters: [
-      { Key: DD_SLS_REMOTE_INSTRUMENTER_VERSION, Values: [VERSION as any] },
+      { Key: DD_SLS_REMOTE_INSTRUMENTER_VERSION, Values: [VERSION!] },
     ],
     ResourceTypeFilters: ["lambda:function"],
   };
   const getResourcesCommand = new GetResourcesCommand(input);
-  let getResourcesCommandOutput: any = { ResourceTagMappingList: [] };
+  let getResourcesCommandOutput: GetResourcesCommandOutput = {
+    $metadata: {},
+    ResourceTagMappingList: [],
+  };
   try {
     getResourcesCommandOutput = await client.send(getResourcesCommand);
   } catch (error) {
@@ -72,20 +77,23 @@ export async function getRemotelyInstrumentedFunctionArns(
   }
 
   const functionArns: string[] = [];
-  for (const resourceTagMapping of getResourcesCommandOutput.ResourceTagMappingList) {
-    functionArns.push(resourceTagMapping.ResourceARN);
+  for (const resourceTagMapping of getResourcesCommandOutput.ResourceTagMappingList ??
+    []) {
+    functionArns.push(resourceTagMapping.ResourceARN!);
   }
   logger.log(`Found remotely instrumented function ARNs: '${functionArns}'`);
   return functionArns;
 }
 
-export async function getAllFunctions(client: any): Promise<any[]> {
-  let allFunctions: any[] = [];
+export async function getAllFunctions(
+  client: LambdaClient,
+): Promise<FunctionConfiguration[]> {
+  let allFunctions: FunctionConfiguration[] = [];
   const listFunctionsCommand = new ListFunctionsCommand({});
-  let listFunctionsCommandOutput: any = {};
+  let listFunctionsCommandOutput: ListFunctionsCommandOutput;
 
   listFunctionsCommandOutput = await client.send(listFunctionsCommand);
-  allFunctions.push(...listFunctionsCommandOutput.Functions);
+  allFunctions.push(...(listFunctionsCommandOutput.Functions ?? []));
 
   let nextMarker = listFunctionsCommandOutput.NextMarker;
   while (nextMarker) {
@@ -95,7 +103,7 @@ export async function getAllFunctions(client: any): Promise<any[]> {
     try {
       const listFunctionsCommandOutput =
         await client.send(listFunctionsCommand);
-      allFunctions.push(...listFunctionsCommandOutput.Functions);
+      allFunctions.push(...(listFunctionsCommandOutput.Functions ?? []));
       nextMarker = listFunctionsCommandOutput.NextMarker;
     } catch (error) {
       logger.error(`Error retrieving functions: ${error}`);
@@ -103,38 +111,37 @@ export async function getAllFunctions(client: any): Promise<any[]> {
     }
   }
   logger.log(
-    `Retrieved all lambda functions in the account: ${JSON.stringify(allFunctions.map((f) => selectFunctionFieldsForLogging(f)))}`,
+    `Retrieved all lambda functions in the account: ${JSON.stringify(allFunctions.map((f) => selectFunctionFieldsForLogging(f as LambdaFunction)))}`,
   );
   return allFunctions;
 }
 
 async function getAWSResourceTagsForFunction(
-  client: any,
+  client: LambdaClient,
   lambdaFunctionName: string,
 ): Promise<Record<string, string>> {
   const getFunctionCommandOutput = await getLambdaFunction(
     client,
     lambdaFunctionName,
   );
-  const awsResourceTags = getFunctionCommandOutput.Tags;
+  const awsResourceTags = getFunctionCommandOutput.Tags ?? {};
   return awsResourceTags;
 }
 
 export async function getLambdaFunction(
-  client: any,
+  client: LambdaClient,
   lambdaFunctionName: string,
-): Promise<any> {
+): Promise<GetFunctionCommandOutput> {
   const params = {
     FunctionName: lambdaFunctionName,
   };
   const getFunctionCommand = new GetFunctionCommand(params);
-  let getFunctionCommandOutput: any = {};
-  getFunctionCommandOutput = await client.send(getFunctionCommand);
+  const getFunctionCommandOutput = await client.send(getFunctionCommand);
   return getFunctionCommandOutput;
 }
 
 async function enrichFunctionsWithTags(
-  client: any,
+  client: LambdaClient,
   functions: LambdaFunction[],
 ): Promise<LambdaFunction[]> {
   // Loop through the functions and collect each one's tags
@@ -146,13 +153,18 @@ async function enrichFunctionsWithTags(
       functionTag?.replace(/"/g, ""),
     );
 
-    let awsResourceTags: Record<string, string> = (lambdaFunc as any).Tags;
-    if (!awsResourceTags) {
+    // Before enrichment, Tags may be a Record<string, string> from the AWS SDK's GetFunctionCommandOutput
+    const rawTags = (lambdaFunc as unknown as { Tags?: Record<string, string> })
+      .Tags;
+    let awsResourceTags: Record<string, string>;
+    if (!rawTags || rawTags instanceof Set) {
       awsResourceTags =
         (await getAWSResourceTagsForFunction(
           client,
           lambdaFunc.FunctionName!,
         )) ?? {};
+    } else {
+      awsResourceTags = rawTags;
     }
     for (const [key, value] of Object.entries(awsResourceTags)) {
       functionTags.push(key + ":" + value);
@@ -177,7 +189,7 @@ export { enrichFunctionsWithTags };
 export function satisfiesTargetingRules(
   functionName: string,
   functionTags: Set<string>,
-  ruleFilters: any[],
+  ruleFilters: RuleFilter[],
 ): boolean {
   functionTags = new Set(
     Array.from(functionTags).map((tag) => tag.toLowerCase()),
@@ -296,8 +308,10 @@ export function isInstrumented(lambdaFunc: LambdaFunction): boolean {
   // Since the above environment variables can be configured
   // in a datadog.yaml file, check if a datadog layer is present
   const hasDatadogLayer =
-    Object.values(SUPPORTED_RUNTIME_CONFIGURATIONS).some((runtimeConfig: any) =>
-      hasLayerMatching(lambdaFunc, runtimeConfig.layerName),
+    Object.values(SUPPORTED_RUNTIME_CONFIGURATIONS).some((runtimeConfig) =>
+      runtimeConfig.layerName
+        ? hasLayerMatching(lambdaFunc, runtimeConfig.layerName)
+        : false,
     ) || hasLayerMatching(lambdaFunc, "Datadog-Extension");
 
   if (hasDatadogLayer) {
@@ -313,7 +327,7 @@ export function isCorrectlyInstrumented({
   ddTraceEnabledValue,
   ddServerlessLogsEnabledValue,
 }: {
-  layers: any[];
+  layers: { Arn?: string }[];
   config: Config;
   targetLambdaRuntime: string;
   ddTraceEnabledValue?: string;
@@ -323,10 +337,8 @@ export function isCorrectlyInstrumented({
   let targetLambdaExtensionLayerVersion = -1;
   for (const layer of layers) {
     if (layer?.Arn?.includes("464622532012:layer:Datadog-Extension")) {
-      targetLambdaExtensionLayerVersion = parseInt(
-        layer.Arn.split(":").at(-1),
-        10,
-      );
+      const parts = layer.Arn.split(":");
+      targetLambdaExtensionLayerVersion = parseInt(parts[parts.length - 1], 10);
       break;
     }
   }
@@ -346,13 +358,16 @@ export function isCorrectlyInstrumented({
   // Check if the lambda layer version is correct
   const runtimeConfig = getRuntimeConfig(targetLambdaRuntime);
   const expectedLayerName = runtimeConfig?.layerName;
-  const expectedLayerVersion = config[(runtimeConfig as any)?.configField];
+  const expectedLayerVersion = runtimeConfig?.configField
+    ? (config[runtimeConfig.configField] as number | undefined)
+    : undefined;
 
   let foundLayerVersion;
   for (const layer of layers) {
     logger.log(`Checking runtime layer: ${JSON.stringify(layer)}`);
     if (layer?.Arn?.includes(`464622532012:layer:${expectedLayerName}`)) {
-      foundLayerVersion = parseInt(layer.Arn.split(":").at(-1), 10);
+      const layerParts = layer.Arn.split(":");
+      foundLayerVersion = parseInt(layerParts[layerParts.length - 1], 10);
       break;
     }
   }
@@ -593,19 +608,19 @@ export const waitUntilFunctionIsActive = async (
 
 export function selectFunctionFieldsForLogging(
   lambdaFunction: LambdaFunction,
-): any {
+): Record<string, unknown> {
   return {
     FunctionName: lambdaFunction.FunctionName,
     FunctionArn: lambdaFunction.FunctionArn,
-    Tags: Array.from(lambdaFunction.Tags ?? ({} as any)), // TODO: Fix typing
+    Tags: Array.from(lambdaFunction.Tags ?? new Set<string>()),
     Runtime: lambdaFunction.Runtime,
     Layers: lambdaFunction.Layers,
     Architectures: lambdaFunction.Architectures,
   };
 }
 
-export async function getFunctionCount(client: any): Promise<number> {
+export async function getFunctionCount(client: LambdaClient): Promise<number> {
   const command = new GetAccountSettingsCommand({});
   const response = await client.send(command);
-  return response.AccountUsage.FunctionCount;
+  return response.AccountUsage!.FunctionCount!;
 }
