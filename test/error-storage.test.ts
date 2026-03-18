@@ -1,3 +1,5 @@
+import { describe, test, expect, beforeEach, vi } from "vitest";
+
 import {
   identifyNewErrorsAndResolvedErrors,
   listErrors,
@@ -6,14 +8,14 @@ import {
 import { FAILED, SKIPPED, SUCCEEDED } from "../src/consts";
 import type { S3Client } from "@aws-sdk/client-s3";
 
-const mockSend = jest.fn();
+const mockSend = vi.fn();
 const mockS3 = {
   send: mockSend,
 } as unknown as S3Client;
 
 describe("listErrors test suite", () => {
   beforeEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
   });
 
   test("handles one page of results", async () => {
@@ -342,7 +344,7 @@ describe("identifyErrorsAndResolvedErrors test suite", () => {
 
 describe("emptyBucket test suite", () => {
   beforeEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
   });
 
   test("handles empty bucket", async () => {

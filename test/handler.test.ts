@@ -1,13 +1,35 @@
-jest.mock("@datadog/datadog-ci-plugin-lambda/functions/instrument", () => ({
-  getInstrumentedFunctionConfig: jest.fn(),
+import { describe, test, expect, beforeEach, vi } from "vitest";
+
+const cfnResponseMock = vi.hoisted(() => ({
+  send: vi.fn(),
+  SUCCESS: "SUCCESS",
+  FAILED: "FAILED",
 }));
 
-jest.mock("@datadog/datadog-ci-plugin-lambda/functions/uninstrument", () => ({
-  getUninstrumentedFunctionConfig: jest.fn(),
+vi.mock("module", async (importOriginal) => {
+  const original = await importOriginal<typeof import("module")>();
+  return {
+    ...original,
+    createRequire: (url: string | URL) => {
+      const realRequire = original.createRequire(url);
+      return (id: string) => {
+        if (id === "cfn-response") return cfnResponseMock;
+        return realRequire(id);
+      };
+    },
+  };
+});
+
+vi.mock("@datadog/datadog-ci-plugin-lambda/functions/instrument", () => ({
+  getInstrumentedFunctionConfig: vi.fn(),
 }));
 
-jest.mock("@datadog/datadog-ci-plugin-lambda/functions/commons", () => ({
-  updateFunctionConfiguration: jest.fn(),
+vi.mock("@datadog/datadog-ci-plugin-lambda/functions/uninstrument", () => ({
+  getUninstrumentedFunctionConfig: vi.fn(),
+}));
+
+vi.mock("@datadog/datadog-ci-plugin-lambda/functions/commons", () => ({
+  updateFunctionConfiguration: vi.fn(),
 }));
 
 import * as handler from "../src/handler";
@@ -17,27 +39,25 @@ import * as lambdaEvent from "../src/lambda-event";
 import * as instrument from "../src/instrument";
 import * as errorStorage from "../src/error-storage";
 import { LAMBDA_EVENT } from "../src/consts";
-import * as cfnResponse from "cfn-response";
 import type { InstrumenterEvent } from "../src/lambda-event";
 import type { Context } from "aws-lambda";
 
-jest.mock("../src/lambda-event");
-jest.mock("../src/config");
-jest.mock("../src/functions");
-jest.mock("../src/instrument");
-jest.mock("../src/error-storage");
-jest.mock("cfn-response");
+vi.mock("../src/lambda-event");
+vi.mock("../src/config");
+vi.mock("../src/functions");
+vi.mock("../src/instrument");
+vi.mock("../src/error-storage");
 
 const mockedLambdaEvent = lambdaEvent as any;
 const mockedFunctions = functions as any;
 const mockedConfig = config as any;
 const mockedInstrument = instrument as any;
 const mockedErrorStorage = errorStorage as any;
-const mockedCfnResponse = cfnResponse as any;
+const mockedCfnResponse = cfnResponseMock;
 
 describe("handler lambda management events", () => {
   beforeEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
   });
 
   test("Happy path", async () => {
@@ -150,7 +170,7 @@ describe("scheduled invocation events", () => {
   const context = "context";
 
   beforeEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
   });
 
   test("Loads errors from s3", async () => {
@@ -251,7 +271,7 @@ describe("scheduled invocation events", () => {
 
 describe("stack delete events", () => {
   beforeEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
   });
 
   test("successfully uninstruments and calls back with success", async () => {
@@ -363,7 +383,7 @@ describe("stack delete events", () => {
 
 describe("stack create events", () => {
   beforeEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
   });
 
   test("successfully instruments and calls back with success", async () => {

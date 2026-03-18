@@ -1,3 +1,5 @@
+import { describe, it, test, expect, beforeEach, vi } from "vitest";
+
 import {
   isCacheValid,
   updateCache,
@@ -25,8 +27,8 @@ import type { Context } from "aws-lambda";
 import { sleep } from "../src/sleep";
 import { createHash } from "crypto";
 
-jest.mock("axios");
-jest.mock("../src/sleep");
+vi.mock("axios");
+vi.mock("../src/sleep");
 
 describe("Config constructor", () => {
   it("creates an RcConfig object out of well-formed JSON", () => {
@@ -655,11 +657,11 @@ describe("Config cache", () => {
 describe("getConfigs", () => {
   let mockS3Client: any;
   let mockContext: any;
-  const mockedAxios = jest.mocked(axios);
+  const mockedAxios = vi.mocked(axios, true);
 
   beforeEach(() => {
     mockS3Client = {
-      send: jest.fn(),
+      send: vi.fn(),
     };
     mockContext = {
       invokedFunctionArn:
@@ -857,12 +859,12 @@ describe("getConfigs", () => {
 describe("getConfigsWithRetry", () => {
   let mockS3Client: any;
   let mockContext: any;
-  const mockedAxios = jest.mocked(axios);
-  const mockedSleep = jest.mocked(sleep);
+  const mockedAxios = vi.mocked(axios, true);
+  const mockedSleep = vi.mocked(sleep);
 
   beforeEach(() => {
     mockS3Client = {
-      send: jest.fn(),
+      send: vi.fn(),
     };
     mockContext = {
       invokedFunctionArn:

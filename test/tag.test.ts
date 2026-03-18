@@ -1,3 +1,5 @@
+import { describe, it, test, expect, beforeEach, afterEach, vi } from "vitest";
+
 import type {
   ResourceGroupsTaggingAPIClient,
   TagResourcesCommand,
@@ -5,21 +7,19 @@ import type {
 } from "@aws-sdk/client-resource-groups-tagging-api";
 import { applyFunctionTags } from "../src/tag";
 
-jest.mock("@aws-sdk/client-resource-groups-tagging-api", () => ({
-  TagResourcesCommand: jest.fn().mockImplementation((input: any) => ({
-    input,
-    constructor: { name: "TagResourcesCommand" },
-  })),
-  UntagResourcesCommand: jest.fn().mockImplementation((input: any) => ({
-    input,
-    constructor: { name: "UntagResourcesCommand" },
-  })),
+vi.mock("@aws-sdk/client-resource-groups-tagging-api", () => ({
+  TagResourcesCommand: vi.fn().mockImplementation(function (input: any) {
+    return { input, constructor: { name: "TagResourcesCommand" } };
+  }),
+  UntagResourcesCommand: vi.fn().mockImplementation(function (input: any) {
+    return { input, constructor: { name: "UntagResourcesCommand" } };
+  }),
 }));
 
-jest.mock("../src/logger", () => ({
+vi.mock("../src/logger", () => ({
   logger: {
-    log: jest.fn(),
-    error: jest.fn(),
+    log: vi.fn(),
+    error: vi.fn(),
   },
 }));
 
@@ -30,14 +30,14 @@ describe("Tag Functions", () => {
   let mockSend: any;
 
   beforeEach(() => {
-    mockSend = jest.fn();
+    mockSend = vi.fn();
     mockClient = {
       send: mockSend,
     };
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("tagResourcesWithSlsTag", () => {
@@ -195,7 +195,7 @@ describe("Tag Functions", () => {
   describe("applyFunctionTags", () => {
     it("should process all resources successfully in the happy path", async () => {
       // Mock client and send
-      const mockSend = jest.fn().mockResolvedValue({
+      const mockSend = vi.fn().mockResolvedValue({
         FailedResourcesMap: {},
       });
       const mockClient = { send: mockSend };
@@ -251,7 +251,7 @@ describe("Tag Functions", () => {
         },
       };
 
-      const mockSend = jest
+      const mockSend = vi
         .fn()
         // First batch: 2 failures
         .mockResolvedValueOnce({
@@ -311,7 +311,7 @@ describe("Tag Functions", () => {
       };
 
       // Mock will always return the same failures for all 3 attempts
-      const mockSend = jest.fn().mockResolvedValue({
+      const mockSend = vi.fn().mockResolvedValue({
         FailedResourcesMap: persistentFailures,
       });
 
