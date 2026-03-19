@@ -187,6 +187,14 @@ export interface RuleFilter {
   filterType: string;
 }
 
+/**
+ * A Lambda function before tag enrichment. Tags may be a Record<string, string>
+ * from the AWS SDK's GetFunctionCommandOutput, or undefined.
+ */
+export type UnenrichedLambdaFunction = FunctionConfiguration & {
+  Tags?: Record<string, string>;
+};
+
 export interface LambdaFunction extends FunctionConfiguration {
   FunctionName: string;
   Tags?: Set<string>;

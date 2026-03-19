@@ -38,6 +38,7 @@ import {
   SUPPORTED_RUNTIME_CONFIGURATIONS,
   getRuntimeConfig,
   type LambdaFunction,
+  type UnenrichedLambdaFunction,
   type RuleFilter,
   type InstrumentOutcome,
 } from "./consts";
@@ -111,7 +112,7 @@ export async function getAllFunctions(
     }
   }
   logger.log(
-    `Retrieved all lambda functions in the account: ${JSON.stringify(allFunctions.map((f) => selectFunctionFieldsForLogging(f as LambdaFunction)))}`,
+    `Retrieved all lambda functions in the account: ${JSON.stringify(allFunctions.map((f) => selectFunctionFieldsForLogging(f)))}`,
   );
   return allFunctions;
 }
@@ -142,7 +143,7 @@ export async function getLambdaFunction(
 
 async function enrichFunctionsWithTags(
   client: LambdaClient,
-  functions: LambdaFunction[],
+  functions: UnenrichedLambdaFunction[],
 ): Promise<LambdaFunction[]> {
   // Loop through the functions and collect each one's tags
   const enrichedFunctions: LambdaFunction[] = [];
@@ -153,19 +154,12 @@ async function enrichFunctionsWithTags(
       functionTag?.replace(/"/g, ""),
     );
 
-    // Before enrichment, Tags may be a Record<string, string> from the AWS SDK's GetFunctionCommandOutput
-    const rawTags = (lambdaFunc as unknown as { Tags?: Record<string, string> })
-      .Tags;
-    let awsResourceTags: Record<string, string>;
-    if (!rawTags || rawTags instanceof Set) {
-      awsResourceTags =
-        (await getAWSResourceTagsForFunction(
-          client,
-          lambdaFunc.FunctionName!,
-        )) ?? {};
-    } else {
-      awsResourceTags = rawTags;
-    }
+    // Tags may be a Record<string, string> from the AWS SDK's GetFunctionCommandOutput
+    const awsResourceTags: Record<string, string> = lambdaFunc.Tags ??
+      (await getAWSResourceTagsForFunction(
+        client,
+        lambdaFunc.FunctionName!,
+      )) ?? {};
     for (const [key, value] of Object.entries(awsResourceTags)) {
       functionTags.push(key + ":" + value);
     }
@@ -174,8 +168,11 @@ async function enrichFunctionsWithTags(
     functionTags.push("runtime:" + lambdaFunc.Runtime);
 
     const functionTagsSet = new Set(functionTags);
-    lambdaFunc.Tags = functionTagsSet;
-    enrichedFunctions.push(lambdaFunc);
+    enrichedFunctions.push({
+      ...lambdaFunc,
+      FunctionName: lambdaFunc.FunctionName!,
+      Tags: functionTagsSet,
+    });
   }
   logger.log(
     `Enriched the following functions with tags: '${JSON.stringify(
@@ -607,7 +604,7 @@ export const waitUntilFunctionIsActive = async (
 };
 
 export function selectFunctionFieldsForLogging(
-  lambdaFunction: LambdaFunction,
+  lambdaFunction: FunctionConfiguration & { Tags?: Set<string> },
 ): Record<string, unknown> {
   return {
     FunctionName: lambdaFunction.FunctionName,

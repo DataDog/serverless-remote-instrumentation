@@ -47,6 +47,7 @@ import {
   INSTRUMENT,
   SKIPPED,
   type LambdaFunction,
+  type UnenrichedLambdaFunction,
   type InstrumentOutcome,
 } from "./consts";
 import type { Context } from "aws-lambda";
@@ -73,7 +74,7 @@ export const handler = async (
       const allFunctions = await getAllFunctions(lambdaClient);
       const functionsToCheck = await enrichFunctionsWithTags(
         lambdaClient,
-        allFunctions as LambdaFunction[],
+        allFunctions,
       );
       await instrumentFunctions(
         s3Client,
@@ -96,7 +97,7 @@ export const handler = async (
     const allFunctions = await getAllFunctions(lambdaClient);
     const enrichedFunctions = await enrichFunctionsWithTags(
       lambdaClient,
-      allFunctions as LambdaFunction[],
+      allFunctions,
     );
     await instrumentFunctions(
       s3Client,
@@ -134,7 +135,7 @@ export const handler = async (
     }
 
     const functionsToCheck = await enrichFunctionsWithTags(lambdaClient, [
-      functionFromEvent as LambdaFunction,
+      functionFromEvent,
     ]);
 
     let configs: RcConfig[];
@@ -200,7 +201,7 @@ export const handler = async (
 
       functionsToCheck = await enrichFunctionsWithTags(
         lambdaClient,
-        allFunctions as LambdaFunction[],
+        allFunctions,
       );
 
       await instrumentFunctions(
@@ -228,7 +229,7 @@ export const handler = async (
               return {
                 ...lambdaFunction.Configuration,
                 Tags: lambdaFunction.Tags,
-              } as LambdaFunction;
+              } as UnenrichedLambdaFunction;
             } catch (e) {
               if (e instanceof ResourceNotFoundException) {
                 // Function no longer exists, add it to skipped to get cleaned up
@@ -251,7 +252,7 @@ export const handler = async (
             }
           }),
         )
-      ).filter((item): item is LambdaFunction => item !== undefined);
+      ).filter((item): item is UnenrichedLambdaFunction => item !== undefined);
 
       const enrichedFunctions = await enrichFunctionsWithTags(
         lambdaClient,
