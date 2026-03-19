@@ -155,11 +155,10 @@ async function enrichFunctionsWithTags(
     );
 
     // Tags may be a Record<string, string> from the AWS SDK's GetFunctionCommandOutput
-    const awsResourceTags: Record<string, string> = lambdaFunc.Tags ??
-      (await getAWSResourceTagsForFunction(
-        client,
-        lambdaFunc.FunctionName!,
-      )) ?? {};
+    const awsResourceTags: Record<string, string> =
+      lambdaFunc.Tags ??
+      (await getAWSResourceTagsForFunction(client, lambdaFunc.FunctionName!)) ??
+      {};
     for (const [key, value] of Object.entries(awsResourceTags)) {
       functionTags.push(key + ":" + value);
     }
