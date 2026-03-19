@@ -20,6 +20,8 @@ import {
   sampleRcTestJSON,
 } from "./test-utils";
 import axios from "axios";
+import type { AxiosResponse } from "axios";
+import type { Context } from "aws-lambda";
 import { sleep } from "../src/sleep";
 import { createHash } from "crypto";
 
@@ -294,29 +296,29 @@ describe("getConfigsFromResponse", () => {
   const rcConfigPath =
     "datadog/2/SERVERLESS_REMOTE_INSTRUMENTATION/abc-123-def";
   test("should error when there is no data", () => {
-    expect(() => getConfigsFromResponse({})).toThrow(
-      "Failed to retrieve configs",
-    );
+    expect(() =>
+      getConfigsFromResponse({} as unknown as AxiosResponse),
+    ).toThrow("Failed to retrieve configs");
   });
   test("should error when config is expired", () => {
     expect(() =>
       getConfigsFromResponse({
         data: { config_status: CONFIG_STATUS_EXPIRED },
-      }),
+      } as unknown as AxiosResponse),
     ).toThrow("Config is expired");
   });
   test("should not error when config status is not expired", () => {
     expect(() =>
       getConfigsFromResponse({
         data: { config_status: CONFIG_STATUS_OK },
-      }),
+      } as unknown as AxiosResponse),
     ).not.toThrow();
   });
   test("should not error when config status is not present", () => {
     expect(() =>
       getConfigsFromResponse({
         data: {},
-      }),
+      } as unknown as AxiosResponse),
     ).not.toThrow();
   });
   test("should error when target file is not found", () => {
@@ -341,7 +343,7 @@ describe("getConfigsFromResponse", () => {
           ],
           client_configs: [rcConfigPath],
         },
-      }),
+      } as unknown as AxiosResponse),
     ).toThrow(
       `Error parsing configs: target file not found for config path '${rcConfigPath}'`,
     );
@@ -368,7 +370,7 @@ describe("getConfigsFromResponse", () => {
           ],
           client_configs: [rcConfigPath],
         },
-      }),
+      } as unknown as AxiosResponse),
     ).toThrow("Error parsing configs: targets not found");
   });
   test("should error when signed target data not found for config path", () => {
@@ -414,7 +416,7 @@ describe("getConfigsFromResponse", () => {
             }),
           ),
         },
-      }),
+      } as unknown as AxiosResponse),
     ).toThrow(
       `Error parsing configs: signed target data not found for config path '${rcConfigPath}'`,
     );
@@ -475,13 +477,17 @@ describe("getConfigsFromResponse", () => {
             }),
           ),
         },
-      }),
+      } as unknown as AxiosResponse),
     ).toThrow(
       "Error parsing configs: Received invalid configuration: priority must be a number, but received 'undefined'",
     );
   });
   test("should return empty list when there are no configs", () => {
-    expect(getConfigsFromResponse({ data: { target_files: [] } })).toEqual([]);
+    expect(
+      getConfigsFromResponse({
+        data: { target_files: [] },
+      } as unknown as AxiosResponse),
+    ).toEqual([]);
   });
   test("should deserialize configs into objects", () => {
     const configs = getConfigsFromResponse({
@@ -560,7 +566,7 @@ describe("getConfigsFromResponse", () => {
           }),
         ),
       },
-    });
+    } as unknown as AxiosResponse);
     expect(configs.length).toBe(1);
     expect(configs[0].configVersion).toBe(1);
     expect(configs[0].entityType).toBe("lambda");
@@ -774,7 +780,7 @@ describe("getConfigs", () => {
     const context = {
       invokedFunctionArn:
         "arn:aws:lambda:us-east-1:123456789012:function:test-function",
-    };
+    } as unknown as Context;
     await expect(getConfigs(mockS3Client, context)).rejects.toThrow(
       "Failed to retrieve configs.",
     );

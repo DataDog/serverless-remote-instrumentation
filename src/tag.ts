@@ -1,16 +1,25 @@
 import {
+  ResourceGroupsTaggingAPIClient,
   TagResourcesCommand,
   UntagResourcesCommand,
+} from "@aws-sdk/client-resource-groups-tagging-api";
+import type {
+  TagResourcesCommandOutput,
+  UntagResourcesCommandOutput,
 } from "@aws-sdk/client-resource-groups-tagging-api";
 import { DD_SLS_REMOTE_INSTRUMENTER_VERSION, VERSION } from "./consts";
 import { logger } from "./logger";
 
+type TagCommandOutput = TagResourcesCommandOutput | UntagResourcesCommandOutput;
+
 async function tagBatch(
-  client: any,
+  client: ResourceGroupsTaggingAPIClient,
   functionArns: string[],
   operationName: string,
-  createCommand: (batch: string[]) => any,
-): Promise<any[]> {
+  createCommand: (
+    batch: string[],
+  ) => TagResourcesCommand | UntagResourcesCommand,
+): Promise<TagCommandOutput[]> {
   if (functionArns.length === 0) {
     return [];
   }
@@ -26,13 +35,19 @@ async function tagBatch(
     `Processing ${functionArns.length} resources in ${batches.length} batches of ${batchSize} for ${operationName}`,
   );
 
-  const results = [];
+  const results: TagCommandOutput[] = [];
 
   for (let i = 0; i < batches.length; i++) {
     const batch = batches[i];
     const command = createCommand(batch);
     try {
-      results.push(await client.send(command));
+      // TS can't resolve overloaded send() with a union of command types;
+      // each command type is individually valid for client.send()
+      const result =
+        command instanceof TagResourcesCommand
+          ? await client.send(command)
+          : await client.send(command as UntagResourcesCommand);
+      results.push(result);
       logger.log(
         `Successfully processed batch ${i + 1}/${batches.length} (${batch.length} resources) for ${operationName}`,
       );
@@ -47,10 +62,12 @@ async function tagBatch(
 }
 
 const applyFunctionTags = async (
-  client: any,
+  client: ResourceGroupsTaggingAPIClient,
   functionArns: string[],
   operationName: string,
-  createCommand: (batch: string[]) => any,
+  createCommand: (
+    batch: string[],
+  ) => TagResourcesCommand | UntagResourcesCommand,
 ): Promise<void> => {
   let tries = 0;
   let functionsToTag = [...functionArns];
@@ -66,8 +83,7 @@ const applyFunctionTags = async (
     functionsToTag = results
       .flatMap((result) =>
         Object.entries(result.FailedResourcesMap || {}).filter(
-          ([, value]: [string, any]) =>
-            value.ErrorCode !== "InvalidParameterException",
+          ([, value]) => value.ErrorCode !== "InvalidParameterException",
         ),
       )
       .map(([key]) => key);
@@ -86,7 +102,7 @@ const applyFunctionTags = async (
 };
 
 export async function tagResourcesWithSlsTag(
-  client: any,
+  client: ResourceGroupsTaggingAPIClient,
   functionArns: string[],
 ): Promise<void> {
   logger.log(
@@ -105,7 +121,7 @@ export async function tagResourcesWithSlsTag(
 }
 
 export async function untagResourcesOfSlsTag(
-  client: any,
+  client: ResourceGroupsTaggingAPIClient,
   functionArns: string[],
 ): Promise<void> {
   logger.log(

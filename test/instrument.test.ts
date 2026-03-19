@@ -1,5 +1,7 @@
 import * as instrument from "../src/instrument";
 import * as applyState from "../src/apply-state";
+import type { S3Client } from "@aws-sdk/client-s3";
+import type { ResourceGroupsTaggingAPIClient } from "@aws-sdk/client-resource-groups-tagging-api";
 import { RcConfig } from "../src/config";
 import {
   sampleRcConfigID,
@@ -148,11 +150,11 @@ describe("instrumentFunctions", () => {
   // Mock client
   const mockTaggingClient = {
     send: jest.fn().mockReturnValue({}),
-  };
+  } as unknown as ResourceGroupsTaggingAPIClient;
 
   const mockS3Client = {
     send: jest.fn(),
-  };
+  } as unknown as S3Client;
 
   // Mock creating apply state object
   const applyStateObject = {
@@ -378,10 +380,10 @@ describe("instrumentWithDatadogCi", () => {
 describe("removeRemoteInstrumentation", () => {
   const mockTaggingClient = {
     send: jest.fn().mockReturnValue({}),
-  };
+  } as unknown as ResourceGroupsTaggingAPIClient;
   const mockS3Client = {
     send: jest.fn(),
-  };
+  } as unknown as S3Client;
   beforeEach(() => {
     // Set AWS_REGION for tests
     process.env.AWS_REGION = "us-east-2";

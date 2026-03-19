@@ -4,10 +4,12 @@ import {
   emptyBucket,
 } from "../src/error-storage";
 import { FAILED, SKIPPED, SUCCEEDED } from "../src/consts";
+import type { S3Client } from "@aws-sdk/client-s3";
 
+const mockSend = jest.fn();
 const mockS3 = {
-  send: jest.fn(),
-};
+  send: mockSend,
+} as unknown as S3Client;
 
 describe("listErrors test suite", () => {
   beforeEach(() => {
@@ -26,11 +28,11 @@ describe("listErrors test suite", () => {
         },
       ],
     };
-    mockS3.send.mockReturnValue(mockResult);
+    mockSend.mockReturnValue(mockResult);
     const result = await listErrors(mockS3);
 
     expect(result).toStrictEqual(["key1", "key2"]);
-    expect(mockS3.send).toHaveBeenCalledTimes(1);
+    expect(mockSend).toHaveBeenCalledTimes(1);
   });
 
   test("handles when errors/ is a folder object and should be filtered in the result", async () => {
@@ -45,11 +47,11 @@ describe("listErrors test suite", () => {
         },
       ],
     };
-    mockS3.send.mockReturnValue(mockResult);
+    mockSend.mockReturnValue(mockResult);
     const result = await listErrors(mockS3);
 
     expect(result).toStrictEqual(["key"]);
-    expect(mockS3.send).toHaveBeenCalledTimes(1);
+    expect(mockSend).toHaveBeenCalledTimes(1);
   });
 
   test("handles multiple pages of results", async () => {
@@ -85,14 +87,14 @@ describe("listErrors test suite", () => {
         },
       ],
     };
-    mockS3.send.mockReturnValueOnce(mockResult1);
-    mockS3.send.mockReturnValueOnce(mockResult2);
-    mockS3.send.mockReturnValueOnce(mockResult3);
+    mockSend.mockReturnValueOnce(mockResult1);
+    mockSend.mockReturnValueOnce(mockResult2);
+    mockSend.mockReturnValueOnce(mockResult3);
 
     const result = await listErrors(mockS3);
 
     expect(result).toStrictEqual(["key1", "key2", "key3", "key4", "key5"]);
-    expect(mockS3.send).toHaveBeenCalledTimes(3);
+    expect(mockSend).toHaveBeenCalledTimes(3);
   });
 
   test("handles no results", async () => {
@@ -100,22 +102,22 @@ describe("listErrors test suite", () => {
       IsTruncated: false,
       Contents: [],
     };
-    mockS3.send.mockReturnValue(mockResult);
+    mockSend.mockReturnValue(mockResult);
     const result = await listErrors(mockS3);
 
     expect(result).toStrictEqual([]);
-    expect(mockS3.send).toHaveBeenCalledTimes(1);
+    expect(mockSend).toHaveBeenCalledTimes(1);
   });
 
   test("handles no results with undefined contents", async () => {
     const mockResult = {
       IsTruncated: false,
     };
-    mockS3.send.mockReturnValue(mockResult);
+    mockSend.mockReturnValue(mockResult);
     const result = await listErrors(mockS3);
 
     expect(result).toStrictEqual([]);
-    expect(mockS3.send).toHaveBeenCalledTimes(1);
+    expect(mockSend).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -348,12 +350,12 @@ describe("emptyBucket test suite", () => {
       IsTruncated: false,
       Contents: [],
     };
-    mockS3.send.mockReturnValue(mockResult);
+    mockSend.mockReturnValue(mockResult);
 
     await emptyBucket(mockS3);
 
-    expect(mockS3.send).toHaveBeenCalledTimes(1);
-    expect(mockS3.send).toHaveBeenCalledWith(
+    expect(mockSend).toHaveBeenCalledTimes(1);
+    expect(mockSend).toHaveBeenCalledWith(
       expect.objectContaining({
         input: expect.objectContaining({
           Bucket: process.env.DD_S3_BUCKET,
@@ -366,11 +368,11 @@ describe("emptyBucket test suite", () => {
     const mockResult = {
       IsTruncated: false,
     };
-    mockS3.send.mockReturnValue(mockResult);
+    mockSend.mockReturnValue(mockResult);
 
     await emptyBucket(mockS3);
 
-    expect(mockS3.send).toHaveBeenCalledTimes(1);
+    expect(mockSend).toHaveBeenCalledTimes(1);
   });
 
   test("deletes objects in single page", async () => {
@@ -382,12 +384,12 @@ describe("emptyBucket test suite", () => {
         { Key: "other/file.txt" },
       ],
     };
-    mockS3.send.mockReturnValueOnce(mockListResult);
+    mockSend.mockReturnValueOnce(mockListResult);
 
     await emptyBucket(mockS3);
 
-    expect(mockS3.send).toHaveBeenCalledTimes(2);
-    expect(mockS3.send).toHaveBeenNthCalledWith(
+    expect(mockSend).toHaveBeenCalledTimes(2);
+    expect(mockSend).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
         input: expect.objectContaining({
@@ -416,7 +418,7 @@ describe("emptyBucket test suite", () => {
       Contents: [{ Key: "errors/key3.json" }],
     };
 
-    mockS3.send
+    mockSend
       .mockReturnValueOnce(mockListResult1)
       .mockReturnValueOnce(undefined) // delete command response
       .mockReturnValueOnce(mockListResult2)
@@ -424,9 +426,9 @@ describe("emptyBucket test suite", () => {
 
     await emptyBucket(mockS3);
 
-    expect(mockS3.send).toHaveBeenCalledTimes(4);
+    expect(mockSend).toHaveBeenCalledTimes(4);
     // First list call
-    expect(mockS3.send).toHaveBeenNthCalledWith(
+    expect(mockSend).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
         input: expect.objectContaining({
@@ -435,7 +437,7 @@ describe("emptyBucket test suite", () => {
       }),
     );
     // First delete call
-    expect(mockS3.send).toHaveBeenNthCalledWith(
+    expect(mockSend).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
         input: expect.objectContaining({
@@ -447,7 +449,7 @@ describe("emptyBucket test suite", () => {
       }),
     );
     // Second list call with continuation token
-    expect(mockS3.send).toHaveBeenNthCalledWith(
+    expect(mockSend).toHaveBeenNthCalledWith(
       3,
       expect.objectContaining({
         input: expect.objectContaining({
@@ -457,7 +459,7 @@ describe("emptyBucket test suite", () => {
       }),
     );
     // Second delete call
-    expect(mockS3.send).toHaveBeenNthCalledWith(
+    expect(mockSend).toHaveBeenNthCalledWith(
       4,
       expect.objectContaining({
         input: expect.objectContaining({
@@ -480,15 +482,15 @@ describe("emptyBucket test suite", () => {
       IsTruncated: false,
       Contents: objects,
     };
-    mockS3.send.mockReturnValueOnce(mockListResult);
+    mockSend.mockReturnValueOnce(mockListResult);
 
     await emptyBucket(mockS3);
 
     // Should be 1 list call + 2 delete calls (1000 + 500 objects)
-    expect(mockS3.send).toHaveBeenCalledTimes(3);
+    expect(mockSend).toHaveBeenCalledTimes(3);
 
     // First batch (objects 0-999)
-    expect(mockS3.send).toHaveBeenNthCalledWith(
+    expect(mockSend).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
         input: expect.objectContaining({
@@ -501,7 +503,7 @@ describe("emptyBucket test suite", () => {
     );
 
     // Second batch (objects 1000-1499)
-    expect(mockS3.send).toHaveBeenNthCalledWith(
+    expect(mockSend).toHaveBeenNthCalledWith(
       3,
       expect.objectContaining({
         input: expect.objectContaining({

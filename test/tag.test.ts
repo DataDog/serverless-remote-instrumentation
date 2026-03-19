@@ -1,3 +1,8 @@
+import type {
+  ResourceGroupsTaggingAPIClient,
+  TagResourcesCommand,
+  UntagResourcesCommand,
+} from "@aws-sdk/client-resource-groups-tagging-api";
 import { applyFunctionTags } from "../src/tag";
 
 jest.mock("@aws-sdk/client-resource-groups-tagging-api", () => ({
@@ -204,12 +209,14 @@ describe("Tag Functions", () => {
 
       // Call the function
       await applyFunctionTags(
-        mockClient,
+        mockClient as unknown as ResourceGroupsTaggingAPIClient,
         functionArns,
         "tagging",
-        (batch: string[]) => ({
+        ((batch: string[]) => ({
           input: { ResourceARNList: batch },
-        }),
+        })) as unknown as (
+          batch: string[],
+        ) => TagResourcesCommand | UntagResourcesCommand,
       );
 
       // Should call send twice (20 + 5)
@@ -262,12 +269,14 @@ describe("Tag Functions", () => {
       const mockClient = { send: mockSend };
 
       await applyFunctionTags(
-        mockClient,
+        mockClient as unknown as ResourceGroupsTaggingAPIClient,
         functionArns,
         "tagging",
-        (batch: string[]) => ({
+        ((batch: string[]) => ({
           input: { ResourceARNList: batch },
-        }),
+        })) as unknown as (
+          batch: string[],
+        ) => TagResourcesCommand | UntagResourcesCommand,
       );
 
       // First call: 20 ARNs (first batch)
@@ -311,12 +320,14 @@ describe("Tag Functions", () => {
       // Expect the function to throw an error
       await expect(
         applyFunctionTags(
-          mockClient,
+          mockClient as unknown as ResourceGroupsTaggingAPIClient,
           functionArns,
           "tagging",
-          (batch: string[]) => ({
+          ((batch: string[]) => ({
             input: { ResourceARNList: batch },
-          }),
+          })) as unknown as (
+            batch: string[],
+          ) => TagResourcesCommand | UntagResourcesCommand,
         ),
       ).rejects.toThrow(
         'Failed to process 2 resources after 3 tries ["arn:aws:lambda:us-east-1:123456789012:function:test-1","arn:aws:lambda:us-east-1:123456789012:function:test-3"]',

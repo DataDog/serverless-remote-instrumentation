@@ -9,6 +9,8 @@ import {
   isUntagResourceEvent,
   shouldSkipEvent,
   selectEventFieldsForLogging,
+  LambdaManagementEvent,
+  InstrumenterEvent,
 } from "../src/lambda-event";
 
 describe("isScheduledInvocationEvent", () => {
@@ -111,7 +113,9 @@ describe("isUpdateConfigurationEvent", () => {
         eventName: "UpdateFunctionConfiguration20150331v2",
       },
     };
-    expect(isUpdateConfigurationEvent(event)).toBe(true);
+    expect(
+      isUpdateConfigurationEvent(event as unknown as LambdaManagementEvent),
+    ).toBe(true);
   });
   it("should return false if the event is not an update configuration event", () => {
     const event = {
@@ -119,7 +123,9 @@ describe("isUpdateConfigurationEvent", () => {
         eventName: "Not an update configuration event",
       },
     };
-    expect(isUpdateConfigurationEvent(event)).toBe(false);
+    expect(
+      isUpdateConfigurationEvent(event as unknown as LambdaManagementEvent),
+    ).toBe(false);
   });
 });
 
@@ -130,7 +136,9 @@ describe("isCreateFunctionEvent", () => {
         eventName: "CreateFunction20150331",
       },
     };
-    expect(isCreateFunctionEvent(event)).toBe(true);
+    expect(
+      isCreateFunctionEvent(event as unknown as LambdaManagementEvent),
+    ).toBe(true);
   });
   it("should return false if the event is not a create function event", () => {
     const event = {
@@ -138,7 +146,9 @@ describe("isCreateFunctionEvent", () => {
         eventName: "Not a create function event",
       },
     };
-    expect(isCreateFunctionEvent(event)).toBe(false);
+    expect(
+      isCreateFunctionEvent(event as unknown as LambdaManagementEvent),
+    ).toBe(false);
   });
 });
 
@@ -149,7 +159,9 @@ describe("isTagResourceEvent", () => {
         eventName: "TagResource20170331v2",
       },
     };
-    expect(isTagResourceEvent(event)).toBe(true);
+    expect(isTagResourceEvent(event as unknown as LambdaManagementEvent)).toBe(
+      true,
+    );
   });
   it("should return false if the event is not a tag resource event", () => {
     const event = {
@@ -157,7 +169,9 @@ describe("isTagResourceEvent", () => {
         eventName: "Not a tag resource event",
       },
     };
-    expect(isTagResourceEvent(event)).toBe(false);
+    expect(isTagResourceEvent(event as unknown as LambdaManagementEvent)).toBe(
+      false,
+    );
   });
 });
 
@@ -168,7 +182,9 @@ describe("isUntagResourceEvent", () => {
         eventName: "UntagResource20170331v2",
       },
     };
-    expect(isUntagResourceEvent(event)).toBe(true);
+    expect(
+      isUntagResourceEvent(event as unknown as LambdaManagementEvent),
+    ).toBe(true);
   });
   it("should return false if the event is not an untag resource event", () => {
     const event = {
@@ -176,7 +192,9 @@ describe("isUntagResourceEvent", () => {
         eventName: "Not an untag resource event",
       },
     };
-    expect(isUntagResourceEvent(event)).toBe(false);
+    expect(
+      isUntagResourceEvent(event as unknown as LambdaManagementEvent),
+    ).toBe(false);
   });
 });
 
@@ -190,7 +208,9 @@ describe("shouldSkipEvent", () => {
       },
     };
     process.env.AWS_LAMBDA_FUNCTION_NAME = "instrumenter-function-name";
-    expect(shouldSkipEvent(event)).toBe(true);
+    expect(shouldSkipEvent(event as unknown as LambdaManagementEvent)).toBe(
+      true,
+    );
   });
   it("should return true for unsupported events", () => {
     const event = {
@@ -198,7 +218,9 @@ describe("shouldSkipEvent", () => {
         eventName: "UnsupportedEvent",
       },
     };
-    expect(shouldSkipEvent(event)).toBe(true);
+    expect(shouldSkipEvent(event as unknown as LambdaManagementEvent)).toBe(
+      true,
+    );
   });
   it("should return false for update function configuration events", () => {
     const event = {
@@ -206,7 +228,9 @@ describe("shouldSkipEvent", () => {
         eventName: "UpdateFunctionConfiguration20150331v2",
       },
     };
-    expect(shouldSkipEvent(event)).toBe(false);
+    expect(shouldSkipEvent(event as unknown as LambdaManagementEvent)).toBe(
+      false,
+    );
   });
   it("should return false for create function events", () => {
     const event = {
@@ -214,7 +238,9 @@ describe("shouldSkipEvent", () => {
         eventName: "CreateFunction20150331",
       },
     };
-    expect(shouldSkipEvent(event)).toBe(false);
+    expect(shouldSkipEvent(event as unknown as LambdaManagementEvent)).toBe(
+      false,
+    );
   });
   it("should return false for tag resource events", () => {
     const event = {
@@ -222,7 +248,9 @@ describe("shouldSkipEvent", () => {
         eventName: "TagResource20170331v2",
       },
     };
-    expect(shouldSkipEvent(event)).toBe(false);
+    expect(shouldSkipEvent(event as unknown as LambdaManagementEvent)).toBe(
+      false,
+    );
   });
   it("should return false for untag resource events", () => {
     const event = {
@@ -230,7 +258,9 @@ describe("shouldSkipEvent", () => {
         eventName: "UntagResource20170331v2",
       },
     };
-    expect(shouldSkipEvent(event)).toBe(false);
+    expect(shouldSkipEvent(event as unknown as LambdaManagementEvent)).toBe(
+      false,
+    );
   });
   it("should return true for events that did not succeed", () => {
     const event = {
@@ -240,7 +270,9 @@ describe("shouldSkipEvent", () => {
         errorMessage: "SomethingBadHappened",
       },
     };
-    expect(shouldSkipEvent(event)).toBe(true);
+    expect(shouldSkipEvent(event as unknown as LambdaManagementEvent)).toBe(
+      true,
+    );
   });
   it("should return true for events that originate from the remote instrumenter", () => {
     const event = {
@@ -252,7 +284,9 @@ describe("shouldSkipEvent", () => {
       },
     };
     process.env.AWS_LAMBDA_FUNCTION_NAME = "instrumenter-function-name";
-    expect(shouldSkipEvent(event)).toBe(true);
+    expect(shouldSkipEvent(event as unknown as LambdaManagementEvent)).toBe(
+      true,
+    );
   });
   it("should return false for events that originate from other sources", () => {
     const event = {
@@ -264,7 +298,9 @@ describe("shouldSkipEvent", () => {
       },
     };
     process.env.AWS_LAMBDA_FUNCTION_NAME = "instrumenter-function-name";
-    expect(shouldSkipEvent(event)).toBe(false);
+    expect(shouldSkipEvent(event as unknown as LambdaManagementEvent)).toBe(
+      false,
+    );
   });
 });
 
@@ -294,6 +330,8 @@ describe("selectEventFieldsForLogging", () => {
       userIdentity: undefined,
       tags: { foo: "bar" },
     };
-    expect(selectEventFieldsForLogging(event)).toStrictEqual(expected);
+    expect(
+      selectEventFieldsForLogging(event as unknown as InstrumenterEvent),
+    ).toStrictEqual(expected);
   });
 });

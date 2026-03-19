@@ -18,6 +18,8 @@ import * as instrument from "../src/instrument";
 import * as errorStorage from "../src/error-storage";
 import { LAMBDA_EVENT } from "../src/consts";
 import * as cfnResponse from "cfn-response";
+import type { InstrumenterEvent } from "../src/lambda-event";
+import type { Context } from "aws-lambda";
 
 jest.mock("../src/lambda-event");
 jest.mock("../src/config");
@@ -63,7 +65,10 @@ describe("handler lambda management events", () => {
     });
     mockedInstrument.instrumentFunctions.mockResolvedValue(true as any);
 
-    await handler.handler(event, context);
+    await handler.handler(
+      event as InstrumenterEvent,
+      context as unknown as Context,
+    );
 
     expect(mockedLambdaEvent.getFunctionFromLambdaEvent).toHaveBeenCalledWith(
       expect.anything(),
@@ -110,7 +115,12 @@ describe("handler lambda management events", () => {
     mockedConfig.getConfigsWithRetry.mockImplementation(error);
     mockedInstrument.instrumentFunctions.mockResolvedValue(true);
 
-    await expect(handler.handler(event, context)).rejects.toThrow("ERROR!");
+    await expect(
+      handler.handler(
+        event as InstrumenterEvent,
+        context as unknown as Context,
+      ),
+    ).rejects.toThrow("ERROR!");
 
     expect(mockedLambdaEvent.getFunctionFromLambdaEvent).toHaveBeenCalledWith(
       expect.anything(),
@@ -166,7 +176,10 @@ describe("scheduled invocation events", () => {
       resolvedErrors: ["error!"],
     });
 
-    await handler.handler(event, context);
+    await handler.handler(
+      event as InstrumenterEvent,
+      context as unknown as Context,
+    );
 
     expect(mockedErrorStorage.listErrors).toHaveBeenCalledTimes(1);
     expect(mockedFunctions.getLambdaFunction).toHaveBeenCalledTimes(2);
@@ -221,7 +234,10 @@ describe("scheduled invocation events", () => {
       resolvedErrors: [],
     });
 
-    await handler.handler(event, context);
+    await handler.handler(
+      event as InstrumenterEvent,
+      context as unknown as Context,
+    );
 
     expect(mockedConfig.getConfigsWithRetry).toHaveBeenCalledTimes(1);
     expect(mockedConfig.deleteConfigHash).toHaveBeenCalledTimes(1);
@@ -260,7 +276,10 @@ describe("stack delete events", () => {
     );
     mockedCfnResponse.send.mockResolvedValue(true);
 
-    const res = await handler.handler(event, context);
+    const res = await handler.handler(
+      event as unknown as InstrumenterEvent,
+      context as unknown as Context,
+    );
 
     expect(mockedFunctions.getAllFunctions).toHaveBeenCalledTimes(1);
     expect(mockedFunctions.enrichFunctionsWithTags).toHaveBeenCalledTimes(1);
@@ -309,7 +328,10 @@ describe("stack delete events", () => {
     );
     mockedCfnResponse.send.mockResolvedValue(true);
 
-    const res = await handler.handler(event, context);
+    const res = await handler.handler(
+      event as unknown as InstrumenterEvent,
+      context as unknown as Context,
+    );
 
     expect(mockedFunctions.getAllFunctions).toHaveBeenCalledTimes(1);
     expect(mockedFunctions.enrichFunctionsWithTags).toHaveBeenCalledTimes(1);
@@ -371,7 +393,10 @@ describe("stack create events", () => {
     );
     mockedCfnResponse.send.mockResolvedValue(true);
 
-    const res = await handler.handler(event, context);
+    const res = await handler.handler(
+      event as unknown as InstrumenterEvent,
+      context as unknown as Context,
+    );
 
     expect(mockedFunctions.getAllFunctions).toHaveBeenCalledTimes(1);
     expect(mockedFunctions.enrichFunctionsWithTags).toHaveBeenCalledTimes(1);
@@ -413,7 +438,10 @@ describe("stack create events", () => {
       throw new Error();
     });
 
-    await handler.handler(event, context);
+    await handler.handler(
+      event as unknown as InstrumenterEvent,
+      context as unknown as Context,
+    );
 
     expect(mockedCfnResponse.send).toHaveBeenCalledTimes(1);
     expect(mockedCfnResponse.send).toHaveBeenCalledWith(

@@ -2,9 +2,18 @@ import {
   DeleteObjectCommand,
   DeleteObjectsCommand,
   ListObjectsV2Command,
+  ListObjectsV2CommandInput,
   PutObjectCommand,
+  _Object,
+  S3Client,
 } from "@aws-sdk/client-s3";
-import { FAILED, SKIPPED, SUCCEEDED } from "./consts";
+import {
+  FAILED,
+  SKIPPED,
+  SUCCEEDED,
+  type InstrumentOutcome,
+  type InstrumentationResult,
+} from "./consts";
 
 const bucketName = process.env.DD_S3_BUCKET;
 const prefix = "errors/";
@@ -15,17 +24,8 @@ interface ErrorItem {
   reason: string;
 }
 
-interface InstrumentOutcome {
-  instrument: {
-    [key: string]: Record<string, any>;
-  };
-  uninstrument: {
-    [key: string]: Record<string, any>;
-  };
-}
-
 const putError = async (
-  s3: any,
+  s3: S3Client,
   functionName: string,
   error: string,
 ): Promise<void> => {
@@ -41,20 +41,20 @@ const putError = async (
   await s3.send(command);
 };
 
-export const listErrors = async (s3: any): Promise<string[]> => {
-  const params: any = {
+export const listErrors = async (s3: S3Client): Promise<string[]> => {
+  const params: ListObjectsV2CommandInput = {
     Bucket: bucketName,
     Prefix: prefix,
   };
 
   let isTruncated = true;
-  const results: any[] = [];
+  const results: _Object[] = [];
 
   while (isTruncated) {
     const command = new ListObjectsV2Command(params);
     const response = await s3.send(command);
     const { Contents, NextContinuationToken } = response;
-    isTruncated = response.IsTruncated;
+    isTruncated = response.IsTruncated ?? false;
     if (Contents) {
       results.push(...Contents);
     }
@@ -63,13 +63,13 @@ export const listErrors = async (s3: any): Promise<string[]> => {
   // Return just the LAMBDA_FUNCTION_NAME from `errors/LAMBDA_FUNCTION_NAME.json`
   return results
     .map((item) =>
-      item.Key.slice(prefix.length, item.Key.length - suffix.length),
+      item.Key!.slice(prefix.length, item.Key!.length - suffix.length),
     )
     .filter((item) => item.length);
 };
 
 export const deleteError = async (
-  s3: any,
+  s3: S3Client,
   functionName: string,
 ): Promise<void> => {
   const command = new DeleteObjectCommand({
@@ -86,14 +86,14 @@ export const identifyNewErrorsAndResolvedErrors = (
 ): { newErrors: ErrorItem[]; resolvedErrors: string[] } => {
   const succeeded = ["instrument", "uninstrument"].flatMap((action) =>
     [SKIPPED, SUCCEEDED].flatMap((status) =>
-      Object.keys((instrumentOutcome as any)[action][status]),
+      Object.keys(instrumentOutcome[action][status]),
     ),
   );
   const failed = ["instrument", "uninstrument"].flatMap((action) =>
-    Object.entries((instrumentOutcome as any)[action][FAILED]).map(
-      ([k, v]: [string, any]) => ({
+    Object.entries(instrumentOutcome[action][FAILED]).map(
+      ([k, v]: [string, InstrumentationResult]) => ({
         functionName: k,
-        reason: v.reason,
+        reason: v.reason ?? "",
       }),
     ),
   );
@@ -106,8 +106,8 @@ export const identifyNewErrorsAndResolvedErrors = (
   };
 };
 
-export const emptyBucket = async (s3: any): Promise<void> => {
-  const params: any = {
+export const emptyBucket = async (s3: S3Client): Promise<void> => {
+  const params: ListObjectsV2CommandInput = {
     Bucket: bucketName,
   };
 
@@ -116,7 +116,7 @@ export const emptyBucket = async (s3: any): Promise<void> => {
   while (isTruncated) {
     const response = await s3.send(new ListObjectsV2Command(params));
     const { Contents, NextContinuationToken } = response;
-    isTruncated = response.IsTruncated;
+    isTruncated = response.IsTruncated ?? false;
     if (Contents && Contents.length > 0) {
       // Batch delete objects in groups of 1000 using DeleteObjectsCommand to match the limit https://docs.aws.amazon.com/cli/latest/reference/s3api/delete-objects.html
       for (let i = 0; i < Contents.length; i += 1000) {
@@ -124,7 +124,7 @@ export const emptyBucket = async (s3: any): Promise<void> => {
         const deleteParams = {
           Bucket: bucketName,
           Delete: {
-            Objects: batch.map((object: any) => ({ Key: object.Key })),
+            Objects: batch.map((object) => ({ Key: object.Key })),
             Quiet: true,
           },
         };

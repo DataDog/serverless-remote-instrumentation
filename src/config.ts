@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { type AxiosResponse } from "axios";
 import { logger } from "./logger";
 import {
   DeleteObjectCommand,
@@ -6,6 +6,7 @@ import {
   PutObjectCommand,
   NoSuchKey,
   S3ServiceException,
+  S3Client,
 } from "@aws-sdk/client-s3";
 import crypto from "crypto";
 import {
@@ -17,40 +18,17 @@ import {
   CONFIG_CACHE_TTL_MS,
   CONFIG_STATUS_EXPIRED,
   SUPPORTED_RUNTIME_CONFIGURATIONS,
+  type ConfigJSON,
+  type RuleFilter,
 } from "./consts";
 import { getApplyState } from "./apply-state";
 import { sleep } from "./sleep";
-
-interface RuleFilter {
-  key: string;
-  values: string[];
-  allow: boolean;
-  filterType: string;
-}
+import type { Context } from "aws-lambda";
 
 interface ConfigMeta {
   custom?: {
     v?: number;
   };
-}
-
-interface ConfigJSON {
-  config_version: number;
-  entity_type: string;
-  instrumentation_settings?: {
-    node_layer_version?: number;
-    python_layer_version?: number;
-    extension_version?: number;
-    dd_trace_enabled?: boolean;
-    dd_serverless_logs_enabled?: boolean;
-  };
-  priority: number;
-  rule_filters: Array<{
-    key: string;
-    values: string[];
-    allow: boolean;
-    filter_type: string;
-  }>;
 }
 
 interface ConfigCache {
@@ -77,7 +55,7 @@ export class RcConfig {
   awsAccountId?: string;
   awsRegion?: string;
   instrumenterFunctionName?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 
   constructor(
     configID: string,
@@ -89,7 +67,7 @@ export class RcConfig {
     this.setConfigVersion(configJSON.config_version);
     this.setEntityType(configJSON.entity_type);
 
-    Object.values(SUPPORTED_RUNTIME_CONFIGURATIONS).forEach((config: any) => {
+    Object.values(SUPPORTED_RUNTIME_CONFIGURATIONS).forEach((config) => {
       this.setField(
         config.configField,
         config.getFromJsonConfig(configJSON),
@@ -115,7 +93,7 @@ export class RcConfig {
     return Error(`Received invalid configuration: ${message}`);
   }
 
-  setConfigID(configID: any): void {
+  setConfigID(configID: unknown): void {
     if (typeof configID === "string") {
       this.configID = configID;
     } else {
@@ -125,7 +103,7 @@ export class RcConfig {
     }
   }
 
-  setRcConfigVersion(rcConfigVersion: any): void {
+  setRcConfigVersion(rcConfigVersion: unknown): void {
     if (typeof rcConfigVersion === "number") {
       this.rcConfigVersion = rcConfigVersion;
     } else {
@@ -135,7 +113,7 @@ export class RcConfig {
     }
   }
 
-  setConfigVersion(configVersion: any): void {
+  setConfigVersion(configVersion: unknown): void {
     if (typeof configVersion === "number") {
       this.configVersion = configVersion;
     } else {
@@ -145,7 +123,7 @@ export class RcConfig {
     }
   }
 
-  setEntityType(entityType: any): void {
+  setEntityType(entityType: unknown): void {
     if (typeof entityType === "string" && ENTITY_TYPES.has(entityType)) {
       this.entityType = entityType;
     } else {
@@ -156,11 +134,12 @@ export class RcConfig {
   }
 
   setField(
-    field: string,
-    value: any,
+    field: string | undefined,
+    value: unknown,
     type: string,
     allowUndefined = false,
   ): void {
+    if (!field) return;
     if ((allowUndefined && value === undefined) || typeof value === type) {
       this[field] = value;
     } else {
@@ -170,7 +149,7 @@ export class RcConfig {
     }
   }
 
-  setExtensionVersion(extensionVersion: any): void {
+  setExtensionVersion(extensionVersion: unknown): void {
     if (
       extensionVersion === undefined ||
       typeof extensionVersion === "number"
@@ -183,7 +162,7 @@ export class RcConfig {
     }
   }
 
-  setDDTraceEnabled(ddTraceEnabled: any): void {
+  setDDTraceEnabled(ddTraceEnabled: unknown): void {
     if (ddTraceEnabled === undefined || typeof ddTraceEnabled === "boolean") {
       this.ddTraceEnabled = ddTraceEnabled;
     } else {
@@ -193,7 +172,7 @@ export class RcConfig {
     }
   }
 
-  setDDServerlessLogsEnabled(ddServerlessLogsEnabled: any): void {
+  setDDServerlessLogsEnabled(ddServerlessLogsEnabled: unknown): void {
     if (
       ddServerlessLogsEnabled === undefined ||
       typeof ddServerlessLogsEnabled === "boolean"
@@ -206,7 +185,7 @@ export class RcConfig {
     }
   }
 
-  setPriority(priority: any): void {
+  setPriority(priority: unknown): void {
     if (typeof priority === "number") {
       this.priority = priority;
     } else {
@@ -216,14 +195,16 @@ export class RcConfig {
     }
   }
 
-  setRuleFilters(ruleFilters: any): void {
+  setRuleFilters(ruleFilters: unknown): void {
     if (Array.isArray(ruleFilters)) {
-      const processedFilters = ruleFilters.map((filter) => ({
-        key: filter.key,
-        values: filter.values,
-        allow: filter.allow,
-        filterType: filter.filter_type,
-      }));
+      const processedFilters = ruleFilters.map(
+        (filter: Record<string, unknown>) => ({
+          key: filter.key as string,
+          values: filter.values as string[],
+          allow: filter.allow as boolean,
+          filterType: filter.filter_type as string,
+        }),
+      );
       for (const filter of processedFilters) {
         if (typeof filter.key !== "string") {
           throw this.configurationError(
@@ -257,7 +238,7 @@ export class RcConfig {
 }
 
 async function getConfigsFromRC(
-  s3Client: any,
+  s3Client: S3Client,
   accountID: string,
   region: string,
 ): Promise<RcConfig[]> {
@@ -290,11 +271,11 @@ async function getConfigsFromRC(
   let configs: RcConfig[] = [];
   await axios
     .post(REMOTE_CONFIG_URL, payload)
-    .then(function handleResponse(response: any) {
+    .then(function handleResponse(response: AxiosResponse) {
       configs = getConfigsFromResponse(response);
     })
-    .catch(function handleError(error: any) {
-      logger.error(error);
+    .catch(function handleError(error: unknown) {
+      logger.error(String(error));
       throw new Error("Failed to retrieve configs");
     });
 
@@ -304,7 +285,7 @@ async function getConfigsFromRC(
   return configs;
 }
 
-function getConfigsFromResponse(response: any): RcConfig[] {
+function getConfigsFromResponse(response: AxiosResponse): RcConfig[] {
   if (!response.data) {
     throw new Error("Failed to retrieve configs");
   }
@@ -316,7 +297,10 @@ function getConfigsFromResponse(response: any): RcConfig[] {
   // Map path to config for each target file
   const targetFiles = response.data.target_files ?? [];
   const targetFileMapping = targetFiles.reduce(
-    (acc: any, targetFile: any) => ({
+    (
+      acc: Record<string, string | undefined>,
+      targetFile: { path: string; raw?: string },
+    ) => ({
       ...acc,
       [targetFile.path]: targetFile.raw ?? undefined,
     }),
@@ -353,8 +337,9 @@ function getConfigsFromResponse(response: any): RcConfig[] {
         configMeta,
       );
       parsedConfigFiles.push(rcConfig);
-    } catch (e: any) {
-      throw new Error("Error parsing configs: " + e.message);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      throw new Error("Error parsing configs: " + message);
     }
   }
   if (parsedConfigFiles.length === 0) {
@@ -367,8 +352,8 @@ function getConfigsFromResponse(response: any): RcConfig[] {
 export { getConfigsFromResponse };
 
 export async function getConfigs(
-  s3Client: any,
-  context: any,
+  s3Client: S3Client,
+  context: Context,
 ): Promise<RcConfig[]> {
   if (isCacheValid()) {
     return CONFIG_CACHE.configs!;
@@ -409,11 +394,11 @@ export async function getConfigs(
 }
 
 export async function configHasChanged(
-  client: any,
+  client: S3Client,
   configs: RcConfig[],
 ): Promise<boolean> {
   const newConfigHash = crypto
-    .createHash("sha256", "datadog-remote-instrumenter" as any)
+    .createHash("sha256")
     .update(JSON.stringify(configs))
     .digest("hex");
   const bucketName = process.env.DD_S3_BUCKET;
@@ -424,7 +409,7 @@ export async function configHasChanged(
         Key: CONFIG_HASH_KEY,
       }),
     );
-    const oldConfigHash = await response.Body.transformToString();
+    const oldConfigHash = await response.Body!.transformToString();
     const configChanged = oldConfigHash !== newConfigHash;
     logger.log(
       `Instrumentation configuration ${configChanged ? "has" : "has not"} changed since last scheduled invocation.`,
@@ -435,7 +420,7 @@ export async function configHasChanged(
       );
     }
     return configChanged;
-  } catch (caught: any) {
+  } catch (caught: unknown) {
     if (caught instanceof NoSuchKey) {
       logger.error(
         `Error from S3 while getting object "${CONFIG_HASH_KEY}" from "${bucketName}". No such key exists.`,
@@ -447,15 +432,16 @@ export async function configHasChanged(
       );
       return false;
     } else {
-      logger.error(caught.message);
+      const message = caught instanceof Error ? caught.message : String(caught);
+      logger.error(message);
       throw caught;
     }
   }
 }
 
 export async function getConfigsWithRetry(
-  s3Client: any,
-  context: any,
+  s3Client: S3Client,
+  context: Context,
 ): Promise<{ configs: RcConfig[]; configChanged: boolean }> {
   let configs = await getConfigs(s3Client, context);
   let configChanged = await configHasChanged(s3Client, configs);
@@ -486,11 +472,11 @@ export async function getConfigsWithRetry(
 }
 
 export async function updateConfigHash(
-  client: any,
+  client: S3Client,
   configs: RcConfig[],
 ): Promise<void> {
   const newConfigHash = crypto
-    .createHash("sha256", "datadog-remote-instrumenter" as any)
+    .createHash("sha256")
     .update(JSON.stringify(configs))
     .digest("hex");
   const bucketName = process.env.DD_S3_BUCKET;
@@ -503,19 +489,20 @@ export async function updateConfigHash(
   try {
     await client.send(command);
     logger.log(`Updated config hash with new instrumentation config.`);
-  } catch (caught: any) {
+  } catch (caught: unknown) {
     if (caught instanceof S3ServiceException) {
       logger.error(
         `Error from S3 while uploading object to ${bucketName}.  ${caught.name}: ${caught.message}`,
       );
     } else {
-      logger.error(caught.message);
+      const message = caught instanceof Error ? caught.message : String(caught);
+      logger.error(message);
       throw caught;
     }
   }
 }
 
-export async function deleteConfigHash(client: any): Promise<void> {
+export async function deleteConfigHash(client: S3Client): Promise<void> {
   const command = new DeleteObjectCommand({
     Bucket: process.env.DD_S3_BUCKET,
     Key: CONFIG_HASH_KEY,
@@ -535,3 +522,5 @@ export function updateCache(configs: RcConfig[]): void {
   CONFIG_CACHE.configs = configs;
   CONFIG_CACHE.expirationTime = Date.now() + CONFIG_CACHE_TTL_MS;
 }
+
+export type { ConfigJSON };

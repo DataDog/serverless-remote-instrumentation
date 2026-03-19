@@ -3,6 +3,7 @@ import {
   PutObjectCommand,
   NoSuchKey,
   DeleteObjectCommand,
+  S3Client,
 } from "@aws-sdk/client-s3";
 import {
   FAILED,
@@ -10,6 +11,7 @@ import {
   RC_ERROR,
   RC_PRODUCT,
   APPLY_STATE_KEY,
+  type InstrumentOutcome,
 } from "./consts";
 import { logger } from "./logger";
 
@@ -26,17 +28,8 @@ interface Config {
   rcConfigVersion: number;
 }
 
-interface InstrumentOutcome {
-  instrument: {
-    [key: string]: Record<string, any>;
-  };
-  uninstrument: {
-    [key: string]: Record<string, any>;
-  };
-}
-
 export async function getApplyState(
-  client: any,
+  client: S3Client,
 ): Promise<ApplyStateObject[] | void> {
   const bucketName = process.env.DD_S3_BUCKET;
   try {
@@ -46,7 +39,7 @@ export async function getApplyState(
         Key: APPLY_STATE_KEY,
       }),
     );
-    const applyState = await response.Body.transformToString();
+    const applyState = await response.Body!.transformToString();
     logger.log(`Retrieved apply state: ${applyState}`);
     return JSON.parse(applyState);
   } catch (caught) {
@@ -58,7 +51,7 @@ export async function getApplyState(
 }
 
 export async function putApplyState(
-  client: any,
+  client: S3Client,
   applyStateObjects: ApplyStateObject[],
 ): Promise<void> {
   const bucketName = process.env.DD_S3_BUCKET;
@@ -71,7 +64,7 @@ export async function putApplyState(
   );
 }
 
-export async function deleteApplyState(client: any): Promise<void> {
+export async function deleteApplyState(client: S3Client): Promise<void> {
   const bucketName = process.env.DD_S3_BUCKET;
   try {
     await client.send(

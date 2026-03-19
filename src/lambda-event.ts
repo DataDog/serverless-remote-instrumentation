@@ -1,7 +1,9 @@
+import { LambdaClient } from "@aws-sdk/client-lambda";
+import { ResourceNotFoundException } from "@aws-sdk/client-lambda";
+import { FunctionConfiguration } from "@aws-sdk/client-lambda";
 import { getLambdaFunction } from "./functions";
 import { DD_SLS_REMOTE_INSTRUMENTER_VERSION } from "./consts";
 import { logger } from "./logger";
-import { ResourceNotFoundException } from "@aws-sdk/client-lambda";
 
 const UPDATE_FUNCTION_CONFIGURATION_EVENT_NAME =
   "UpdateFunctionConfiguration20150331v2";
@@ -9,56 +11,113 @@ const CREATE_FUNCTION_EVENT_NAME = "CreateFunction20150331";
 const UNTAG_RESOURCE_EVENT_NAME = "UntagResource20170331v2";
 const TAG_RESOURCE_EVENT_NAME = "TagResource20170331v2";
 
-export function isScheduledInvocationEvent(event: any): boolean {
+export interface ScheduledInvocationEvent {
+  "event-type": string;
+}
+
+export interface CloudFormationEvent {
+  RequestType: string;
+  [key: string]: unknown;
+}
+
+export interface LambdaManagementEvent {
+  "detail-type": string;
+  source: string;
+  detail: {
+    eventName: string;
+    requestParameters?: {
+      functionName?: string;
+      resource?: string;
+      tags?: Record<string, string>;
+      tagKeys?: string[];
+    };
+    responseElements?: {
+      functionName?: string;
+    };
+    errorCode?: string;
+    errorMessage?: string;
+    userIdentity?: {
+      arn?: string;
+      principalId: string;
+    };
+  };
+}
+
+export type InstrumenterEvent =
+  | ScheduledInvocationEvent
+  | CloudFormationEvent
+  | LambdaManagementEvent;
+
+export function isScheduledInvocationEvent(
+  event: unknown,
+): event is ScheduledInvocationEvent {
   return (
-    Object.prototype.hasOwnProperty.call(event, "event-type") &&
-    event["event-type"] === "Scheduled Instrumenter Invocation"
+    typeof event === "object" &&
+    event !== null &&
+    "event-type" in event &&
+    (event as ScheduledInvocationEvent)["event-type"] ===
+      "Scheduled Instrumenter Invocation"
   );
 }
 
-export function isStackDeletedEvent(event: any): boolean {
+export function isStackDeletedEvent(
+  event: unknown,
+): event is CloudFormationEvent {
   return (
-    Object.prototype.hasOwnProperty.call(event, "RequestType") &&
-    event.RequestType === "Delete"
+    typeof event === "object" &&
+    event !== null &&
+    "RequestType" in event &&
+    (event as CloudFormationEvent).RequestType === "Delete"
   );
 }
 
-export function isStackCreatedEvent(event: any): boolean {
+export function isStackCreatedEvent(
+  event: unknown,
+): event is CloudFormationEvent {
   return (
-    Object.prototype.hasOwnProperty.call(event, "RequestType") &&
-    event.RequestType === "Create"
+    typeof event === "object" &&
+    event !== null &&
+    "RequestType" in event &&
+    (event as CloudFormationEvent).RequestType === "Create"
   );
 }
 
-export function isLambdaManagementEvent(event: any): boolean {
+export function isLambdaManagementEvent(
+  event: unknown,
+): event is LambdaManagementEvent {
   return (
-    Object.prototype.hasOwnProperty.call(event, "detail-type") &&
-    event["detail-type"] === "AWS API Call via CloudTrail" &&
-    Object.prototype.hasOwnProperty.call(event, "source") &&
-    event.source === "aws.lambda"
+    typeof event === "object" &&
+    event !== null &&
+    "detail-type" in event &&
+    (event as LambdaManagementEvent)["detail-type"] ===
+      "AWS API Call via CloudTrail" &&
+    "source" in event &&
+    (event as LambdaManagementEvent).source === "aws.lambda"
   );
 }
 
-export function isUpdateConfigurationEvent(event: any): boolean {
+export function isUpdateConfigurationEvent(
+  event: LambdaManagementEvent,
+): boolean {
   // TODO: [Followup] Do additional checks to only reinstrument if the important fields have changed
   // (e.g. reinstrument if layers, memory size, env vars, runtime, handler have changed,
   //       don't reinstrument if description changed)
   return event.detail?.eventName === UPDATE_FUNCTION_CONFIGURATION_EVENT_NAME;
 }
 
-export function isCreateFunctionEvent(event: any): boolean {
+export function isCreateFunctionEvent(event: LambdaManagementEvent): boolean {
   return event.detail?.eventName === CREATE_FUNCTION_EVENT_NAME;
 }
 
-export function isTagResourceEvent(event: any): boolean {
+export function isTagResourceEvent(event: LambdaManagementEvent): boolean {
   return event.detail?.eventName === TAG_RESOURCE_EVENT_NAME;
 }
 
-export function isUntagResourceEvent(event: any): boolean {
+export function isUntagResourceEvent(event: LambdaManagementEvent): boolean {
   return event.detail?.eventName === UNTAG_RESOURCE_EVENT_NAME;
 }
 
-function shouldSkipEvent(event: any): boolean {
+function shouldSkipEvent(event: LambdaManagementEvent): boolean {
   // Skip any events for the remote instrumenter itself
   const instrumenterFunctionName = process.env.AWS_LAMBDA_FUNCTION_NAME;
   if (
@@ -96,15 +155,15 @@ function shouldSkipEvent(event: any): boolean {
     return true;
   }
 
-  if (event?.detail?.errorCode) {
+  if (event.detail?.errorCode) {
     logger.log(
-      `Skipping '${event.detail.eventName}' event because the lambda update failed: ${event?.detail?.errorCode}: ${event?.detail?.errorMessage}.`,
+      `Skipping '${event.detail.eventName}' event because the lambda update failed: ${event.detail?.errorCode}: ${event.detail?.errorMessage}.`,
     );
     return true;
   }
 
   if (
-    event?.detail?.userIdentity?.principalId.includes(instrumenterFunctionName)
+    event.detail?.userIdentity?.principalId.includes(instrumenterFunctionName!)
   ) {
     logger.log(
       `Skipping '${event.detail.eventName}' event because its source is the remote instrumenter.`,
@@ -117,9 +176,9 @@ function shouldSkipEvent(event: any): boolean {
 export { shouldSkipEvent };
 
 export async function getFunctionFromLambdaEvent(
-  lambdaClient: any,
-  event: any,
-): Promise<any> {
+  lambdaClient: LambdaClient,
+  event: LambdaManagementEvent,
+): Promise<FunctionConfiguration | undefined> {
   // If it's not a supported event type, skip it
   if (shouldSkipEvent(event)) {
     return;
@@ -129,15 +188,15 @@ export async function getFunctionFromLambdaEvent(
 
   // If it's an update configuration event, adjust the function name
   if (isUpdateConfigurationEvent(event)) {
-    functionName = event.detail.responseElements.functionName;
+    functionName = event.detail.responseElements?.functionName;
   }
 
   // Handle tag and untag resource events
   if (isTagResourceEvent(event) || isUntagResourceEvent(event)) {
     let tagKeys = isTagResourceEvent(event)
-      ? new Set(Object.keys(event.detail.requestParameters.tags))
-      : new Set(event.detail.requestParameters.tagKeys);
-    functionName = event.detail.requestParameters.resource.split(":")[6];
+      ? new Set(Object.keys(event.detail.requestParameters!.tags!))
+      : new Set(event.detail.requestParameters!.tagKeys!);
+    functionName = event.detail.requestParameters!.resource!.split(":")[6];
     tagKeys.delete(DD_SLS_REMOTE_INSTRUMENTER_VERSION);
     if (tagKeys.size === 0) {
       logger.log(
@@ -148,14 +207,14 @@ export async function getFunctionFromLambdaEvent(
   }
 
   logger.emitFrontendProcessingEvent(
-    functionName,
+    functionName!,
     `Received function name '${functionName}' from event '${event.detail.eventName}'`,
   );
 
   try {
     const functionFromEvent = await getLambdaFunction(
       lambdaClient,
-      functionName,
+      functionName!,
     );
     return functionFromEvent.Configuration;
   } catch (e) {
@@ -166,17 +225,21 @@ export async function getFunctionFromLambdaEvent(
   }
 }
 
-export function selectEventFieldsForLogging(event: any): any {
+export function selectEventFieldsForLogging(
+  event: InstrumenterEvent,
+): Record<string, unknown> {
+  const mgmtEvent = event as Partial<LambdaManagementEvent>;
+  const cfnEvent = event as Partial<CloudFormationEvent>;
   return {
-    eventName: event.detail?.eventName,
-    requestType: event.RequestType,
-    source: event.source,
-    detailType: event["detail-type"],
+    eventName: mgmtEvent.detail?.eventName,
+    requestType: cfnEvent.RequestType,
+    source: mgmtEvent.source,
+    detailType: (event as Record<string, unknown>)["detail-type"],
     functionName:
-      event.detail?.requestParameters?.functionName ??
-      event.detail?.responseElements?.functionName,
-    errorCode: event.detail?.errorCode,
-    userIdentity: event.detail?.userIdentity?.arn,
-    tags: event.detail?.requestParameters?.tags,
+      mgmtEvent.detail?.requestParameters?.functionName ??
+      mgmtEvent.detail?.responseElements?.functionName,
+    errorCode: mgmtEvent.detail?.errorCode,
+    userIdentity: mgmtEvent.detail?.userIdentity?.arn,
+    tags: mgmtEvent.detail?.requestParameters?.tags,
   };
 }
