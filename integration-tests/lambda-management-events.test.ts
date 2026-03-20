@@ -1,3 +1,13 @@
+import {
+  describe,
+  it,
+  expect,
+  afterAll,
+  afterEach,
+  beforeEach,
+  beforeAll,
+} from "vitest";
+
 import { pollUntilTrue } from "./utilities/poll-until-true";
 import {
   isFunctionInstrumented,

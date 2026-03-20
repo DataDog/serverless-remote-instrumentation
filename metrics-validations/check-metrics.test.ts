@@ -1,3 +1,5 @@
+import { describe, it, expect } from "vitest";
+
 import type { MetricsAggregator } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2";
 import getDDMetricValue from "./get-dd-metric-value";
 

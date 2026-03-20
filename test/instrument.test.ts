@@ -1,3 +1,5 @@
+import { describe, it, test, expect, beforeEach, vi } from "vitest";
+
 import * as instrument from "../src/instrument";
 import * as applyState from "../src/apply-state";
 import type { S3Client } from "@aws-sdk/client-s3";
@@ -19,32 +21,26 @@ import {
   type LambdaFunction,
 } from "../src/consts";
 
-jest.mock("../src/functions", () => ({
-  ...jest.requireActual("../src/functions"),
-  waitUntilFunctionIsActive: jest.fn(),
+vi.mock("../src/functions", async () => ({
+  ...(await vi.importActual("../src/functions")),
+  waitUntilFunctionIsActive: vi.fn(),
 }));
 
-jest.mock("@datadog/datadog-ci-plugin-lambda/functions/instrument", () => ({
-  getInstrumentedFunctionConfig: jest.fn(),
+vi.mock("@datadog/datadog-ci-plugin-lambda/functions/instrument", () => ({
+  getInstrumentedFunctionConfig: vi.fn(),
 }));
 
-jest.mock("@datadog/datadog-ci-plugin-lambda/functions/uninstrument", () => ({
-  getUninstrumentedFunctionConfig: jest.fn(),
+vi.mock("@datadog/datadog-ci-plugin-lambda/functions/uninstrument", () => ({
+  getUninstrumentedFunctionConfig: vi.fn(),
 }));
 
-jest.mock("@datadog/datadog-ci-plugin-lambda/functions/commons", () => ({
-  updateLambdaFunctionConfig: jest.fn(),
+vi.mock("@datadog/datadog-ci-plugin-lambda/functions/commons", () => ({
+  updateLambdaFunctionConfig: vi.fn(),
 }));
 
-const {
-  getInstrumentedFunctionConfig,
-} = require("@datadog/datadog-ci-plugin-lambda/functions/instrument");
-const {
-  getUninstrumentedFunctionConfig,
-} = require("@datadog/datadog-ci-plugin-lambda/functions/uninstrument");
-const {
-  updateLambdaFunctionConfig,
-} = require("@datadog/datadog-ci-plugin-lambda/functions/commons");
+import { getInstrumentedFunctionConfig } from "@datadog/datadog-ci-plugin-lambda/functions/instrument";
+import { getUninstrumentedFunctionConfig } from "@datadog/datadog-ci-plugin-lambda/functions/uninstrument";
+import { updateLambdaFunctionConfig } from "@datadog/datadog-ci-plugin-lambda/functions/commons";
 
 describe("getExtensionAndRuntimeLayerVersion", () => {
   it("should return the layer and runtime version for node", () => {
@@ -117,7 +113,7 @@ describe("getExtensionAndRuntimeLayerVersion", () => {
   });
 });
 
-jest.mock("../src/apply-state");
+vi.mock("../src/apply-state");
 
 const mockedApplyState = applyState as any;
 
@@ -149,11 +145,11 @@ describe("instrumentFunctions", () => {
 
   // Mock client
   const mockTaggingClient = {
-    send: jest.fn().mockReturnValue({}),
+    send: vi.fn().mockReturnValue({}),
   } as unknown as ResourceGroupsTaggingAPIClient;
 
   const mockS3Client = {
-    send: jest.fn(),
+    send: vi.fn(),
   } as unknown as S3Client;
 
   // Mock creating apply state object
@@ -171,19 +167,19 @@ describe("instrumentFunctions", () => {
     process.env.AWS_REGION = "us-east-2";
 
     // Mock datadog-ci helper functions
-    getInstrumentedFunctionConfig.mockResolvedValue({
+    (getInstrumentedFunctionConfig as any).mockResolvedValue({
       functionARN: functionFoo.FunctionArn,
       lambdaConfig: functionFoo,
       updateFunctionConfigurationCommandInput: {},
     });
-    getUninstrumentedFunctionConfig.mockResolvedValue({
+    (getUninstrumentedFunctionConfig as any).mockResolvedValue({
       functionARN: functionBar.FunctionArn,
       lambdaConfig: functionBar,
       updateFunctionConfigurationCommandInput: {},
     });
-    updateLambdaFunctionConfig.mockResolvedValue();
+    (updateLambdaFunctionConfig as any).mockResolvedValue();
 
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   test("should instrument and tag functions that need it", async () => {
@@ -301,7 +297,7 @@ describe("instrumentFunctions", () => {
   });
 
   test("should track datadog-ci command errors", async () => {
-    updateLambdaFunctionConfig.mockRejectedValue(
+    (updateLambdaFunctionConfig as any).mockRejectedValue(
       new Error("Failed to update function configuration"),
     );
     await instrument.instrumentFunctions(
@@ -327,13 +323,13 @@ describe("instrumentFunctions", () => {
 describe("instrumentWithDatadogCi", () => {
   beforeEach(() => {
     process.env.AWS_REGION = "us-east-2";
-    getInstrumentedFunctionConfig.mockResolvedValue({
+    (getInstrumentedFunctionConfig as any).mockResolvedValue({
       functionARN: "arn:aws:lambda:us-east-2:123456789:function:test",
       lambdaConfig: {},
       updateFunctionConfigurationCommandInput: {},
     });
-    updateLambdaFunctionConfig.mockResolvedValue();
-    jest.clearAllMocks();
+    (updateLambdaFunctionConfig as any).mockResolvedValue();
+    vi.clearAllMocks();
   });
 
   test("should handle function with undefined runtime gracefully", async () => {
@@ -379,22 +375,22 @@ describe("instrumentWithDatadogCi", () => {
 
 describe("removeRemoteInstrumentation", () => {
   const mockTaggingClient = {
-    send: jest.fn().mockReturnValue({}),
+    send: vi.fn().mockReturnValue({}),
   } as unknown as ResourceGroupsTaggingAPIClient;
   const mockS3Client = {
-    send: jest.fn(),
+    send: vi.fn(),
   } as unknown as S3Client;
   beforeEach(() => {
     // Set AWS_REGION for tests
     process.env.AWS_REGION = "us-east-2";
 
-    getUninstrumentedFunctionConfig.mockResolvedValue({
+    (getUninstrumentedFunctionConfig as any).mockResolvedValue({
       functionARN: "arn:aws:lambda:us-east-2:123456789:function:bar",
       lambdaConfig: {},
       updateFunctionConfigurationCommandInput: {},
     });
-    updateLambdaFunctionConfig.mockResolvedValue();
-    jest.clearAllMocks();
+    (updateLambdaFunctionConfig as any).mockResolvedValue();
+    vi.clearAllMocks();
   });
 
   test("should uninstrument and untag remotely instrumented functions", async () => {

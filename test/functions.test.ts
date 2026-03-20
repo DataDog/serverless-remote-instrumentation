@@ -1,3 +1,5 @@
+import { describe, test, expect, beforeEach, vi } from "vitest";
+
 import {
   satisfiesTargetingRules,
   isRemoteInstrumenter,
@@ -19,8 +21,8 @@ import * as awsClients from "../src/aws-resources";
 import * as sleep from "../src/sleep";
 import { baseInstrumentOutcome } from "./test-utils";
 
-jest.mock("../src/aws-resources");
-jest.mock("../src/sleep");
+vi.mock("../src/aws-resources");
+vi.mock("../src/sleep");
 
 // Creates a test config object
 function createTestConfig({
@@ -1492,11 +1494,11 @@ describe("isInstrumented", () => {
 
 describe("waitUntilFunctionIsActive", () => {
   beforeEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
   });
 
   test("stops when the status is active", async () => {
-    jest.mocked(awsClients.getLambdaClient).mockReturnValue({
+    vi.mocked(awsClients.getLambdaClient).mockReturnValue({
       send: () => ({ State: "Active" }),
     } as any);
     const res = await waitUntilFunctionIsActive("test-function");
@@ -1505,8 +1507,8 @@ describe("waitUntilFunctionIsActive", () => {
   });
 
   test("stops when the status is active after the second time", async () => {
-    jest.mocked(awsClients.getLambdaClient).mockReturnValue({
-      send: jest
+    vi.mocked(awsClients.getLambdaClient).mockReturnValue({
+      send: vi
         .fn()
         .mockReturnValueOnce({ State: "Pending" })
         .mockReturnValueOnce({ State: "Active" }),
@@ -1517,7 +1519,7 @@ describe("waitUntilFunctionIsActive", () => {
   });
 
   test("times out waiting when the status never exits", async () => {
-    jest.mocked(awsClients.getLambdaClient).mockReturnValue({
+    vi.mocked(awsClients.getLambdaClient).mockReturnValue({
       send: () => ({ State: "Pending" }),
     } as any);
     const res = await waitUntilFunctionIsActive("test-function");
@@ -1556,9 +1558,9 @@ describe("enrichFunctionsWithTags", () => {
   let mockClient: any;
 
   beforeEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
     mockClient = {
-      send: jest.fn(),
+      send: vi.fn(),
     };
   });
 

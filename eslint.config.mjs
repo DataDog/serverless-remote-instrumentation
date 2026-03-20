@@ -11,6 +11,9 @@ export default [
       "node_modules/**",
       "cdk.out/**",
       "integration-tests/infrastructure/**",
+      "vitest.config.ts",
+      "integration-tests/vitest.config.ts",
+      "metrics-validations/vitest.config.ts",
     ],
   },
   eslint.configs.recommended,
@@ -38,12 +41,4 @@ export default [
     },
   },
   eslintPluginPrettierRecommended,
-  // This sets up describe, test, and it to be keywords eslint knows
-  {
-    languageOptions: {
-      globals: {
-        ...globals.jest,
-      },
-    },
-  },
 ];

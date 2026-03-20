@@ -1,3 +1,5 @@
+import { describe, test, expect } from "vitest";
+
 import { createApplyStateObject } from "../src/apply-state";
 import { RcConfig } from "../src/config";
 import { RC_PRODUCT, RC_ACKNOWLEDGED, RC_ERROR } from "../src/consts";
