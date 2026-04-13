@@ -26,6 +26,9 @@ const getRemoteConfig = async (): Promise<RemoteConfigData> => {
   if (response.status === 404) {
     return { data: [] };
   }
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
   const data = await response.json();
   remoteConfigIds.push(...data.data.map((item: any) => item.id));
   return data;
