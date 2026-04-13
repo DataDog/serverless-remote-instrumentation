@@ -347,9 +347,7 @@ function getConfigsFromResponse(data: unknown): RcConfig[] {
     }
   }
   if (parsedConfigFiles.length === 0) {
-    logger.warn(
-      `No configs found in response '${JSON.stringify(data)}'`,
-    );
+    logger.warn(`No configs found in response '${JSON.stringify(data)}'`);
   }
   return parsedConfigFiles;
 }
