@@ -5,8 +5,8 @@
   "license": "Apache-2.0",
   "type": "module",
   "dependencies": {
-    "@datadog/datadog-ci-base": "5.11.0",
-    "@datadog/datadog-ci-plugin-lambda": "5.11.0"
+    "@datadog/datadog-ci-base": "5.13.0",
+    "@datadog/datadog-ci-plugin-lambda": "5.13.0"
   },
   "devDependencies": {
     "@aws-sdk/client-cloudwatch-logs": "~3.1030.0",
