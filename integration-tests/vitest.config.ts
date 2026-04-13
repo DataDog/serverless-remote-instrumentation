@@ -6,6 +6,6 @@ export default defineConfig({
     retry: process.env.CI ? 3 : 0,
     fileParallelism: false,
     globalSetup: ["./integration-tests/vitest-global-setup.ts"],
-    reporter: "verbose",
+    reporters: ["verbose"],
   },
 });
