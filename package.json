@@ -6,8 +6,7 @@
   "type": "module",
   "dependencies": {
     "@datadog/datadog-ci-base": "5.11.0",
-    "@datadog/datadog-ci-plugin-lambda": "5.11.0",
-    "axios": "1.13.5"
+    "@datadog/datadog-ci-plugin-lambda": "5.11.0"
   },
   "devDependencies": {
     "@aws-sdk/client-cloudwatch-logs": "~3.990.0",

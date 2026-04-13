@@ -21,14 +21,12 @@ import {
   sampleRcMetadata,
   sampleRcTestJSON,
 } from "./test-utils";
-import axios from "axios";
-import type { AxiosResponse } from "axios";
 import type { Context } from "aws-lambda";
 import { sleep } from "../src/sleep";
 import { createHash } from "crypto";
 
-vi.mock("axios");
 vi.mock("../src/sleep");
+vi.stubGlobal("fetch", vi.fn());
 
 describe("Config constructor", () => {
   it("creates an RcConfig object out of well-formed JSON", () => {
@@ -298,54 +296,44 @@ describe("getConfigsFromResponse", () => {
   const rcConfigPath =
     "datadog/2/SERVERLESS_REMOTE_INSTRUMENTATION/abc-123-def";
   test("should error when there is no data", () => {
-    expect(() =>
-      getConfigsFromResponse({} as unknown as AxiosResponse),
-    ).toThrow("Failed to retrieve configs");
+    expect(() => getConfigsFromResponse(null)).toThrow(
+      "Failed to retrieve configs",
+    );
   });
   test("should error when config is expired", () => {
     expect(() =>
-      getConfigsFromResponse({
-        data: { config_status: CONFIG_STATUS_EXPIRED },
-      } as unknown as AxiosResponse),
+      getConfigsFromResponse({ config_status: CONFIG_STATUS_EXPIRED }),
     ).toThrow("Config is expired");
   });
   test("should not error when config status is not expired", () => {
     expect(() =>
-      getConfigsFromResponse({
-        data: { config_status: CONFIG_STATUS_OK },
-      } as unknown as AxiosResponse),
+      getConfigsFromResponse({ config_status: CONFIG_STATUS_OK }),
     ).not.toThrow();
   });
   test("should not error when config status is not present", () => {
-    expect(() =>
-      getConfigsFromResponse({
-        data: {},
-      } as unknown as AxiosResponse),
-    ).not.toThrow();
+    expect(() => getConfigsFromResponse({})).not.toThrow();
   });
   test("should error when target file is not found", () => {
     expect(() =>
       getConfigsFromResponse({
-        data: {
-          target_files: [
-            {
-              path: "datadog/2/SERVERLESS_REMOTE_INSTRUMENTATION/xyz-456-uvw",
-              raw: btoa(
-                JSON.stringify({
-                  config_version: 1,
-                  entity_type: "lambda",
-                  instrumentation_settings: {
-                    extension_version: 10,
-                  },
-                  priority: 1,
-                  rule_filters: [],
-                }),
-              ),
-            },
-          ],
-          client_configs: [rcConfigPath],
-        },
-      } as unknown as AxiosResponse),
+        target_files: [
+          {
+            path: "datadog/2/SERVERLESS_REMOTE_INSTRUMENTATION/xyz-456-uvw",
+            raw: btoa(
+              JSON.stringify({
+                config_version: 1,
+                entity_type: "lambda",
+                instrumentation_settings: {
+                  extension_version: 10,
+                },
+                priority: 1,
+                rule_filters: [],
+              }),
+            ),
+          },
+        ],
+        client_configs: [rcConfigPath],
+      }),
     ).toThrow(
       `Error parsing configs: target file not found for config path '${rcConfigPath}'`,
     );
@@ -353,147 +341,6 @@ describe("getConfigsFromResponse", () => {
   test("should error when targets not found", () => {
     expect(() =>
       getConfigsFromResponse({
-        data: {
-          target_files: [
-            {
-              path: rcConfigPath,
-              raw: btoa(
-                JSON.stringify({
-                  config_version: 1,
-                  entity_type: "lambda",
-                  instrumentation_settings: {
-                    extension_version: 10,
-                  },
-                  priority: 1,
-                  rule_filters: [],
-                }),
-              ),
-            },
-          ],
-          client_configs: [rcConfigPath],
-        },
-      } as unknown as AxiosResponse),
-    ).toThrow("Error parsing configs: targets not found");
-  });
-  test("should error when signed target data not found for config path", () => {
-    expect(() =>
-      getConfigsFromResponse({
-        data: {
-          target_files: [
-            {
-              path: rcConfigPath,
-              raw: btoa(
-                JSON.stringify({
-                  config_version: 1,
-                  entity_type: "lambda",
-                  instrumentation_settings: {
-                    extension_version: 10,
-                  },
-                  priority: 1,
-                  rule_filters: [],
-                }),
-              ),
-            },
-          ],
-          client_configs: [rcConfigPath],
-          targets: btoa(
-            JSON.stringify({
-              signatures: [
-                {
-                  keyid: "4a52c9a5-8037-4567-bf4d-f5aba2d25d5d",
-                  sig: "4a52c9a5-8037-4567-bf4d-f5aba2d25d5d",
-                },
-              ],
-              signed: {
-                _type: "targets",
-                custom: {
-                  agent_refresh_interval: 50,
-                  opaque_backend_state: "4a52c9a5-8037-4567-bf4d-f5aba2d25d5d",
-                },
-                expires: "2027-010-21T14:49:33Z",
-                spec_version: "1.0.0",
-                targets: {},
-                version: 100000000,
-              },
-            }),
-          ),
-        },
-      } as unknown as AxiosResponse),
-    ).toThrow(
-      `Error parsing configs: signed target data not found for config path '${rcConfigPath}'`,
-    );
-  });
-  test("should error on invalid config", () => {
-    expect(() =>
-      getConfigsFromResponse({
-        data: {
-          target_files: [
-            {
-              path: rcConfigPath,
-              raw: btoa(
-                JSON.stringify({
-                  config_version: 1,
-                  entity_type: "lambda",
-                }),
-              ),
-            },
-          ],
-          client_configs: [rcConfigPath],
-          targets: btoa(
-            JSON.stringify({
-              signatures: [
-                {
-                  keyid: "4a52c9a5-8037-4567-bf4d-f5aba2d25d5d",
-                  sig: "4a52c9a5-8037-4567-bf4d-f5aba2d25d5d",
-                },
-              ],
-              signed: {
-                _type: "targets",
-                custom: {
-                  agent_refresh_interval: 50,
-                  opaque_backend_state: "4a52c9a5-8037-4567-bf4d-f5aba2d25d5d",
-                },
-                expires: "2027-010-21T14:49:33Z",
-                spec_version: "1.0.0",
-                targets: {
-                  [rcConfigPath]: {
-                    custom: {
-                      c: ["4a52c9a5-8037-4567-bf4d-f5aba2d25d5d"],
-                      "tracer-predicates": {
-                        tracer_predicates_v1: [
-                          {
-                            clientID: "4a52c9a5-8037-4567-bf4d-f5aba2d25d5d",
-                          },
-                        ],
-                      },
-                      v: 3,
-                    },
-                    hashes: {
-                      sha256: "4a52c9a5-8037-4567-bf4d-f5aba2d25d5d",
-                    },
-                    length: 500,
-                  },
-                },
-                version: 100000000,
-              },
-            }),
-          ),
-        },
-      } as unknown as AxiosResponse),
-    ).toThrow(
-      "Error parsing configs: Received invalid configuration: priority must be a number, but received 'undefined'",
-    );
-  });
-  test("should return empty list when there are no configs", () => {
-    expect(
-      getConfigsFromResponse({
-        data: { target_files: [] },
-      } as unknown as AxiosResponse),
-    ).toEqual([]);
-  });
-  test("should deserialize configs into objects", () => {
-    const configs = getConfigsFromResponse({
-      data: {
         target_files: [
           {
             path: rcConfigPath,
@@ -503,26 +350,73 @@ describe("getConfigsFromResponse", () => {
                 entity_type: "lambda",
                 instrumentation_settings: {
                   extension_version: 10,
-                  node_layer_version: 20,
-                  python_layer_version: 30,
-                  dd_trace_enabled: true,
-                  dd_serverless_logs_enabled: false,
                 },
                 priority: 1,
-                rule_filters: [
-                  {
-                    key: "env",
-                    values: ["prod"],
-                    allow: true,
-                    filter_type: "tag",
-                  },
-                  {
-                    key: "functionname",
-                    values: ["hello-world"],
-                    allow: false,
-                    filter_type: "function_name",
-                  },
-                ],
+                rule_filters: [],
+              }),
+            ),
+          },
+        ],
+        client_configs: [rcConfigPath],
+      }),
+    ).toThrow("Error parsing configs: targets not found");
+  });
+  test("should error when signed target data not found for config path", () => {
+    expect(() =>
+      getConfigsFromResponse({
+        target_files: [
+          {
+            path: rcConfigPath,
+            raw: btoa(
+              JSON.stringify({
+                config_version: 1,
+                entity_type: "lambda",
+                instrumentation_settings: {
+                  extension_version: 10,
+                },
+                priority: 1,
+                rule_filters: [],
+              }),
+            ),
+          },
+        ],
+        client_configs: [rcConfigPath],
+        targets: btoa(
+          JSON.stringify({
+            signatures: [
+              {
+                keyid: "4a52c9a5-8037-4567-bf4d-f5aba2d25d5d",
+                sig: "4a52c9a5-8037-4567-bf4d-f5aba2d25d5d",
+              },
+            ],
+            signed: {
+              _type: "targets",
+              custom: {
+                agent_refresh_interval: 50,
+                opaque_backend_state: "4a52c9a5-8037-4567-bf4d-f5aba2d25d5d",
+              },
+              expires: "2027-010-21T14:49:33Z",
+              spec_version: "1.0.0",
+              targets: {},
+              version: 100000000,
+            },
+          }),
+        ),
+      }),
+    ).toThrow(
+      `Error parsing configs: signed target data not found for config path '${rcConfigPath}'`,
+    );
+  });
+  test("should error on invalid config", () => {
+    expect(() =>
+      getConfigsFromResponse({
+        target_files: [
+          {
+            path: rcConfigPath,
+            raw: btoa(
+              JSON.stringify({
+                config_version: 1,
+                entity_type: "lambda",
               }),
             ),
           },
@@ -567,8 +461,90 @@ describe("getConfigsFromResponse", () => {
             },
           }),
         ),
-      },
-    } as unknown as AxiosResponse);
+      }),
+    ).toThrow(
+      "Error parsing configs: Received invalid configuration: priority must be a number, but received 'undefined'",
+    );
+  });
+  test("should return empty list when there are no configs", () => {
+    expect(getConfigsFromResponse({ target_files: [] })).toEqual([]);
+  });
+  test("should deserialize configs into objects", () => {
+    const configs = getConfigsFromResponse({
+      target_files: [
+        {
+          path: rcConfigPath,
+          raw: btoa(
+            JSON.stringify({
+              config_version: 1,
+              entity_type: "lambda",
+              instrumentation_settings: {
+                extension_version: 10,
+                node_layer_version: 20,
+                python_layer_version: 30,
+                dd_trace_enabled: true,
+                dd_serverless_logs_enabled: false,
+              },
+              priority: 1,
+              rule_filters: [
+                {
+                  key: "env",
+                  values: ["prod"],
+                  allow: true,
+                  filter_type: "tag",
+                },
+                {
+                  key: "functionname",
+                  values: ["hello-world"],
+                  allow: false,
+                  filter_type: "function_name",
+                },
+              ],
+            }),
+          ),
+        },
+      ],
+      client_configs: [rcConfigPath],
+      targets: btoa(
+        JSON.stringify({
+          signatures: [
+            {
+              keyid: "4a52c9a5-8037-4567-bf4d-f5aba2d25d5d",
+              sig: "4a52c9a5-8037-4567-bf4d-f5aba2d25d5d",
+            },
+          ],
+          signed: {
+            _type: "targets",
+            custom: {
+              agent_refresh_interval: 50,
+              opaque_backend_state: "4a52c9a5-8037-4567-bf4d-f5aba2d25d5d",
+            },
+            expires: "2027-010-21T14:49:33Z",
+            spec_version: "1.0.0",
+            targets: {
+              [rcConfigPath]: {
+                custom: {
+                  c: ["4a52c9a5-8037-4567-bf4d-f5aba2d25d5d"],
+                  "tracer-predicates": {
+                    tracer_predicates_v1: [
+                      {
+                        clientID: "4a52c9a5-8037-4567-bf4d-f5aba2d25d5d",
+                      },
+                    ],
+                  },
+                  v: 3,
+                },
+                hashes: {
+                  sha256: "4a52c9a5-8037-4567-bf4d-f5aba2d25d5d",
+                },
+                length: 500,
+              },
+            },
+            version: 100000000,
+          },
+        }),
+      ),
+    });
     expect(configs.length).toBe(1);
     expect(configs[0].configVersion).toBe(1);
     expect(configs[0].entityType).toBe("lambda");
@@ -657,7 +633,7 @@ describe("Config cache", () => {
 describe("getConfigs", () => {
   let mockS3Client: any;
   let mockContext: any;
-  const mockedAxios = vi.mocked(axios, true);
+  const mockedFetch = vi.mocked(fetch);
 
   beforeEach(() => {
     mockS3Client = {
@@ -669,7 +645,7 @@ describe("getConfigs", () => {
     };
     CONFIG_CACHE.configs = null;
     CONFIG_CACHE.expirationTime = null;
-    mockedAxios.post.mockReset();
+    mockedFetch.mockReset();
     process.env.AWS_REGION = "us-east-1";
   });
 
@@ -685,7 +661,7 @@ describe("getConfigs", () => {
 
     // Check that configs are returned from the cache
     expect(configs).toEqual(cachedConfigs);
-    expect(mockedAxios.post).toHaveBeenCalledTimes(0);
+    expect(mockedFetch).toHaveBeenCalledTimes(0);
 
     // Check that cached configs and expiration time are unchanged
     expect(CONFIG_CACHE.configs).toEqual(cachedConfigs);
@@ -694,33 +670,35 @@ describe("getConfigs", () => {
 
   test("should fetch configs from RC when cached configs are null", async () => {
     const path = "datadog/2/SERVERLESS_REMOTE_INSTRUMENTATION/new-id";
-    mockedAxios.post.mockResolvedValueOnce({
-      data: {
-        target_files: [
-          {
-            path: path,
-            raw: btoa(JSON.stringify(sampleRcTestJSON)),
-          },
-        ],
-        client_configs: [path],
-        targets: btoa(
-          JSON.stringify({
-            signed: {
-              targets: {
-                [path]: sampleRcMetadata,
-              },
+    mockedFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          target_files: [
+            {
+              path: path,
+              raw: btoa(JSON.stringify(sampleRcTestJSON)),
             },
-          }),
-        ),
-      },
-    });
+          ],
+          client_configs: [path],
+          targets: btoa(
+            JSON.stringify({
+              signed: {
+                targets: {
+                  [path]: sampleRcMetadata,
+                },
+              },
+            }),
+          ),
+        }),
+    } as any);
 
     const configs = await getConfigs(mockS3Client, mockContext);
 
     // Check that new configs are fetched
     expect(configs.length).toBe(1);
     expect(configs[0].configID).toBe("new-id");
-    expect(mockedAxios.post).toHaveBeenCalledTimes(1);
+    expect(mockedFetch).toHaveBeenCalledTimes(1);
 
     // Check that cache was updated
     expect(CONFIG_CACHE.configs?.length).toBe(1);
@@ -740,33 +718,35 @@ describe("getConfigs", () => {
     CONFIG_CACHE.expirationTime = Date.now() - 1000; // Expired 1 second ago
 
     const path = "datadog/2/SERVERLESS_REMOTE_INSTRUMENTATION/new-id";
-    mockedAxios.post.mockResolvedValueOnce({
-      data: {
-        target_files: [
-          {
-            path: path,
-            raw: btoa(JSON.stringify(sampleRcTestJSON)),
-          },
-        ],
-        client_configs: [path],
-        targets: btoa(
-          JSON.stringify({
-            signed: {
-              targets: {
-                [path]: sampleRcMetadata,
-              },
+    mockedFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          target_files: [
+            {
+              path: path,
+              raw: btoa(JSON.stringify(sampleRcTestJSON)),
             },
-          }),
-        ),
-      },
-    });
+          ],
+          client_configs: [path],
+          targets: btoa(
+            JSON.stringify({
+              signed: {
+                targets: {
+                  [path]: sampleRcMetadata,
+                },
+              },
+            }),
+          ),
+        }),
+    } as any);
 
     const configs = await getConfigs(mockS3Client, mockContext);
 
     // Check that new configs are fetched
     expect(configs.length).toBe(1);
     expect(configs[0].configID).toBe("new-id");
-    expect(mockedAxios.post).toHaveBeenCalledTimes(1);
+    expect(mockedFetch).toHaveBeenCalledTimes(1);
 
     // Check that cache was updated
     expect(CONFIG_CACHE.configs?.length).toBe(1);
@@ -810,19 +790,21 @@ describe("getConfigs", () => {
   });
 
   test("should handle empty configs from RC", async () => {
-    mockedAxios.post.mockResolvedValueOnce({
-      data: {
-        target_files: [],
-        client_configs: [],
-        targets: btoa(
-          JSON.stringify({
-            signed: {
-              targets: {},
-            },
-          }),
-        ),
-      },
-    });
+    mockedFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          target_files: [],
+          client_configs: [],
+          targets: btoa(
+            JSON.stringify({
+              signed: {
+                targets: {},
+              },
+            }),
+          ),
+        }),
+    } as any);
 
     const configs = await getConfigs(mockS3Client, mockContext);
     // Check that configs are empty
@@ -843,7 +825,7 @@ describe("getConfigs", () => {
     const expirationTime = Date.now() - 1000;
     CONFIG_CACHE.configs = oldConfigs;
     CONFIG_CACHE.expirationTime = expirationTime;
-    mockedAxios.post.mockRejectedValueOnce(new Error("Some error"));
+    mockedFetch.mockRejectedValueOnce(new Error("Some error"));
 
     // Check that the error is thrown
     await expect(getConfigs(mockS3Client, mockContext)).rejects.toThrow(
@@ -859,7 +841,7 @@ describe("getConfigs", () => {
 describe("getConfigsWithRetry", () => {
   let mockS3Client: any;
   let mockContext: any;
-  const mockedAxios = vi.mocked(axios, true);
+  const mockedFetch = vi.mocked(fetch);
   const mockedSleep = vi.mocked(sleep);
 
   beforeEach(() => {
@@ -872,7 +854,7 @@ describe("getConfigsWithRetry", () => {
     };
     CONFIG_CACHE.configs = null;
     CONFIG_CACHE.expirationTime = null;
-    mockedAxios.post.mockReset();
+    mockedFetch.mockReset();
     mockS3Client.send.mockReset();
     mockedSleep.mockClear();
     // Setup sleep mock to invalidate cache when called (simulates waiting for cache TTL)
@@ -898,27 +880,28 @@ describe("getConfigsWithRetry", () => {
     const existingConfigs = [existingConfig];
 
     const path = "datadog/2/SERVERLESS_REMOTE_INSTRUMENTATION/test-id";
-    const rcResponse = {
-      data: {
-        target_files: [
-          {
-            path: path,
-            raw: btoa(JSON.stringify(sampleRcTestJSON)),
-          },
-        ],
-        client_configs: [path],
-        targets: btoa(
-          JSON.stringify({
-            signed: {
-              targets: {
-                [path]: sampleRcMetadata,
-              },
+    mockedFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          target_files: [
+            {
+              path: path,
+              raw: btoa(JSON.stringify(sampleRcTestJSON)),
             },
-          }),
-        ),
-      },
-    };
-    mockedAxios.post.mockResolvedValueOnce(rcResponse);
+          ],
+          client_configs: [path],
+          targets: btoa(
+            JSON.stringify({
+              signed: {
+                targets: {
+                  [path]: sampleRcMetadata,
+                },
+              },
+            }),
+          ),
+        }),
+    } as any);
 
     const existingConfigHash = createHash(
       "sha256",
@@ -947,7 +930,7 @@ describe("getConfigsWithRetry", () => {
     expect(CONFIG_CACHE.configs).toEqual(existingConfigs);
 
     // Check that there was only one call to RC
-    expect(mockedAxios.post).toHaveBeenCalledTimes(1);
+    expect(mockedFetch).toHaveBeenCalledTimes(1);
   });
 
   test("should only fetch configs once when different configs are returned", async () => {
@@ -962,27 +945,28 @@ describe("getConfigsWithRetry", () => {
     const newConfigs = [newConfig];
 
     const path = "datadog/2/SERVERLESS_REMOTE_INSTRUMENTATION/test-id";
-    const rcResponse = {
-      data: {
-        target_files: [
-          {
-            path: path,
-            raw: btoa(JSON.stringify(sampleRcTestJSON)),
-          },
-        ],
-        client_configs: [path],
-        targets: btoa(
-          JSON.stringify({
-            signed: {
-              targets: {
-                [path]: sampleRcMetadata,
-              },
+    mockedFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          target_files: [
+            {
+              path: path,
+              raw: btoa(JSON.stringify(sampleRcTestJSON)),
             },
-          }),
-        ),
-      },
-    };
-    mockedAxios.post.mockResolvedValueOnce(rcResponse);
+          ],
+          client_configs: [path],
+          targets: btoa(
+            JSON.stringify({
+              signed: {
+                targets: {
+                  [path]: sampleRcMetadata,
+                },
+              },
+            }),
+          ),
+        }),
+    } as any);
 
     const existingConfigHash = createHash(
       "sha256",
@@ -1011,22 +995,23 @@ describe("getConfigsWithRetry", () => {
     expect(CONFIG_CACHE.configs).toEqual(newConfigs);
 
     // Check that there was only one call to RC
-    expect(mockedAxios.post).toHaveBeenCalledTimes(1);
+    expect(mockedFetch).toHaveBeenCalledTimes(1);
   });
 
   test("should only fetch configs once when there are still no configs", async () => {
-    const rcResponse = {
-      data: {
-        targets: btoa(
-          JSON.stringify({
-            signed: {
-              targets: {},
-            },
-          }),
-        ),
-      },
-    };
-    mockedAxios.post.mockResolvedValueOnce(rcResponse);
+    mockedFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          targets: btoa(
+            JSON.stringify({
+              signed: {
+                targets: {},
+              },
+            }),
+          ),
+        }),
+    } as any);
 
     const existingConfigHash = createHash(
       "sha256",
@@ -1055,7 +1040,7 @@ describe("getConfigsWithRetry", () => {
     expect(CONFIG_CACHE.configs).toEqual([]);
 
     // Check that there was only one call to RC
-    expect(mockedAxios.post).toHaveBeenCalledTimes(1);
+    expect(mockedFetch).toHaveBeenCalledTimes(1);
   });
 
   test("should retry fetching configs when no configs are incorrectly returned on first attempt", async () => {
@@ -1070,40 +1055,41 @@ describe("getConfigsWithRetry", () => {
     const existingConfigs = [existingConfig];
 
     const path = "datadog/2/SERVERLESS_REMOTE_INSTRUMENTATION/test-id";
-    const rcResponse = {
-      data: {
-        target_files: [
-          {
-            path: path,
-            raw: btoa(JSON.stringify(sampleRcTestJSON)),
-          },
-        ],
-        client_configs: [path],
-        targets: btoa(
-          JSON.stringify({
-            signed: {
-              targets: {
-                [path]: sampleRcMetadata,
+    mockedFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          targets: btoa(
+            JSON.stringify({
+              signed: {
+                targets: {},
               },
+            }),
+          ),
+        }),
+    } as any);
+    mockedFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          target_files: [
+            {
+              path: path,
+              raw: btoa(JSON.stringify(sampleRcTestJSON)),
             },
-          }),
-        ),
-      },
-    };
-
-    const noConfigsResponse = {
-      data: {
-        targets: btoa(
-          JSON.stringify({
-            signed: {
-              targets: {},
-            },
-          }),
-        ),
-      },
-    };
-    mockedAxios.post.mockResolvedValueOnce(noConfigsResponse);
-    mockedAxios.post.mockResolvedValueOnce(rcResponse);
+          ],
+          client_configs: [path],
+          targets: btoa(
+            JSON.stringify({
+              signed: {
+                targets: {
+                  [path]: sampleRcMetadata,
+                },
+              },
+            }),
+          ),
+        }),
+    } as any);
 
     const existingConfigHash = createHash(
       "sha256",
@@ -1132,7 +1118,7 @@ describe("getConfigsWithRetry", () => {
     expect(CONFIG_CACHE.configs).toEqual(existingConfigs);
 
     // Check that there were two calls to RC
-    expect(mockedAxios.post).toHaveBeenCalledTimes(2);
+    expect(mockedFetch).toHaveBeenCalledTimes(2);
   });
 
   test("should stop retrying after max retries", async () => {
@@ -1146,18 +1132,19 @@ describe("getConfigsWithRetry", () => {
     existingConfig.instrumenterFunctionName = "test-function";
     const existingConfigs = [existingConfig];
 
-    const noConfigsResponse = {
-      data: {
-        targets: btoa(
-          JSON.stringify({
-            signed: {
-              targets: {},
-            },
-          }),
-        ),
-      },
-    };
-    mockedAxios.post.mockResolvedValue(noConfigsResponse);
+    mockedFetch.mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          targets: btoa(
+            JSON.stringify({
+              signed: {
+                targets: {},
+              },
+            }),
+          ),
+        }),
+    } as any);
 
     const existingConfigHash = createHash(
       "sha256",
@@ -1186,6 +1173,6 @@ describe("getConfigsWithRetry", () => {
     expect(CONFIG_CACHE.configs).toEqual([]);
 
     // Check that there were three calls to RC
-    expect(mockedAxios.post).toHaveBeenCalledTimes(3);
+    expect(mockedFetch).toHaveBeenCalledTimes(3);
   });
 });

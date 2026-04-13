@@ -1,4 +1,3 @@
-import axios, { type AxiosResponse } from "axios";
 import { logger } from "./logger";
 import {
   DeleteObjectCommand,
@@ -269,15 +268,20 @@ async function getConfigsFromRC(
   };
 
   let configs: RcConfig[] = [];
-  await axios
-    .post(REMOTE_CONFIG_URL, payload)
-    .then(function handleResponse(response: AxiosResponse) {
-      configs = getConfigsFromResponse(response);
-    })
-    .catch(function handleError(error: unknown) {
-      logger.error(String(error));
-      throw new Error("Failed to retrieve configs");
+  try {
+    const response = await fetch(REMOTE_CONFIG_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
     });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    configs = getConfigsFromResponse(await response.json());
+  } catch (error: unknown) {
+    logger.error(String(error));
+    throw new Error("Failed to retrieve configs");
+  }
 
   if (configs.length === 0) {
     logger.logObject(payload);
@@ -285,17 +289,17 @@ async function getConfigsFromRC(
   return configs;
 }
 
-function getConfigsFromResponse(response: AxiosResponse): RcConfig[] {
-  if (!response.data) {
+function getConfigsFromResponse(data: unknown): RcConfig[] {
+  if (!data) {
     throw new Error("Failed to retrieve configs");
   }
   // If the config is expired, throw an error
-  if (response.data.config_status === CONFIG_STATUS_EXPIRED) {
+  if ((data as any).config_status === CONFIG_STATUS_EXPIRED) {
     throw new Error("Config is expired");
   }
 
   // Map path to config for each target file
-  const targetFiles = response.data.target_files ?? [];
+  const targetFiles = (data as any).target_files ?? [];
   const targetFileMapping = targetFiles.reduce(
     (
       acc: Record<string, string | undefined>,
@@ -306,7 +310,7 @@ function getConfigsFromResponse(response: AxiosResponse): RcConfig[] {
     }),
     {},
   );
-  const configPaths = response.data.client_configs ?? [];
+  const configPaths = (data as any).client_configs ?? [];
   let parsedConfigFiles: RcConfig[] = [];
   // For each config path, find the config data and signed target metadata
   for (const configPath of configPaths) {
@@ -318,10 +322,10 @@ function getConfigsFromResponse(response: AxiosResponse): RcConfig[] {
     }
     const targetFile = targetFileMapping[configPath];
     // Find the metadata or error if not found
-    if (!response.data.targets) {
+    if (!(data as any).targets) {
       throw new Error("Error parsing configs: targets not found");
     }
-    const signedTargets = JSON.parse(atob(response.data.targets)).signed
+    const signedTargets = JSON.parse(atob((data as any).targets)).signed
       ?.targets;
     if (!(configPath in signedTargets)) {
       throw new Error(
@@ -344,7 +348,7 @@ function getConfigsFromResponse(response: AxiosResponse): RcConfig[] {
   }
   if (parsedConfigFiles.length === 0) {
     logger.warn(
-      `No configs found in response '${JSON.stringify(response.data)}'`,
+      `No configs found in response '${JSON.stringify(data)}'`,
     );
   }
   return parsedConfigFiles;

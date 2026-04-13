@@ -1,4 +1,3 @@
-import axios from "axios";
 import { account, ddSite, region } from "../config.json";
 import { getApiKey, getAppKey } from "./datadog-keys";
 import { sleep } from "./sleep";
@@ -18,22 +17,18 @@ const getRemoteConfig = async (): Promise<RemoteConfigData> => {
       .replace("{AWS_ACCOUNT_SLOT}", account)
       .replace("{REGION_SLOT}", region);
 
-  let remoteConfig;
-  try {
-    remoteConfig = await axios.get(url, {
-      headers: {
-        "dd-api-key": apiKey,
-        "dd-application-key": appKey,
-      },
-    });
-  } catch (error: any) {
-    if (error.response && error.response.status === 404) {
-      return { data: [] };
-    }
-    throw error;
+  const response = await fetch(url, {
+    headers: {
+      "dd-api-key": apiKey,
+      "dd-application-key": appKey,
+    },
+  });
+  if (response.status === 404) {
+    return { data: [] };
   }
-  remoteConfigIds.push(...remoteConfig.data.data.map((item: any) => item.id));
-  return remoteConfig.data;
+  const data = await response.json();
+  remoteConfigIds.push(...data.data.map((item: any) => item.id));
+  return data;
 };
 
 interface SetRemoteConfigOptions {
@@ -124,22 +119,36 @@ const setRemoteConfig = async ({
   let remoteConfig;
   if (id) {
     rc.data.id = id;
-    remoteConfig = await axios.put(`${url}/${id}`, rc, {
+    const response = await fetch(`${url}/${id}`, {
+      method: "PUT",
       headers: {
         "dd-api-key": apiKey,
         "dd-application-key": appKey,
+        "Content-Type": "application/json",
       },
+      body: JSON.stringify(rc),
     });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    remoteConfig = await response.json();
   } else {
-    remoteConfig = await axios.post(url, rc, {
+    const response = await fetch(url, {
+      method: "POST",
       headers: {
         "dd-api-key": apiKey,
         "dd-application-key": appKey,
+        "Content-Type": "application/json",
       },
+      body: JSON.stringify(rc),
     });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    remoteConfig = await response.json();
   }
 
-  remoteConfigIds.push(remoteConfig.data.data.id);
+  remoteConfigIds.push(remoteConfig.data.id);
 
   if (waitForCacheInvalidation) {
     // Wait 6 seconds for the cache to expire
@@ -149,7 +158,7 @@ const setRemoteConfig = async ({
     await sleep(2500);
   }
 
-  return remoteConfig.data.data;
+  return remoteConfig.data;
 };
 
 const deleteRemoteConfig = async (id: string): Promise<any> => {
@@ -157,12 +166,17 @@ const deleteRemoteConfig = async (id: string): Promise<any> => {
 
   const url = `https://${ddSite}/api/v2/remote_config/products/serverless_remote_instrumentation/config/${id}`;
 
-  return axios.delete(url, {
+  const response = await fetch(url, {
+    method: "DELETE",
     headers: {
       "dd-api-key": apiKey,
       "dd-application-key": appKey,
     },
   });
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+  return response;
 };
 
 interface ClearRemoteConfigsOptions {
