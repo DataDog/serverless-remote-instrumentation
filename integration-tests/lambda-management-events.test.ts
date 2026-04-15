@@ -158,10 +158,9 @@ describe("Remote instrumenter lambda management event tests", () => {
     const areCorrectlyInstrumented = await pollUntilTrue(
       60000,
       5000,
-      () =>
-        // @ts-expect-error Need to fix later
-        isFunctionInstrumented(nodejsFunctionName) &&
-        isFunctionUninstrumented(pythonFunctionName),
+      async () =>
+        (await isFunctionInstrumented(nodejsFunctionName)) &&
+        (await isFunctionUninstrumented(pythonFunctionName)),
     );
 
     // The functions are instrumented and uninstrumented respectively
