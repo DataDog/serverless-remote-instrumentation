@@ -5,6 +5,7 @@ import {
   DeleteFunctionCommand,
   GetFunctionConfigurationCommand,
   InvokeCommand,
+  ResourceConflictException,
   ResourceNotFoundException,
   Runtime,
   TagResourceCommand,
@@ -51,7 +52,20 @@ const createFunctions = async (
       ...lambdaProps,
     });
 
-    const lambda = await lambdaClient.send(command);
+    let lambda;
+    try {
+      lambda = await lambdaClient.send(command);
+    } catch (e) {
+      if (e instanceof ResourceConflictException) {
+        // Stale function from a previous run -- delete and recreate
+        await lambdaClient.send(
+          new DeleteFunctionCommand({ FunctionName: functionName }),
+        );
+        lambda = await lambdaClient.send(command);
+      } else {
+        throw e;
+      }
+    }
     createdFunctions.add(lambda);
     functionNamesToCleanUp.push(lambda.FunctionName);
   }
