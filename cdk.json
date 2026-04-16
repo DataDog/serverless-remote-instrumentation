@@ -1,9 +1,7 @@
 {
   "app": "npx tsx ./integration-tests/infrastructure/bin/infrastructure.ts",
   "watch": {
-    "include": [
-      "**"
-    ],
+    "include": ["**"],
     "exclude": [
       "README.md",
       "cdk*.json",

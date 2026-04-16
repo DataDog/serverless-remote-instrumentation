@@ -1,0 +1,26 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "categories": {
+    "correctness": "deny",
+    "suspicious": "deny"
+  },
+  "rules": {
+    "no-unused-vars": "off",
+    "no-shadow": "off",
+    "typescript/no-explicit-any": "off",
+    "typescript/no-unused-vars": "off",
+    "typescript/no-require-imports": "off",
+    "typescript/no-non-null-asserted-optional-chain": "off",
+    "unicorn/require-module-specifiers": "off",
+    "unicorn/consistent-function-scoping": "off"
+  },
+  "ignorePatterns": [
+    "dist/**",
+    "node_modules/**",
+    "cdk.out/**",
+    "integration-tests/infrastructure/**",
+    "vitest.config.ts",
+    "integration-tests/vitest.config.ts",
+    "metrics-validations/vitest.config.ts"
+  ]
+}
