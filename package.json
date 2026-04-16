@@ -16,6 +16,7 @@
     "@aws-sdk/client-secrets-manager": "~3.1030.0",
     "@aws-sdk/s3-request-presigner": "~3.1030.0",
     "@datadog/datadog-api-client": "^1.53.0",
+    "@eslint/js": "^10.0.1",
     "@types/aws-lambda": "^8.10.161",
     "@types/cfn-response": "^1.0.9",
     "@types/lodash": "^4.17.24",
