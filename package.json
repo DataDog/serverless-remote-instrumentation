@@ -46,6 +46,7 @@
     "typecheck": "tsc --noEmit",
     "format": "oxlint --fix && prettier --write .",
     "lint": "oxlint && prettier --check .",
+    "lint-yaml": "prettier --check .",
     "create-release": "bash scripts/create_release.sh $1",
     "test": "vitest run --config vitest.config.ts",
     "integ": "vitest run --config integration-tests/vitest.config.ts",
