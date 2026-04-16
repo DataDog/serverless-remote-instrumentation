@@ -1,1 +1,4 @@
 template.yaml
+dist
+cdk.out
+integration-tests/infrastructure
