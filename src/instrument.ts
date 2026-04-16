@@ -146,25 +146,27 @@ export async function instrumentWithDatadogCi(
           | "latest"
           | "none",
       };
+      // Type assertions needed: the plugin pins @aws-sdk/client-lambda@3.981.0
+      // whose @smithy/types are structurally incompatible with ours at runtime
       functionConfig = await getInstrumentedFunctionConfig(
-        lambdaClient,
-        cloudWatchLogsClient,
+        lambdaClient as any,
+        cloudWatchLogsClient as any,
         functionToInstrument,
         process.env.AWS_REGION!,
         settings,
       );
     } else {
       functionConfig = await getUninstrumentedFunctionConfig(
-        lambdaClient,
-        cloudWatchLogsClient,
+        lambdaClient as any,
+        cloudWatchLogsClient as any,
         functionToInstrument,
         undefined, // forwarderARN
       );
     }
 
     await updateLambdaFunctionConfig(
-      lambdaClient,
-      cloudWatchLogsClient,
+      lambdaClient as any,
+      cloudWatchLogsClient as any,
       functionConfig,
     );
   } catch (error) {

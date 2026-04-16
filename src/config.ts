@@ -267,7 +267,7 @@ async function getConfigsFromRC(
     cached_target_files: [],
   };
 
-  let configs: RcConfig[] = [];
+  let configs: RcConfig[];
   try {
     const response = await fetch(REMOTE_CONFIG_URL, {
       method: "POST",
@@ -280,7 +280,7 @@ async function getConfigsFromRC(
     configs = getConfigsFromResponse(await response.json());
   } catch (error: unknown) {
     logger.error(String(error));
-    throw new Error("Failed to retrieve configs");
+    throw new Error("Failed to retrieve configs", { cause: error });
   }
 
   if (configs.length === 0) {
@@ -343,7 +343,7 @@ function getConfigsFromResponse(data: unknown): RcConfig[] {
       parsedConfigFiles.push(rcConfig);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
-      throw new Error("Error parsing configs: " + message);
+      throw new Error("Error parsing configs: " + message, { cause: e });
     }
   }
   if (parsedConfigFiles.length === 0) {

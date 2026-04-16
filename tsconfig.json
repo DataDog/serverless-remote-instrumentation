@@ -1,12 +1,12 @@
 {
   "compilerOptions": {
-    "target": "es2020",
+    "target": "es2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
     "moduleDetection": "force",
     "isolatedModules": true,
     "lib": [
-      "es2020",
+      "es2022",
       "dom"
     ],
     "outDir": "./dist",

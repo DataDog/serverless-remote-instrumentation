@@ -170,7 +170,6 @@ export const handler = async (
       context,
     );
 
-    let functionsToCheck: LambdaFunction[] = [];
     if (configChanged) {
       await deleteConfigHash(s3Client);
       // If the config has changed, check all functions for instrumentation
@@ -199,7 +198,7 @@ export const handler = async (
         });
       });
 
-      functionsToCheck = await enrichFunctionsWithTags(
+      const functionsToCheck = await enrichFunctionsWithTags(
         lambdaClient,
         allFunctions,
       );
