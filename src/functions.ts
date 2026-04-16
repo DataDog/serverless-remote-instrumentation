@@ -66,10 +66,7 @@ export async function getRemotelyInstrumentedFunctionArns(
     ResourceTypeFilters: ["lambda:function"],
   };
   const getResourcesCommand = new GetResourcesCommand(input);
-  let getResourcesCommandOutput: GetResourcesCommandOutput = {
-    $metadata: {},
-    ResourceTagMappingList: [],
-  };
+  let getResourcesCommandOutput: GetResourcesCommandOutput;
   try {
     getResourcesCommandOutput = await client.send(getResourcesCommand);
   } catch (error) {
