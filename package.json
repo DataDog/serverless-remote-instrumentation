@@ -6,8 +6,8 @@
   "type": "module",
   "dependencies": {
     "@datadog/datadog-ci-plugin-lambda": "5.13.0",
-    "@smithy/property-provider": "^4.2.13",
-    "@smithy/util-retry": "^4.3.0"
+    "@smithy/property-provider": "2.2.0",
+    "@smithy/util-retry": "2.2.0"
   },
   "devDependencies": {
     "@aws-sdk/client-cloudwatch-logs": "~3.1030.0",
