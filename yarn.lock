@@ -4697,6 +4697,8 @@ __metadata:
     "@datadog/datadog-api-client": "npm:^1.53.0"
     "@datadog/datadog-ci-base": "npm:5.13.0"
     "@datadog/datadog-ci-plugin-lambda": "npm:5.13.0"
+    "@smithy/property-provider": "npm:^4.2.13"
+    "@smithy/util-retry": "npm:^4.3.0"
     "@types/aws-lambda": "npm:^8.10.161"
     "@types/cfn-response": "npm:^1.0.9"
     "@types/lodash": "npm:^4.17.24"
