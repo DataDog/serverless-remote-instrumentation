@@ -146,8 +146,6 @@ export async function instrumentWithDatadogCi(
           | "latest"
           | "none",
       };
-      // Type assertions needed: the plugin pins @aws-sdk/client-lambda@3.981.0
-      // whose @smithy/types are structurally incompatible with ours at runtime
       functionConfig = await getInstrumentedFunctionConfig(
         lambdaClient,
         cloudWatchLogsClient,
