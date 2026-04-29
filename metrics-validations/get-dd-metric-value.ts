@@ -5,7 +5,6 @@ import {
   getApiKey,
   getAppKey,
 } from "../integration-tests/utilities/datadog-keys";
-import { get } from "lodash";
 
 const { account, region, functionName, ddSite } = config;
 
@@ -68,9 +67,15 @@ const getDDMetricValue = async ({
   };
   const result = await metricsClient.queryScalarData(query);
   const metricValue = result.data?.attributes?.columns?.find(
-    (item) => get(item, "name") === "metricValue",
+    (item) => (item as Record<string, unknown>)["name"] === "metricValue",
   );
-  return get(metricValue, ["values", 0], 0);
+  return (
+    (
+      (metricValue as Record<string, unknown> | undefined)?.["values"] as
+        | unknown[]
+        | undefined
+    )?.[0] ?? 0
+  );
 };
 
 export default getDDMetricValue;
