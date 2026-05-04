@@ -11,13 +11,7 @@ import { account } from "./config.json";
 // fail with 409. Configs scoped to our account are left alone -- they'll be
 // cleaned up by the per-suite clearRemoteConfigs calls.
 const clearForeignRemoteConfigs = async (): Promise<void> => {
-  let configs;
-  try {
-    configs = await getAllRemoteConfigs();
-  } catch {
-    // Server may 500 on empty results -- safe to ignore.
-    return;
-  }
+  const configs = await getAllRemoteConfigs();
   const foreign = configs.data.filter((item: any) => {
     const scopes: any[] = item.meta?.scopes ?? [];
     return !scopes.some((s: any) => s.aws_account_id === account);
