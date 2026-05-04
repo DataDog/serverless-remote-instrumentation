@@ -213,7 +213,7 @@ const clearRemoteConfigs = async ({
   waitForEventualConsistency = false,
   waitForCacheInvalidation = false,
 }: ClearRemoteConfigsOptions = {}): Promise<void> => {
-  const rcs = await getAllRemoteConfigs();
+  const rcs = await getRemoteConfig();
   const ids = rcs.data.map((item) => item.id);
   const results = ids.map((id) => deleteRemoteConfig(id));
   await Promise.all(results);
