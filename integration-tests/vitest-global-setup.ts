@@ -3,25 +3,32 @@ import {
   getAllRemoteConfigs,
   deleteRemoteConfig,
 } from "./utilities/remote-config.js";
+import { account } from "./config.json";
 
-// Best-effort delete of all configs for the org before tests run.
-// Handles leftover configs from other sources (e.g. synthetics tests) that
-// have different account/region scopes and would cause POST to fail with 409.
-const clearAllRemoteConfigs = async (): Promise<void> => {
+// Best-effort delete of configs that don't belong to our AWS account.
+// Handles leftover configs from other sources (e.g. synthetics tests with a
+// different account) that share the same Datadog org and would cause POST to
+// fail with 409. Configs scoped to our account are left alone -- they'll be
+// cleaned up by the per-suite clearRemoteConfigs calls.
+const clearForeignRemoteConfigs = async (): Promise<void> => {
   let configs;
   try {
     configs = await getAllRemoteConfigs();
   } catch {
-    // Server may 500 on empty results -- safe to ignore, nothing to clean up.
+    // Server may 500 on empty results -- safe to ignore.
     return;
   }
+  const foreign = configs.data.filter((item: any) => {
+    const scopes: any[] = item.meta?.scopes ?? [];
+    return !scopes.some((s: any) => s.aws_account_id === account);
+  });
   await Promise.allSettled(
-    configs.data.map((item: any) => deleteRemoteConfig(item.id)),
+    foreign.map((item: any) => deleteRemoteConfig(item.id)),
   );
 };
 
 export default async function setup() {
-  await clearAllRemoteConfigs();
+  await clearForeignRemoteConfigs();
   return async () => {
     await postTestValidations();
   };
