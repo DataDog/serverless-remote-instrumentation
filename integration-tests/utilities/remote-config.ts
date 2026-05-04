@@ -34,6 +34,28 @@ const getRemoteConfig = async (): Promise<RemoteConfigData> => {
   return data;
 };
 
+// Fetches all configs for the org without account/region filtering.
+// Used to find configs that may have been created with different scopes.
+const getAllRemoteConfigs = async (): Promise<RemoteConfigData> => {
+  const [apiKey, appKey] = await Promise.all([getApiKey(), getAppKey()]);
+
+  const url = `https://${ddSite}/api/v2/remote_config/products/serverless_remote_instrumentation/config`;
+
+  const response = await fetch(url, {
+    headers: {
+      "dd-api-key": apiKey,
+      "dd-application-key": appKey,
+    },
+  });
+  if (response.status === 404) {
+    return { data: [] };
+  }
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+  return response.json();
+};
+
 interface SetRemoteConfigOptions {
   waitForEventualConsistency?: boolean;
   waitForCacheInvalidation?: boolean;
@@ -191,7 +213,7 @@ const clearRemoteConfigs = async ({
   waitForEventualConsistency = false,
   waitForCacheInvalidation = false,
 }: ClearRemoteConfigsOptions = {}): Promise<void> => {
-  const rcs = await getRemoteConfig();
+  const rcs = await getAllRemoteConfigs();
   const ids = rcs.data.map((item) => item.id);
   const results = ids.map((id) => deleteRemoteConfig(id));
   await Promise.all(results);
@@ -216,6 +238,7 @@ const clearKnownRemoteConfigs = async (): Promise<void> => {
 
 export {
   getRemoteConfig,
+  getAllRemoteConfigs,
   setRemoteConfig,
   deleteRemoteConfig,
   clearRemoteConfigs,
