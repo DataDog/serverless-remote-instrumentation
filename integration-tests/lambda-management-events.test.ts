@@ -84,7 +84,7 @@ describe("Remote instrumenter lambda management event tests", () => {
 
   it("can instrument a lambda function with deny rule", async () => {
     // Config will cause the function to be instrumented
-    await setRemoteConfig({
+    const rc = await setRemoteConfig({
       ruleFilters: [
         {
           key: "apple",
@@ -109,6 +109,7 @@ describe("Remote instrumenter lambda management event tests", () => {
 
     // Exclude functions by tag
     await setRemoteConfig({
+      id: rc.id,
       ruleFilters: [
         {
           key: "apple",
