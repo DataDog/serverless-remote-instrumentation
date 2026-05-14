@@ -34,28 +34,6 @@ const getRemoteConfig = async (): Promise<RemoteConfigData> => {
   return data;
 };
 
-// Fetches all configs for the org without account/region filtering.
-// Used to find configs that may have been created with different scopes.
-const getAllRemoteConfigs = async (): Promise<RemoteConfigData> => {
-  const [apiKey, appKey] = await Promise.all([getApiKey(), getAppKey()]);
-
-  const url = `https://${ddSite}/api/v2/remote_config/products/serverless_remote_instrumentation/config`;
-
-  const response = await fetch(url, {
-    headers: {
-      "dd-api-key": apiKey,
-      "dd-application-key": appKey,
-    },
-  });
-  if (response.status === 404) {
-    return { data: [] };
-  }
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
-  }
-  return response.json();
-};
-
 interface SetRemoteConfigOptions {
   waitForEventualConsistency?: boolean;
   waitForCacheInvalidation?: boolean;
@@ -158,19 +136,38 @@ const setRemoteConfig = async ({
     }
     remoteConfig = await response.json();
   } else {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "dd-api-key": apiKey,
-        "dd-application-key": appKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(rc),
-    });
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+    const existing = await getRemoteConfig();
+    if (existing.data.length > 0) {
+      const existingId = existing.data[0].id;
+      rc.data.id = existingId;
+      const response = await fetch(`${url}/${existingId}`, {
+        method: "PUT",
+        headers: {
+          "dd-api-key": apiKey,
+          "dd-application-key": appKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(rc),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      remoteConfig = await response.json();
+    } else {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "dd-api-key": apiKey,
+          "dd-application-key": appKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(rc),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      remoteConfig = await response.json();
     }
-    remoteConfig = await response.json();
   }
 
   remoteConfigIds.push(remoteConfig.data.id);
@@ -238,7 +235,6 @@ const clearKnownRemoteConfigs = async (): Promise<void> => {
 
 export {
   getRemoteConfig,
-  getAllRemoteConfigs,
   setRemoteConfig,
   deleteRemoteConfig,
   clearRemoteConfigs,
