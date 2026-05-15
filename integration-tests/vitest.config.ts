@@ -5,7 +5,7 @@ export default defineConfig({
     testTimeout: 90_000,
     retry: process.env.CI ? 3 : 0,
     fileParallelism: false,
-    globalSetup: ["./integration-tests/vitest-global-setup.ts"],
+    globalSetup: ["./integration-tests/global-setup.ts"],
     reporters: ["verbose"],
   },
 });

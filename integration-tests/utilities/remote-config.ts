@@ -136,19 +136,38 @@ const setRemoteConfig = async ({
     }
     remoteConfig = await response.json();
   } else {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "dd-api-key": apiKey,
-        "dd-application-key": appKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(rc),
-    });
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+    const existing = await getRemoteConfig();
+    if (existing.data.length > 0) {
+      const existingId = existing.data[0].id;
+      rc.data.id = existingId;
+      const response = await fetch(`${url}/${existingId}`, {
+        method: "PUT",
+        headers: {
+          "dd-api-key": apiKey,
+          "dd-application-key": appKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(rc),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      remoteConfig = await response.json();
+    } else {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "dd-api-key": apiKey,
+          "dd-application-key": appKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(rc),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      remoteConfig = await response.json();
     }
-    remoteConfig = await response.json();
   }
 
   remoteConfigIds.push(remoteConfig.data.id);
