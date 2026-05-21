@@ -1,4 +1,5 @@
 import { createRequire } from "module";
+// eslint-disable-next-line no-underscore-dangle
 const _require = createRequire(import.meta.url);
 const cfnResponse = _require("cfn-response"); // file will be auto-injected by CloudFormation, so it must use `require`
 
