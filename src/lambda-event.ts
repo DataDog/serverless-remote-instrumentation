@@ -23,6 +23,7 @@ export interface CloudFormationEvent {
 export interface LambdaManagementEvent {
   "detail-type": string;
   source: string;
+  time?: string;
   detail: {
     eventName: string;
     requestParameters?: {

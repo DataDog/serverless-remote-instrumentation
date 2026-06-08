@@ -39,6 +39,7 @@ import {
   getTaggingClient,
 } from "./aws-resources";
 import { instrumentFunctions } from "./instrument";
+import { submitInstrumentationLatency } from "./metrics";
 import {
   LAMBDA_EVENT,
   SCHEDULED_INVOCATION_EVENT,
@@ -160,6 +161,18 @@ export const handler = async (
       taggingClient,
       LAMBDA_EVENT,
     );
+
+    if (process.env.DD_SEND_DEBUG_INFORMATION === "true") {
+      const instrumentedAt = new Date();
+      const eventTime = event.time ? new Date(event.time) : null;
+      const allSkipped =
+        Object.keys(instrumentOutcome.instrument.succeeded).length === 0 &&
+        Object.keys(instrumentOutcome.instrument.failed).length === 0;
+      if (eventTime && !allSkipped) {
+        const deltaMs = instrumentedAt.getTime() - eventTime.getTime();
+        await submitInstrumentationLatency(deltaMs, context.invokedFunctionArn);
+      }
+    }
   }
 
   // Else if it's a scheduled event, check if the config has changed and instrument all functions
