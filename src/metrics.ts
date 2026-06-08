@@ -17,7 +17,8 @@ export async function submitInstrumentationLatency(
   const body = JSON.stringify({
     series: [
       {
-        metric: "datadog.remote_instrumenter.lambda_management_event.instrumentation_latency",
+        metric:
+          "datadog.remote_instrumenter.lambda_management_event.instrumentation_latency",
         points: [[nowSec, [deltaMs]]],
         tags: functionArn ? [`function_arn:${functionArn}`] : [],
       },
