@@ -170,6 +170,10 @@ export const DD_INTERNAL_SEND_DEBUG_INFORMATION =
   "DD_INTERNAL_SEND_DEBUG_INFORMATION";
 export const INSTRUMENTATION_LATENCY_METRIC =
   "datadog.remote_instrumenter.lambda_management_event.instrumentation_latency";
+export const EVENTBRIDGE_DELAY_METRIC =
+  "datadog.remote_instrumenter.lambda_management_event.eventbridge_delay";
+export const LAMBDA_PROCESSING_LATENCY_METRIC =
+  "datadog.remote_instrumenter.lambda_management_event.lambda_processing_latency";
 
 // Remote config constants
 export const RC_PRODUCT = "SERVERLESS_REMOTE_INSTRUMENTATION";

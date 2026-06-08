@@ -39,7 +39,7 @@ import {
   getTaggingClient,
 } from "./aws-resources";
 import { instrumentFunctions } from "./instrument";
-import { submitInstrumentationLatency } from "./metrics";
+import { submitInstrumentationMetrics } from "./metrics";
 import {
   LAMBDA_EVENT,
   SCHEDULED_INVOCATION_EVENT,
@@ -63,6 +63,7 @@ export const handler = async (
   event: InstrumenterEvent,
   context: Context,
 ): Promise<InstrumentOutcome> => {
+  const invocationStartedAt = new Date();
   logger.logObject(selectEventFieldsForLogging(event));
   const instrumentOutcome: InstrumentOutcome = {
     instrument: { succeeded: {}, failed: {}, skipped: {} },
@@ -169,8 +170,18 @@ export const handler = async (
       const anySucceeded =
         Object.keys(instrumentOutcome.instrument.succeeded).length > 0;
       if (eventTime && anySucceeded) {
-        const deltaMs = instrumentedAt.getTime() - eventTime.getTime();
-        await submitInstrumentationLatency(deltaMs, context.invokedFunctionArn);
+        const instrumentationLatencyMs =
+          instrumentedAt.getTime() - eventTime.getTime();
+        const eventbridgeDelayMs =
+          invocationStartedAt.getTime() - eventTime.getTime();
+        const lambdaProcessingLatencyMs =
+          instrumentedAt.getTime() - invocationStartedAt.getTime();
+        await submitInstrumentationMetrics(
+          instrumentationLatencyMs,
+          eventbridgeDelayMs,
+          lambdaProcessingLatencyMs,
+          context.invokedFunctionArn,
+        );
       }
     }
   }

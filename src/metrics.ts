@@ -1,9 +1,20 @@
-import { DD_API_KEY, DD_SITE, INSTRUMENTATION_LATENCY_METRIC } from "./consts";
+import {
+  DD_API_KEY,
+  DD_SITE,
+  EVENTBRIDGE_DELAY_METRIC,
+  INSTRUMENTATION_LATENCY_METRIC,
+  LAMBDA_PROCESSING_LATENCY_METRIC,
+} from "./consts";
 import { logger } from "./logger";
 
-export async function submitInstrumentationLatency(
-  deltaMs: number,
-  functionArn: string,
+interface DistributionPoint {
+  metric: string;
+  value: number;
+  tags: string[];
+}
+
+async function submitDistributionPoints(
+  points: DistributionPoint[],
 ): Promise<void> {
   const apiKey = process.env[DD_API_KEY];
   const site = process.env[DD_SITE] ?? "datadoghq.com";
@@ -15,13 +26,11 @@ export async function submitInstrumentationLatency(
 
   const nowSec = Math.floor(Date.now() / 1000);
   const body = JSON.stringify({
-    series: [
-      {
-        metric: INSTRUMENTATION_LATENCY_METRIC,
-        points: [[nowSec, [deltaMs]]],
-        tags: functionArn ? [`function_arn:${functionArn}`] : [],
-      },
-    ],
+    series: points.map(({ metric, value, tags }) => ({
+      metric,
+      points: [[nowSec, [value]]],
+      tags,
+    })),
   });
 
   try {
@@ -39,10 +48,32 @@ export async function submitInstrumentationLatency(
     if (!response.ok) {
       const responseBody = await response.text();
       logger.warn(
-        `Failed to submit instrumentation latency metric: HTTP ${response.status} ${responseBody}`,
+        `Failed to submit metrics: HTTP ${response.status} ${responseBody}`,
       );
     }
   } catch (error) {
-    logger.warn(`Failed to submit instrumentation latency metric: ${error}`);
+    logger.warn(`Failed to submit metrics: ${error}`);
   }
+}
+
+export async function submitInstrumentationMetrics(
+  instrumentationLatencyMs: number,
+  eventbridgeDelayMs: number,
+  lambdaProcessingLatencyMs: number,
+  functionArn: string,
+): Promise<void> {
+  const tags = functionArn ? [`function_arn:${functionArn}`] : [];
+  await submitDistributionPoints([
+    {
+      metric: INSTRUMENTATION_LATENCY_METRIC,
+      value: instrumentationLatencyMs,
+      tags,
+    },
+    { metric: EVENTBRIDGE_DELAY_METRIC, value: eventbridgeDelayMs, tags },
+    {
+      metric: LAMBDA_PROCESSING_LATENCY_METRIC,
+      value: lambdaProcessingLatencyMs,
+      tags,
+    },
+  ]);
 }
