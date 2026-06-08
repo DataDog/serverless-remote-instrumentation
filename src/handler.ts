@@ -162,7 +162,7 @@ export const handler = async (
       LAMBDA_EVENT,
     );
 
-    if (process.env.DD_SEND_DEBUG_INFORMATION === "true") {
+    if (process.env.DD_INTERNAL_SEND_DEBUG_INFORMATION === "true") {
       const instrumentedAt = new Date();
       const eventTime = event.time ? new Date(event.time) : null;
       const allSkipped =
