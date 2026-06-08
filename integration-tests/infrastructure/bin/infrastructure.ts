@@ -77,7 +77,7 @@ class TestingStack extends Stack {
     // Timeout at 5 minutes since sometimes we run into cases where the custom resource hangs.
     template.Resources.CloudFormationLifeCycle.Properties.ServiceTimeout = 300;
     template.Mappings.Constants.DdCIBypassSiteValidation.Bypass = true;
-    template.Mappings.Constants.SendDebugInformation.Enabled = true;
+    template.Mappings.Constants.DdInternalSendDebugInformation.Enabled = true;
     writeFileSync(modifiedPath, yamlDump(template));
     return modifiedPath;
   }

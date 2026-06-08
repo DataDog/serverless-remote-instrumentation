@@ -47,7 +47,6 @@ const invokeLambdaWithLambdaManagementEvent = async ({
         },
       },
       source: "aws.lambda",
-      time: new Date().toISOString(),
       name: `integration-tests${process.env.USER}`,
     }),
   });

@@ -15,7 +15,7 @@ Mappings:
       Version: {CURRENT_LAYER_VERSION}
     DdCIBypassSiteValidation:
       Bypass: false
-    SendDebugInformation:
+    DdInternalSendDebugInformation:
       Enabled: false
 
 Metadata:
@@ -141,7 +141,7 @@ Resources:
           DD_EXTENSION_VERSION: compatibility
           DD_TAGS: !Join ["", ["template_version:", !FindInMap [ Constants, DdRemoteInstrumentApp, Version ]] ]
           DD_INSTRUMENTER_VERSION: !FindInMap [ Constants, DdRemoteInstrumentApp, Version ]
-          DD_INTERNAL_SEND_DEBUG_INFORMATION: !FindInMap [ Constants, SendDebugInformation, Enabled ]
+          DD_INTERNAL_SEND_DEBUG_INFORMATION: !FindInMap [ Constants, DdInternalSendDebugInformation, Enabled ]
       Tags:
         - Key: "dd_serverless_service"
           Value: "remote_instrumenter"
