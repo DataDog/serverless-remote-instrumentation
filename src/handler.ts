@@ -48,6 +48,7 @@ import {
   FUNCTION_NOT_FOUND,
   INSTRUMENT,
   SKIPPED,
+  DD_INTERNAL_SEND_DEBUG_INFORMATION,
   type LambdaFunction,
   type UnenrichedLambdaFunction,
   type InstrumentOutcome,
@@ -162,13 +163,12 @@ export const handler = async (
       LAMBDA_EVENT,
     );
 
-    if (process.env.DD_INTERNAL_SEND_DEBUG_INFORMATION === "true") {
+    if (process.env[DD_INTERNAL_SEND_DEBUG_INFORMATION] === "true") {
       const instrumentedAt = new Date();
       const eventTime = event.time ? new Date(event.time) : null;
-      const allSkipped =
-        Object.keys(instrumentOutcome.instrument.succeeded).length === 0 &&
-        Object.keys(instrumentOutcome.instrument.failed).length === 0;
-      if (eventTime && !allSkipped) {
+      const anySucceeded =
+        Object.keys(instrumentOutcome.instrument.succeeded).length > 0;
+      if (eventTime && anySucceeded) {
         const deltaMs = instrumentedAt.getTime() - eventTime.getTime();
         await submitInstrumentationLatency(deltaMs, context.invokedFunctionArn);
       }
