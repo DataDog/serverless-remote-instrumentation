@@ -39,6 +39,7 @@ import {
   getTaggingClient,
 } from "./aws-resources";
 import { instrumentFunctions } from "./instrument";
+import { submitInstrumentationMetrics } from "./metrics";
 import {
   LAMBDA_EVENT,
   SCHEDULED_INVOCATION_EVENT,
@@ -47,6 +48,7 @@ import {
   FUNCTION_NOT_FOUND,
   INSTRUMENT,
   SKIPPED,
+  DD_INTERNAL_SEND_DEBUG_INFORMATION,
   type LambdaFunction,
   type UnenrichedLambdaFunction,
   type InstrumentOutcome,
@@ -61,6 +63,7 @@ export const handler = async (
   event: InstrumenterEvent,
   context: Context,
 ): Promise<InstrumentOutcome> => {
+  const invocationStartedAt = new Date();
   logger.logObject(selectEventFieldsForLogging(event));
   const instrumentOutcome: InstrumentOutcome = {
     instrument: { succeeded: {}, failed: {}, skipped: {} },
@@ -160,6 +163,27 @@ export const handler = async (
       taggingClient,
       LAMBDA_EVENT,
     );
+
+    if (process.env[DD_INTERNAL_SEND_DEBUG_INFORMATION] === "true") {
+      const instrumentedAt = new Date();
+      const eventTime = event.time ? new Date(event.time) : null;
+      const anySucceeded =
+        Object.keys(instrumentOutcome.instrument.succeeded).length > 0;
+      if (eventTime && anySucceeded) {
+        const instrumentationLatencyMs =
+          instrumentedAt.getTime() - eventTime.getTime();
+        const eventbridgeDelayMs =
+          invocationStartedAt.getTime() - eventTime.getTime();
+        const lambdaProcessingLatencyMs =
+          instrumentedAt.getTime() - invocationStartedAt.getTime();
+        await submitInstrumentationMetrics(
+          instrumentationLatencyMs,
+          eventbridgeDelayMs,
+          lambdaProcessingLatencyMs,
+          context.invokedFunctionArn,
+        );
+      }
+    }
   }
 
   // Else if it's a scheduled event, check if the config has changed and instrument all functions

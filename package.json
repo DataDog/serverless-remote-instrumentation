@@ -50,6 +50,7 @@
     "create-release": "bash scripts/create_release.sh",
     "test": "vitest run --config vitest.config.ts",
     "integ": "vitest run --config integration-tests/vitest.config.ts",
+    "integ-load": "RUN_LOAD_TESTS=true vitest run --config integration-tests/vitest.config.ts integration-tests/load-tests.test.ts",
     "metrics-validations": "vitest run --config metrics-validations/vitest.config.ts",
     "integ-test-setup": "bash -c 'if [ -n \"$CI_PROJECT_DIR\" ]; then node ${SCRIPTS_PATH}/test_setup.js; else node scripts/test_setup.js; fi'",
     "integ-test-teardown": "bash -c 'if [ -n \"$CI_PROJECT_DIR\" ]; then node ${SCRIPTS_PATH}/test_teardown.js; else node scripts/test_teardown.js; fi'"

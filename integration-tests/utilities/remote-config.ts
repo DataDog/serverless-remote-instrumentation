@@ -195,7 +195,7 @@ const deleteRemoteConfig = async (id: string): Promise<any> => {
       "dd-application-key": appKey,
     },
   });
-  if (!response.ok) {
+  if (!response.ok && response.status !== 404) {
     throw new Error(`HTTP ${response.status}`);
   }
   return response;
