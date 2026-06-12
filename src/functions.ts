@@ -158,9 +158,8 @@ async function enrichFunctionsWithTags(
       {};
     for (const [key, value] of Object.entries(awsResourceTags)) {
       functionTags.push(key + ":" + value);
-      const normalizedKey = key.replace(/:/g, "_");
-      if (normalizedKey !== key) {
-        functionTags.push(normalizedKey + ":" + value);
+      if (key.startsWith("aws:")) {
+        functionTags.push(key.replace(/:/g, "_") + ":" + value);
       }
     }
 
