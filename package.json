@@ -33,9 +33,6 @@
     "vitest": "^4.1.6",
     "yaml-cfn": "^0.3.2"
   },
-  "resolutions": {
-    "@aws-cdk/cloud-assembly-schema": ">=52.0.0"
-  },
   "packageManager": "yarn@4.12.0",
   "engines": {
     "node": ">=24.0.0 <25.0.0"
