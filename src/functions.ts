@@ -158,6 +158,10 @@ async function enrichFunctionsWithTags(
       {};
     for (const [key, value] of Object.entries(awsResourceTags)) {
       functionTags.push(key + ":" + value);
+      const normalizedKey = key.replace(/:/g, "_");
+      if (normalizedKey !== key) {
+        functionTags.push(normalizedKey + ":" + value);
+      }
     }
 
     // Also add the runtime as a tag

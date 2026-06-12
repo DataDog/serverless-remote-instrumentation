@@ -1681,6 +1681,36 @@ describe("enrichFunctionsWithTags", () => {
     );
   });
 
+  test("should store AWS resource tags with colons in key in both raw and REDAPL-normalized form", async () => {
+    // REDAPL converts colons in tag keys to underscores, so the Datadog UI shows
+    // aws:cloudformation:stack-name as aws_cloudformation_stack-name.
+    // The instrumenter must match rule filters expressed in either form.
+    const functions = [
+      createTestLambdaFunction({
+        functionName: "functionA",
+        functionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionA",
+        runtime: "nodejs14.x",
+        tags: { "aws:cloudformation:stack-name": "my-stack" },
+        layers: [],
+        envVars: {},
+      }),
+    ];
+
+    const enrichedFunctions = await enrichFunctionsWithTags(
+      mockClient,
+      functions,
+    );
+
+    // Raw AWS form (for filters using the original tag key)
+    expect(enrichedFunctions[0].Tags).toContain(
+      "aws:cloudformation:stack-name:my-stack",
+    );
+    // REDAPL-normalized form (for filters as shown in the Datadog UI)
+    expect(enrichedFunctions[0].Tags).toContain(
+      "aws_cloudformation_stack-name:my-stack",
+    );
+  });
+
   test("should handle AWS resource tags with empty object", async () => {
     const functions = [
       createTestLambdaFunction({
