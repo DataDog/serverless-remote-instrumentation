@@ -180,6 +180,101 @@ describe("satisfiesTargetingRules", () => {
     });
   });
 
+  describe("When the filter key contains underscores that may represent colons (REDAPL normalization)", () => {
+    // REDAPL converts colons in tag keys to underscores, so a filter created via the
+    // Datadog UI for aws:cloudformation:stack-name arrives as aws_cloudformation_stack-name.
+    // Each underscore in the filter key should match either _ or : in the actual tag.
+    test("should match a tag whose key uses colons where the filter uses underscores", () => {
+      expect(
+        satisfiesTargetingRules(
+          "functionA",
+          new Set(["aws:cloudformation:stack-name:my-stack"]),
+          [
+            {
+              key: "aws_cloudformation_stack-name",
+              values: ["my-stack"],
+              allow: true,
+              filterType: "tag",
+            },
+          ],
+        ),
+      ).toBe(true);
+    });
+    test("should match a tag whose key uses a mix of colons and underscores", () => {
+      expect(
+        satisfiesTargetingRules(
+          "functionA",
+          new Set(["aws_cloudformation:stack-name:my-stack"]),
+          [
+            {
+              key: "aws_cloudformation_stack-name",
+              values: ["my-stack"],
+              allow: true,
+              filterType: "tag",
+            },
+          ],
+        ),
+      ).toBe(true);
+    });
+    test("should still match when the tag key already uses underscores", () => {
+      expect(
+        satisfiesTargetingRules(
+          "functionA",
+          new Set(["aws_cloudformation_stack-name:my-stack"]),
+          [
+            {
+              key: "aws_cloudformation_stack-name",
+              values: ["my-stack"],
+              allow: true,
+              filterType: "tag",
+            },
+          ],
+        ),
+      ).toBe(true);
+    });
+    test("should not match a tag with a different value", () => {
+      expect(
+        satisfiesTargetingRules(
+          "functionA",
+          new Set(["aws:cloudformation:stack-name:other-stack"]),
+          [
+            {
+              key: "aws_cloudformation_stack-name",
+              values: ["my-stack"],
+              allow: true,
+              filterType: "tag",
+            },
+          ],
+        ),
+      ).toBe(false);
+    });
+    test("should apply deny filter when tag key uses colons", () => {
+      expect(
+        satisfiesTargetingRules(
+          "functionA",
+          new Set([
+            "aws:cloudformation:stack-name:my-stack",
+            "runtime:nodejs18.x",
+          ]),
+          [
+            {
+              key: "runtime",
+              values: ["nodejs18.x"],
+              allow: true,
+              filterType: "tag",
+            },
+            {
+              key: "aws_cloudformation_stack-name",
+              values: ["my-stack"],
+              allow: false,
+              filterType: "tag",
+            },
+          ],
+        ),
+      ).toBe(false);
+    });
+  });
+
   describe("When the filter is a function-name-based allow filter", () => {
     test("should return true if the function name is allowed", () => {
       expect(
@@ -1681,43 +1776,6 @@ describe("enrichFunctionsWithTags", () => {
     );
   });
 
-  test("should store aws:-prefixed tags in both raw and REDAPL-normalized form", async () => {
-    // REDAPL converts colons in tag keys to underscores, so the Datadog UI shows
-    // aws:cloudformation:stack-name as aws_cloudformation_stack-name.
-    // The instrumenter must match rule filters expressed in either form.
-    // Only aws:-prefixed keys get this treatment to avoid false positives between
-    // unrelated user tags like foo:bar and foo_bar.
-    const functions = [
-      createTestLambdaFunction({
-        functionName: "functionA",
-        functionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionA",
-        runtime: "nodejs14.x",
-        tags: {
-          "aws:cloudformation:stack-name": "my-stack",
-          "foo:bar": "baz",
-        },
-        layers: [],
-        envVars: {},
-      }),
-    ];
-
-    const enrichedFunctions = await enrichFunctionsWithTags(
-      mockClient,
-      functions,
-    );
-
-    // Raw AWS form (for filters using the original tag key)
-    expect(enrichedFunctions[0].Tags).toContain(
-      "aws:cloudformation:stack-name:my-stack",
-    );
-    // REDAPL-normalized form (for filters as shown in the Datadog UI)
-    expect(enrichedFunctions[0].Tags).toContain(
-      "aws_cloudformation_stack-name:my-stack",
-    );
-    // Non-aws: tags with colons should NOT be duplicated in normalized form
-    expect(enrichedFunctions[0].Tags).toContain("foo:bar:baz");
-    expect(enrichedFunctions[0].Tags).not.toContain("foo_bar:baz");
-  });
 
   test("should handle AWS resource tags with empty object", async () => {
     const functions = [

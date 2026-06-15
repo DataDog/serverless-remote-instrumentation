@@ -412,6 +412,36 @@ describe("Remote instrumenter scheduled event tests", () => {
     expect(isInstrumented).toStrictEqual(true);
   });
 
+  it("instruments a function whose tag key uses colons when the rule filter uses underscores (REDAPL normalization)", async () => {
+    // REDAPL converts colons in tag keys to underscores. A customer whose Lambda is tagged
+    // aws:cloudformation:stack-name=my-stack will see the rule filter displayed in the
+    // Datadog UI as aws_cloudformation_stack-name. The instrumenter must treat _ and :
+    // as interchangeable so that functions shown as eligible in the UI are actually instrumented.
+    const { FunctionName: functionName } = await createFunction({
+      Tags: { "aws:cloudformation:stack-name": "my-stack" },
+    });
+
+    await setRemoteConfig({
+      ruleFilters: [
+        {
+          key: "aws_cloudformation_stack-name",
+          values: ["my-stack"],
+          filter_type: "tag",
+          allow: true,
+        },
+      ],
+    });
+
+    const res = await invokeLambdaWithScheduledEvent();
+
+    expect(Object.keys(res.instrument.skipped)).not.toContain(functionName);
+
+    const isInstrumented = await pollUntilTrue(60000, 5000, () =>
+      isFunctionInstrumented(functionName),
+    );
+    expect(isInstrumented).toStrictEqual(true);
+  });
+
   it("can remove tags from functions that should not have them", async () => {
     const { FunctionName: functionName, FunctionArn: functionArn } =
       await createFunction({
