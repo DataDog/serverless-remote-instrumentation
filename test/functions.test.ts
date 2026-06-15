@@ -180,6 +180,101 @@ describe("satisfiesTargetingRules", () => {
     });
   });
 
+  describe("When the filter key contains underscores that may represent colons (REDAPL normalization)", () => {
+    // REDAPL converts colons in tag keys to underscores, so a filter created via the
+    // Datadog UI for aws:cloudformation:stack-name arrives as aws_cloudformation_stack-name.
+    // Each underscore in the filter key should match either _ or : in the actual tag.
+    test("should match a tag whose key uses colons where the filter uses underscores", () => {
+      expect(
+        satisfiesTargetingRules(
+          "functionA",
+          new Set(["aws:cloudformation:stack-name:my-stack"]),
+          [
+            {
+              key: "aws_cloudformation_stack-name",
+              values: ["my-stack"],
+              allow: true,
+              filterType: "tag",
+            },
+          ],
+        ),
+      ).toBe(true);
+    });
+    test("should match a tag whose key uses a mix of colons and underscores", () => {
+      expect(
+        satisfiesTargetingRules(
+          "functionA",
+          new Set(["aws_cloudformation:stack-name:my-stack"]),
+          [
+            {
+              key: "aws_cloudformation_stack-name",
+              values: ["my-stack"],
+              allow: true,
+              filterType: "tag",
+            },
+          ],
+        ),
+      ).toBe(true);
+    });
+    test("should still match when the tag key already uses underscores", () => {
+      expect(
+        satisfiesTargetingRules(
+          "functionA",
+          new Set(["aws_cloudformation_stack-name:my-stack"]),
+          [
+            {
+              key: "aws_cloudformation_stack-name",
+              values: ["my-stack"],
+              allow: true,
+              filterType: "tag",
+            },
+          ],
+        ),
+      ).toBe(true);
+    });
+    test("should not match a tag with a different value", () => {
+      expect(
+        satisfiesTargetingRules(
+          "functionA",
+          new Set(["aws:cloudformation:stack-name:other-stack"]),
+          [
+            {
+              key: "aws_cloudformation_stack-name",
+              values: ["my-stack"],
+              allow: true,
+              filterType: "tag",
+            },
+          ],
+        ),
+      ).toBe(false);
+    });
+    test("should apply deny filter when tag key uses colons", () => {
+      expect(
+        satisfiesTargetingRules(
+          "functionA",
+          new Set([
+            "aws:cloudformation:stack-name:my-stack",
+            "runtime:nodejs18.x",
+          ]),
+          [
+            {
+              key: "runtime",
+              values: ["nodejs18.x"],
+              allow: true,
+              filterType: "tag",
+            },
+            {
+              key: "aws_cloudformation_stack-name",
+              values: ["my-stack"],
+              allow: false,
+              filterType: "tag",
+            },
+          ],
+        ),
+      ).toBe(false);
+    });
+  });
+
   describe("When the filter is a function-name-based allow filter", () => {
     test("should return true if the function name is allowed", () => {
       expect(

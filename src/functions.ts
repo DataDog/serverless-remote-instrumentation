@@ -179,6 +179,30 @@ async function enrichFunctionsWithTags(
 }
 export { enrichFunctionsWithTags };
 
+// REDAPL (Datadog's tag indexing backend) converts colons in tag keys to underscores,
+// since colon is used as the key:value separator. This means a rule filter created via
+// the Datadog UI for a tag like aws:cloudformation:stack-name will arrive here as
+// aws_cloudformation_stack-name. We cannot know which underscores were originally colons,
+// so we treat each underscore in the filter key as matching either _ or : in the actual tag.
+function functionTagMatchesFilter(
+  functionTags: Set<string>,
+  ruleFilterKey: string,
+  value: string,
+): boolean {
+  if (functionTags.has(ruleFilterKey + ":" + value)) {
+    return true;
+  }
+  if (!ruleFilterKey.includes("_")) {
+    return false;
+  }
+  const escapedKey = ruleFilterKey.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const escapedValue = value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(
+    `^${escapedKey.replace(/_/g, "[_:]")}:${escapedValue}$`,
+  );
+  return Array.from(functionTags).some((tag) => pattern.test(tag));
+}
+
 export function satisfiesTargetingRules(
   functionName: string,
   functionTags: Set<string>,
@@ -202,7 +226,7 @@ export function satisfiesTargetingRules(
       if (ruleFilter.allow) {
         let hasAllowedTag = false;
         for (const value of ruleFilterValues) {
-          if (functionTags.has(ruleFilterKey + ":" + value)) {
+          if (functionTagMatchesFilter(functionTags, ruleFilterKey, value)) {
             hasAllowedTag = true;
           }
         }
@@ -211,7 +235,7 @@ export function satisfiesTargetingRules(
         }
       } else {
         for (const value of ruleFilterValues) {
-          if (functionTags.has(ruleFilterKey + ":" + value)) {
+          if (functionTagMatchesFilter(functionTags, ruleFilterKey, value)) {
             return false;
           }
         }
