@@ -414,18 +414,19 @@ describe("Remote instrumenter scheduled event tests", () => {
 
   it("instruments a function whose tag key uses colons when the rule filter uses underscores (REDAPL normalization)", async () => {
     // REDAPL converts colons in tag keys to underscores. A customer whose Lambda is tagged
-    // aws:cloudformation:stack-name=my-stack will see the rule filter displayed in the
-    // Datadog UI as aws_cloudformation_stack-name. The instrumenter must treat _ and :
-    // as interchangeable so that functions shown as eligible in the UI are actually instrumented.
+    // team:my:service will see the rule filter displayed in the Datadog UI as team_my_service.
+    // The instrumenter must treat _ and : as interchangeable so that functions shown as
+    // eligible in the UI are actually instrumented.
+    // Note: AWS reserves the "aws:" tag prefix, so we use a custom colon-containing key here.
     const { FunctionName: functionName } = await createFunction({
-      Tags: { "aws:cloudformation:stack-name": "my-stack" },
+      Tags: { "team:my:service": "backend" },
     });
 
     await setRemoteConfig({
       ruleFilters: [
         {
-          key: "aws_cloudformation_stack-name",
-          values: ["my-stack"],
+          key: "team_my_service",
+          values: ["backend"],
           filter_type: "tag",
           allow: true,
         },

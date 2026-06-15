@@ -1776,7 +1776,6 @@ describe("enrichFunctionsWithTags", () => {
     );
   });
 
-
   test("should handle AWS resource tags with empty object", async () => {
     const functions = [
       createTestLambdaFunction({
