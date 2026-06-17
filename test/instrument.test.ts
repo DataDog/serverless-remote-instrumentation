@@ -41,6 +41,7 @@ vi.mock("@datadog/datadog-ci-plugin-lambda/functions/commons", () => ({
 import { getInstrumentedFunctionConfig } from "@datadog/datadog-ci-plugin-lambda/functions/instrument";
 import { getUninstrumentedFunctionConfig } from "@datadog/datadog-ci-plugin-lambda/functions/uninstrument";
 import { updateLambdaFunctionConfig } from "@datadog/datadog-ci-plugin-lambda/functions/commons";
+import { waitUntilFunctionIsActive } from "../src/functions";
 
 describe("getExtensionAndRuntimeLayerVersion", () => {
   it("should return the layer and runtime version for node", () => {
@@ -317,6 +318,48 @@ describe("instrumentFunctions", () => {
         reasonCode: "datadog-ci-error",
       },
     });
+  });
+
+  test("one function's waitUntilFunctionIsActive failure does not abort the batch", async () => {
+    const functionFoo2: LambdaFunction = {
+      FunctionName: "foo2",
+      FunctionArn: "arn:aws:lambda:us-east-2:123456789:function:foo2",
+      Runtime: "nodejs18.x",
+      Tags: new Set(["env:prod"]),
+    };
+    // Reject the active-wait for one function (e.g. a throttle/ResourceNotFound)
+    (waitUntilFunctionIsActive as any).mockImplementation((name: string) =>
+      name === functionFoo.FunctionName
+        ? Promise.reject(new Error("throttled"))
+        : Promise.resolve(),
+    );
+
+    const outcome = {
+      instrument: { succeeded: {} as any, failed: {} as any, skipped: {} },
+      uninstrument: { succeeded: {}, failed: {}, skipped: {} },
+    };
+
+    // The batch as a whole should not reject
+    await expect(
+      instrument.instrumentFunctions(
+        mockS3Client,
+        [rcConfig],
+        [functionFoo, functionFoo2],
+        outcome as any,
+        mockTaggingClient,
+        SCHEDULED_INVOCATION_EVENT,
+      ),
+    ).resolves.toBeUndefined();
+
+    // The failing function is recorded as FAILED, not thrown
+    expect(outcome.instrument.failed[functionFoo.FunctionName]).toEqual({
+      functionArn: functionFoo.FunctionArn,
+      reason: "throttled",
+      reasonCode: "datadog-ci-error",
+    });
+    // The other function in the batch is still instrumented
+    expect(outcome.instrument.succeeded["foo2"]).toBeDefined();
+    expect(updateLambdaFunctionConfig).toHaveBeenCalledTimes(1);
   });
 });
 
