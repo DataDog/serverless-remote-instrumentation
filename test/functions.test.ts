@@ -18,11 +18,15 @@ import {
   DD_SERVERLESS_LOGS_ENABLED,
 } from "../src/consts";
 import * as awsClients from "../src/aws-resources";
-import * as sleep from "../src/sleep";
 import { baseInstrumentOutcome } from "./test-utils";
+import { waitUntilFunctionActiveV2 } from "@aws-sdk/client-lambda";
+import { WaiterState } from "@smithy/core/client";
 
 vi.mock("../src/aws-resources");
-vi.mock("../src/sleep");
+vi.mock("@aws-sdk/client-lambda", async () => ({
+  ...(await vi.importActual("@aws-sdk/client-lambda")),
+  waitUntilFunctionActiveV2: vi.fn(),
+}));
 
 // Creates a test config object
 function createTestConfig({
@@ -1588,38 +1592,32 @@ describe("isInstrumented", () => {
 });
 
 describe("waitUntilFunctionIsActive", () => {
+  const mockedWaiter = vi.mocked(waitUntilFunctionActiveV2);
+
   beforeEach(() => {
     vi.resetAllMocks();
   });
 
-  test("stops when the status is active", async () => {
-    vi.mocked(awsClients.getLambdaClient).mockReturnValue({
-      send: () => ({ State: "Active" }),
-    } as any);
+  test("returns true when the SDK waiter reaches a SUCCESS state", async () => {
+    mockedWaiter.mockResolvedValue({ state: WaiterState.SUCCESS } as any);
     const res = await waitUntilFunctionIsActive("test-function");
     expect(res).toStrictEqual(true);
-    expect(sleep.sleep).toHaveBeenCalledTimes(0);
+    expect(mockedWaiter).toHaveBeenCalledTimes(1);
+    expect(mockedWaiter).toHaveBeenCalledWith(expect.anything(), {
+      FunctionName: "test-function",
+    });
   });
 
-  test("stops when the status is active after the second time", async () => {
-    vi.mocked(awsClients.getLambdaClient).mockReturnValue({
-      send: vi
-        .fn()
-        .mockReturnValueOnce({ State: "Pending" })
-        .mockReturnValueOnce({ State: "Active" }),
-    } as any);
-    const res = await waitUntilFunctionIsActive("test-function");
-    expect(res).toStrictEqual(true);
-    expect(sleep.sleep).toHaveBeenCalledTimes(1);
-  });
-
-  test("times out waiting when the status never exits", async () => {
-    vi.mocked(awsClients.getLambdaClient).mockReturnValue({
-      send: () => ({ State: "Pending" }),
-    } as any);
+  test("returns false when the SDK waiter ends in a non-success state", async () => {
+    mockedWaiter.mockResolvedValue({ state: WaiterState.TIMEOUT } as any);
     const res = await waitUntilFunctionIsActive("test-function");
     expect(res).toStrictEqual(false);
-    expect(sleep.sleep).toHaveBeenCalledTimes(10);
+  });
+
+  test("returns false (does not throw) when the SDK waiter throws", async () => {
+    mockedWaiter.mockRejectedValue(new Error("waiter timed out"));
+    const res = await waitUntilFunctionIsActive("test-function");
+    expect(res).toStrictEqual(false);
   });
 });
 

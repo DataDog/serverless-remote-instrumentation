@@ -3,14 +3,14 @@ import {
   GetResourcesCommand,
 } from "@aws-sdk/client-resource-groups-tagging-api";
 import type { GetResourcesCommandOutput } from "@aws-sdk/client-resource-groups-tagging-api";
-import { sleep } from "./sleep";
 import {
   GetFunctionCommand,
-  GetFunctionConfigurationCommand,
   ListFunctionsCommand,
   GetAccountSettingsCommand,
   LambdaClient,
+  waitUntilFunctionActiveV2,
 } from "@aws-sdk/client-lambda";
+import { WaiterState } from "@smithy/core/client";
 import type {
   FunctionConfiguration,
   GetFunctionCommandOutput,
@@ -597,30 +597,31 @@ export function needsInstrumentationUpdate(
   return { instrument: true, uninstrument: false, tag: true, untag: false };
 }
 
+// The maximum time, in seconds, to wait for a function to become Active before
+// giving up. Roughly preserves the previous hand-rolled loop's ~10s ceiling.
+const FUNCTION_ACTIVE_MAX_WAIT_SECONDS = 10;
+
 export const waitUntilFunctionIsActive = async (
   functionName: string,
 ): Promise<boolean> => {
-  // Attempting to edit a function that is in a pending state will cause
-  // a resource conflict exception to be thrown, and they usually exit that
-  // state after a few seconds
+  // Attempting to edit a function that is in a pending state will cause a
+  // resource conflict exception to be thrown, and they usually exit that state
+  // after a few seconds. Use the AWS SDK's built-in waiter, which polls with
+  // exponential backoff and handles terminal states, instead of a hand-rolled
+  // polling loop. waitUntilFunctionActiveV2 polls the GetFunction API:
+  // https://github.com/aws/aws-sdk-js-v3/blob/main/clients/client-lambda/src/waiters/waitForFunctionActiveV2.ts
   const lambdaClient = getLambdaClient();
-  let isFunctionReady = false;
-  let count = 0;
-  while (!isFunctionReady && count < 10) {
-    count += 1;
-    const functionStatus = await lambdaClient.send(
-      new GetFunctionConfigurationCommand({
-        FunctionName: functionName,
-      }),
+  try {
+    const { state } = await waitUntilFunctionActiveV2(
+      { client: lambdaClient, maxWaitTime: FUNCTION_ACTIVE_MAX_WAIT_SECONDS },
+      { FunctionName: functionName },
     );
-    const { State } = functionStatus;
-    if (State !== "Pending") {
-      isFunctionReady = true;
-    } else {
-      await sleep(1000);
-    }
+    return state === WaiterState.SUCCESS;
+  } catch {
+    // waitUntil* throws on TIMEOUT/FAILURE. Preserve the previous behavior of
+    // returning false (rather than throwing) so callers can still proceed.
+    return false;
   }
-  return isFunctionReady;
 };
 
 export function selectFunctionFieldsForLogging(
