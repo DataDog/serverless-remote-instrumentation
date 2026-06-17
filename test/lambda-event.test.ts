@@ -369,10 +369,7 @@ describe("getFunctionFromLambdaEvent", () => {
       Tags: { env: "prod" },
     } as any);
 
-    const result = await getFunctionFromLambdaEvent(
-      {} as any,
-      updateEvent,
-    );
+    const result = await getFunctionFromLambdaEvent({} as any, updateEvent);
 
     expect(result).toEqual({
       FunctionName: "my-func",
@@ -389,10 +386,7 @@ describe("getFunctionFromLambdaEvent", () => {
       Tags: undefined,
     } as any);
 
-    const result = await getFunctionFromLambdaEvent(
-      {} as any,
-      updateEvent,
-    );
+    const result = await getFunctionFromLambdaEvent({} as any, updateEvent);
 
     expect(result?.Tags).toEqual({});
   });
