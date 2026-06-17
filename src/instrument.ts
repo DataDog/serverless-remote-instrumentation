@@ -257,18 +257,22 @@ export async function instrumentFunctions(
         functionsToTagInBatch.map((f) => f.FunctionArn!),
       );
 
-      // Then, instrument all functions in this batch that need instrumentation
+      // Then, instrument all functions in this batch that need instrumentation.
+      // Functions within a batch are processed concurrently; the batch size
+      // bounds how many Lambda API calls are in flight at once.
       const functionsToInstrumentInBatch = batch.filter(
         (func) => func.needsInstrumentation,
       );
-      for (const functionToInstrument of functionsToInstrumentInBatch) {
-        await instrumentWithDatadogCi(
-          functionToInstrument,
-          true,
-          config,
-          instrumentOutcome,
-        );
-      }
+      await Promise.all(
+        functionsToInstrumentInBatch.map((functionToInstrument) =>
+          instrumentWithDatadogCi(
+            functionToInstrument,
+            true,
+            config,
+            instrumentOutcome,
+          ),
+        ),
+      );
     }
 
     const uninstrumentBatches = createFunctionBatches(
@@ -284,18 +288,21 @@ export async function instrumentFunctions(
         `Uninstrumenting batch ${i + 1}/${uninstrumentBatches.length} with ${batch.length} functions`,
       );
 
-      // First, uninstrument all functions in this batch that need uninstrumentation
+      // First, uninstrument all functions in this batch that need
+      // uninstrumentation. Functions within a batch are processed concurrently.
       const functionsToUninstrumentInBatch = batch.filter(
         (func) => func.needsUninstrumentation,
       );
-      for (const functionToUninstrument of functionsToUninstrumentInBatch) {
-        await instrumentWithDatadogCi(
-          functionToUninstrument,
-          false,
-          config,
-          instrumentOutcome,
-        );
-      }
+      await Promise.all(
+        functionsToUninstrumentInBatch.map((functionToUninstrument) =>
+          instrumentWithDatadogCi(
+            functionToUninstrument,
+            false,
+            config,
+            instrumentOutcome,
+          ),
+        ),
+      );
 
       // Then, untag all functions in this batch that need untagging (but only if uninstrumentation didn't fail)
       const functionsToUntagInBatch = batch.filter(

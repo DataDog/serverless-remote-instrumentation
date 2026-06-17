@@ -138,37 +138,56 @@ export async function getLambdaFunction(
   return getFunctionCommandOutput;
 }
 
+// Collect a single function's tags (from its env DD_TAGS, its AWS resource
+// tags, and its runtime) into the enriched shape used downstream.
+async function enrichFunctionWithTags(
+  client: LambdaClient,
+  lambdaFunc: UnenrichedLambdaFunction,
+): Promise<LambdaFunction> {
+  const functionTagArray =
+    lambdaFunc.Environment?.Variables?.DD_TAGS?.split(" ") || [];
+  let functionTags = functionTagArray.map((functionTag) =>
+    functionTag?.replace(/"/g, ""),
+  );
+
+  // Tags may be a Record<string, string> from the AWS SDK's GetFunctionCommandOutput
+  const awsResourceTags: Record<string, string> =
+    lambdaFunc.Tags ??
+    (await getAWSResourceTagsForFunction(client, lambdaFunc.FunctionName!)) ??
+    {};
+  for (const [key, value] of Object.entries(awsResourceTags)) {
+    functionTags.push(key + ":" + value);
+  }
+
+  // Also add the runtime as a tag
+  functionTags.push("runtime:" + lambdaFunc.Runtime);
+
+  const functionTagsSet = new Set(functionTags);
+  return {
+    ...lambdaFunc,
+    FunctionName: lambdaFunc.FunctionName!,
+    Tags: functionTagsSet,
+  };
+}
+
+// The number of functions to enrich concurrently. Each function whose tags
+// aren't already present requires a GetFunction call, so we bound concurrency
+// to avoid throttling the Lambda API on accounts with many functions.
+const ENRICH_CONCURRENCY = 50;
+
 async function enrichFunctionsWithTags(
   client: LambdaClient,
   functions: UnenrichedLambdaFunction[],
 ): Promise<LambdaFunction[]> {
-  // Loop through the functions and collect each one's tags
+  // Enrich functions in bounded-concurrency batches, fetching missing tags in
+  // parallel within each batch.
   const enrichedFunctions: LambdaFunction[] = [];
-  for (const lambdaFunc of functions) {
-    const functionTagArray =
-      lambdaFunc.Environment?.Variables?.DD_TAGS?.split(" ") || [];
-    let functionTags = functionTagArray.map((functionTag) =>
-      functionTag?.replace(/"/g, ""),
+  for (let i = 0; i < functions.length; i += ENRICH_CONCURRENCY) {
+    const batch = functions.slice(i, i + ENRICH_CONCURRENCY);
+    const enrichedBatch = await Promise.all(
+      batch.map((lambdaFunc) => enrichFunctionWithTags(client, lambdaFunc)),
     );
-
-    // Tags may be a Record<string, string> from the AWS SDK's GetFunctionCommandOutput
-    const awsResourceTags: Record<string, string> =
-      lambdaFunc.Tags ??
-      (await getAWSResourceTagsForFunction(client, lambdaFunc.FunctionName!)) ??
-      {};
-    for (const [key, value] of Object.entries(awsResourceTags)) {
-      functionTags.push(key + ":" + value);
-    }
-
-    // Also add the runtime as a tag
-    functionTags.push("runtime:" + lambdaFunc.Runtime);
-
-    const functionTagsSet = new Set(functionTags);
-    enrichedFunctions.push({
-      ...lambdaFunc,
-      FunctionName: lambdaFunc.FunctionName!,
-      Tags: functionTagsSet,
-    });
+    enrichedFunctions.push(...enrichedBatch);
   }
   logger.log(
     `Enriched the following functions with tags: '${JSON.stringify(
