@@ -315,6 +315,22 @@ Resources:
         detail:
           eventSource:
             - lambda.amazonaws.com
+          # Only process events that the instrumenter will actually act on
+          eventName:
+            - UpdateFunctionConfiguration20150331v2
+            - CreateFunction20150331
+            - TagResource20170331v2
+            - UntagResource20170331v2
+          # Drop operations that failed
+          errorCode:
+            - exists: false
+          # Drop events from the instrumenter itself
+          userIdentity:
+            principalId:
+              - anything-but:
+                  wildcard: !Sub
+                    - "*${Name}*"
+                    - Name: !FindInMap [ Constants, InstrumenterFunctionName, Name ]
       State: "ENABLED"
       Targets:
         - Arn: !GetAtt LambdaFunction.Arn
