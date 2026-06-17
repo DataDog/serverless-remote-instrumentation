@@ -598,17 +598,15 @@ export function needsInstrumentationUpdate(
 }
 
 // The maximum time, in seconds, to wait for a function to become Active before
-// giving up. Roughly preserves the previous hand-rolled loop's ~10s ceiling.
+// giving up.
 const FUNCTION_ACTIVE_MAX_WAIT_SECONDS = 10;
 
 export const waitUntilFunctionIsActive = async (
   functionName: string,
 ): Promise<boolean> => {
-  // Attempting to edit a function that is in a pending state will cause a
-  // resource conflict exception to be thrown, and they usually exit that state
-  // after a few seconds. Use the AWS SDK's built-in waiter, which polls with
-  // exponential backoff and handles terminal states, instead of a hand-rolled
-  // polling loop. waitUntilFunctionActiveV2 polls the GetFunction API:
+  // Editing a function while it is in a pending state throws a resource
+  // conflict exception, so wait for it to become Active first.
+  // waitUntilFunctionActiveV2 polls the GetFunction API:
   // https://github.com/aws/aws-sdk-js-v3/blob/main/clients/client-lambda/src/waiters/waitForFunctionActiveV2.ts
   const lambdaClient = getLambdaClient();
   try {
@@ -618,8 +616,7 @@ export const waitUntilFunctionIsActive = async (
     );
     return state === WaiterState.SUCCESS;
   } catch {
-    // waitUntil* throws on TIMEOUT/FAILURE. Preserve the previous behavior of
-    // returning false (rather than throwing) so callers can still proceed.
+    // waitUntil* throws on TIMEOUT/FAILURE; return false so callers can proceed.
     return false;
   }
 };
