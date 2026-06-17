@@ -20,7 +20,7 @@ import {
   LambdaManagementEvent,
   InstrumenterEvent,
 } from "../src/lambda-event";
-import { getLambdaFunction } from "../src/functions";
+import { getLambdaFunction, enrichFunctionsWithTags } from "../src/functions";
 
 describe("isScheduledInvocationEvent", () => {
   it("should return true if the event is a scheduled invocation event", () => {
@@ -389,5 +389,25 @@ describe("getFunctionFromLambdaEvent", () => {
     const result = await getFunctionFromLambdaEvent({} as any, updateEvent);
 
     expect(result?.Tags).toEqual({});
+  });
+
+  it("end-to-end: resolving + enriching a lambda event makes exactly one GetFunction call", async () => {
+    // Real getFunctionFromLambdaEvent + real enrichFunctionsWithTags; only the
+    // GetFunction AWS SDK call is mocked. This proves the tags fetched while
+    // resolving the function are reused by enrichment instead of triggering a
+    // second GetFunction.
+    mockedGetLambdaFunction.mockResolvedValue({
+      Configuration: { FunctionName: "my-func", Runtime: "nodejs18.x" },
+      Tags: { env: "prod" },
+    } as any);
+
+    const fn = await getFunctionFromLambdaEvent({} as any, updateEvent);
+    const [enriched] = await enrichFunctionsWithTags({} as any, [fn!]);
+
+    // Exactly one GetFunction across resolve + enrich (was two before the fix).
+    expect(mockedGetLambdaFunction).toHaveBeenCalledTimes(1);
+    // Enrichment used the threaded tags (env:prod present alongside runtime).
+    expect(enriched.Tags?.has("env:prod")).toBe(true);
+    expect(enriched.Tags?.has("runtime:nodejs18.x")).toBe(true);
   });
 });
