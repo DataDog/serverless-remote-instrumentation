@@ -41,4 +41,15 @@ const deleteObject = async (key: string): Promise<any> => {
   return s3.send(command);
 };
 
-export { createPresignedUrl, doesObjectExist, deleteObject };
+const putObject = async (key: string, body: string): Promise<any> => {
+  const s3 = await getS3Client();
+  const command = new PutObjectCommand({
+    Bucket: bucketName,
+    Key: key,
+    Body: body,
+  });
+
+  return s3.send(command);
+};
+
+export { createPresignedUrl, doesObjectExist, deleteObject, putObject };

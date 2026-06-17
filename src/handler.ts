@@ -14,6 +14,7 @@ import {
   isLambdaManagementEvent,
   isStackDeletedEvent,
   isStackCreatedEvent,
+  isStackUpdatedEvent,
   isScheduledInvocationEvent,
   getFunctionFromLambdaEvent,
   selectEventFieldsForLogging,
@@ -125,6 +126,17 @@ export const handler = async (
     } else {
       await cfnResponse.send(event, context, "SUCCESS");
     }
+  } else if (isStackUpdatedEvent(event)) {
+    // On a stack update, delete the config hash so the next scheduled
+    // invocation treats the config as changed and re-instruments all functions.
+    logger.log(`Received a CloudFormation '${event.RequestType}' event.`);
+    try {
+      await deleteConfigHash(s3Client);
+    } catch (e) {
+      logger.error(e instanceof Error ? e.message : String(e));
+    }
+    // Always respond to CloudFormation so the custom resource update completes.
+    await cfnResponse.send(event, context, "SUCCESS");
   }
 
   // Else if it's a Lambda Management event, validate the event and instrument the function

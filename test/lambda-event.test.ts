@@ -4,6 +4,7 @@ import {
   isScheduledInvocationEvent,
   isStackDeletedEvent,
   isStackCreatedEvent,
+  isStackUpdatedEvent,
   isLambdaManagementEvent,
   isUpdateConfigurationEvent,
   isCreateFunctionEvent,
@@ -69,6 +70,25 @@ describe("isStackCreatedEvent", () => {
   it("should return false if the RequestType property is unset", () => {
     const event = {};
     expect(isStackCreatedEvent(event)).toBe(false);
+  });
+});
+
+describe("isStackUpdatedEvent", () => {
+  it("should return true if the event is a stack updated event", () => {
+    const event = {
+      RequestType: "Update",
+    };
+    expect(isStackUpdatedEvent(event)).toBe(true);
+  });
+  it("should return false if the event is not a stack updated event", () => {
+    const event = {
+      RequestType: "Not a stack updated event",
+    };
+    expect(isStackUpdatedEvent(event)).toBe(false);
+  });
+  it("should return false if the RequestType property is unset", () => {
+    const event = {};
+    expect(isStackUpdatedEvent(event)).toBe(false);
   });
 });
 

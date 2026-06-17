@@ -83,6 +83,17 @@ export function isStackCreatedEvent(
   );
 }
 
+export function isStackUpdatedEvent(
+  event: unknown,
+): event is CloudFormationEvent {
+  return (
+    typeof event === "object" &&
+    event !== null &&
+    "RequestType" in event &&
+    (event as CloudFormationEvent).RequestType === "Update"
+  );
+}
+
 export function isLambdaManagementEvent(
   event: unknown,
 ): event is LambdaManagementEvent {

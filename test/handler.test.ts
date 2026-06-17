@@ -381,6 +381,64 @@ describe("stack delete events", () => {
   });
 });
 
+describe("stack update events", () => {
+  const event = {
+    RequestType: "Update",
+    ResponseURL: "url",
+    ResourceType: "AWS::CloudFormation::CustomResource",
+    StackId: "fakeStackId",
+    PhysicalResourceId: "fakePhysicalResourceId",
+    RequestId: "fakeRequestId",
+  };
+  const context = "context";
+
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
+  test("deletes the config hash and calls back with success", async () => {
+    mockedLambdaEvent.isStackUpdatedEvent.mockReturnValue(true);
+    mockedConfig.deleteConfigHash.mockResolvedValue(true);
+    mockedCfnResponse.send.mockResolvedValue(true);
+
+    await handler.handler(
+      event as unknown as InstrumenterEvent,
+      context as unknown as Context,
+    );
+
+    expect(mockedConfig.deleteConfigHash).toHaveBeenCalledTimes(1);
+    // It should not instrument or uninstrument any functions on an update.
+    expect(mockedInstrument.instrumentFunctions).not.toHaveBeenCalled();
+    expect(mockedCfnResponse.send).toHaveBeenCalledTimes(1);
+    expect(mockedCfnResponse.send).toHaveBeenCalledWith(
+      event,
+      context,
+      "SUCCESS",
+    );
+  });
+
+  test("still sends SUCCESS when deleting the config hash throws", async () => {
+    mockedLambdaEvent.isStackUpdatedEvent.mockReturnValue(true);
+    mockedConfig.deleteConfigHash.mockImplementation(() => {
+      throw new Error("delete failed");
+    });
+    mockedCfnResponse.send.mockResolvedValue(true);
+
+    await handler.handler(
+      event as unknown as InstrumenterEvent,
+      context as unknown as Context,
+    );
+
+    expect(mockedConfig.deleteConfigHash).toHaveBeenCalledTimes(1);
+    expect(mockedCfnResponse.send).toHaveBeenCalledTimes(1);
+    expect(mockedCfnResponse.send).toHaveBeenCalledWith(
+      event,
+      context,
+      "SUCCESS",
+    );
+  });
+});
+
 describe("stack create events", () => {
   beforeEach(() => {
     vi.resetAllMocks();

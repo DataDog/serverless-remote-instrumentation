@@ -101,9 +101,15 @@ const invokeLambdaWithCFNCreateEvent =
     return invokeLambdaWithCFNEvent("Create");
   };
 
+const invokeLambdaWithCFNUpdateEvent =
+  async (): Promise<InvokeLambdaWithCFNEventResult> => {
+    return invokeLambdaWithCFNEvent("Update");
+  };
+
 export {
   invokeLambdaWithScheduledEvent,
   invokeLambdaWithLambdaManagementEvent,
   invokeLambdaWithCFNDeleteEvent,
   invokeLambdaWithCFNCreateEvent,
+  invokeLambdaWithCFNUpdateEvent,
 };
