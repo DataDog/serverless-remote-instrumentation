@@ -10,7 +10,6 @@ import {
   LambdaClient,
   waitUntilFunctionActiveV2,
 } from "@aws-sdk/client-lambda";
-import { WaiterState } from "@smithy/core/client";
 import type {
   FunctionConfiguration,
   GetFunctionCommandOutput,
@@ -610,11 +609,12 @@ export const waitUntilFunctionIsActive = async (
   // https://github.com/aws/aws-sdk-js-v3/blob/main/clients/client-lambda/src/waiters/waitForFunctionActiveV2.ts
   const lambdaClient = getLambdaClient();
   try {
-    const { state } = await waitUntilFunctionActiveV2(
+    await waitUntilFunctionActiveV2(
       { client: lambdaClient, maxWaitTime: FUNCTION_ACTIVE_MAX_WAIT_SECONDS },
       { FunctionName: functionName },
     );
-    return state === WaiterState.SUCCESS;
+    // The waiter resolves only when the function reached the Active state.
+    return true;
   } catch {
     // waitUntil* throws on TIMEOUT/FAILURE; return false so callers can proceed.
     return false;

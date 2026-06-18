@@ -20,7 +20,6 @@ import {
 import * as awsClients from "../src/aws-resources";
 import { baseInstrumentOutcome } from "./test-utils";
 import { waitUntilFunctionActiveV2 } from "@aws-sdk/client-lambda";
-import { WaiterState } from "@smithy/core/client";
 
 vi.mock("../src/aws-resources");
 vi.mock("@aws-sdk/client-lambda", async () => ({
@@ -1598,20 +1597,14 @@ describe("waitUntilFunctionIsActive", () => {
     vi.resetAllMocks();
   });
 
-  test("returns true when the SDK waiter reaches a SUCCESS state", async () => {
-    mockedWaiter.mockResolvedValue({ state: WaiterState.SUCCESS } as any);
+  test("returns true when the SDK waiter resolves (function reached Active)", async () => {
+    mockedWaiter.mockResolvedValue({} as any);
     const res = await waitUntilFunctionIsActive("test-function");
     expect(res).toStrictEqual(true);
     expect(mockedWaiter).toHaveBeenCalledTimes(1);
     expect(mockedWaiter).toHaveBeenCalledWith(expect.anything(), {
       FunctionName: "test-function",
     });
-  });
-
-  test("returns false when the SDK waiter ends in a non-success state", async () => {
-    mockedWaiter.mockResolvedValue({ state: WaiterState.TIMEOUT } as any);
-    const res = await waitUntilFunctionIsActive("test-function");
-    expect(res).toStrictEqual(false);
   });
 
   test("returns false (does not throw) when the SDK waiter throws", async () => {
