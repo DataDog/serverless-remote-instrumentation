@@ -2,7 +2,10 @@ import { LambdaClient } from "@aws-sdk/client-lambda";
 import { ResourceNotFoundException } from "@aws-sdk/client-lambda";
 import { FunctionConfiguration } from "@aws-sdk/client-lambda";
 import { getLambdaFunction } from "./functions";
-import { DD_SLS_REMOTE_INSTRUMENTER_VERSION } from "./consts";
+import {
+  DD_SLS_REMOTE_INSTRUMENTER_VERSION,
+  type UnenrichedLambdaFunction,
+} from "./consts";
 import { logger } from "./logger";
 
 const UPDATE_FUNCTION_CONFIGURATION_EVENT_NAME =
@@ -179,7 +182,7 @@ export { shouldSkipEvent };
 export async function getFunctionFromLambdaEvent(
   lambdaClient: LambdaClient,
   event: LambdaManagementEvent,
-): Promise<FunctionConfiguration | undefined> {
+): Promise<UnenrichedLambdaFunction | undefined> {
   // If it's not a supported event type, skip it
   if (shouldSkipEvent(event)) {
     return;
@@ -217,7 +220,14 @@ export async function getFunctionFromLambdaEvent(
       lambdaClient,
       functionName!,
     );
-    return functionFromEvent.Configuration;
+    // getLambdaFunction (GetFunction) already returns the resource tags, so
+    // thread them through here. Defaulting to {} (rather than leaving it
+    // undefined) ensures enrichFunctionsWithTags uses these tags instead of
+    // issuing a second GetFunction call for the same function.
+    return {
+      ...functionFromEvent.Configuration,
+      Tags: functionFromEvent.Tags ?? {},
+    };
   } catch (e) {
     if (e instanceof ResourceNotFoundException) {
       return;

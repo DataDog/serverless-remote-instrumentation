@@ -1,4 +1,9 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+vi.mock("../src/functions", async () => ({
+  ...(await vi.importActual("../src/functions")),
+  getLambdaFunction: vi.fn(),
+}));
 
 import {
   isScheduledInvocationEvent,
@@ -11,9 +16,11 @@ import {
   isUntagResourceEvent,
   shouldSkipEvent,
   selectEventFieldsForLogging,
+  getFunctionFromLambdaEvent,
   LambdaManagementEvent,
   InstrumenterEvent,
 } from "../src/lambda-event";
+import { getLambdaFunction, enrichFunctionsWithTags } from "../src/functions";
 
 describe("isScheduledInvocationEvent", () => {
   it("should return true if the event is a scheduled invocation event", () => {
@@ -335,5 +342,72 @@ describe("selectEventFieldsForLogging", () => {
     expect(
       selectEventFieldsForLogging(event as unknown as InstrumenterEvent),
     ).toStrictEqual(expected);
+  });
+});
+
+describe("getFunctionFromLambdaEvent", () => {
+  const mockedGetLambdaFunction = vi.mocked(getLambdaFunction);
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.AWS_LAMBDA_FUNCTION_NAME = "instrumenter-function";
+  });
+
+  const updateEvent = {
+    "detail-type": "AWS API Call via CloudTrail",
+    source: "aws.lambda",
+    detail: {
+      eventName: "UpdateFunctionConfiguration20150331v2",
+      requestParameters: { functionName: "my-func" },
+      responseElements: { functionName: "my-func" },
+    },
+  } as unknown as LambdaManagementEvent;
+
+  it("returns the function config with the tags from the GetFunction call (no second fetch)", async () => {
+    mockedGetLambdaFunction.mockResolvedValue({
+      Configuration: { FunctionName: "my-func", Runtime: "nodejs18.x" },
+      Tags: { env: "prod" },
+    } as any);
+
+    const result = await getFunctionFromLambdaEvent({} as any, updateEvent);
+
+    expect(result).toEqual({
+      FunctionName: "my-func",
+      Runtime: "nodejs18.x",
+      Tags: { env: "prod" },
+    });
+    // The resolver should fetch the function exactly once.
+    expect(mockedGetLambdaFunction).toHaveBeenCalledTimes(1);
+  });
+
+  it("defaults Tags to an empty object when the function has none, so enrichment doesn't re-fetch", async () => {
+    mockedGetLambdaFunction.mockResolvedValue({
+      Configuration: { FunctionName: "my-func", Runtime: "nodejs18.x" },
+      Tags: undefined,
+    } as any);
+
+    const result = await getFunctionFromLambdaEvent({} as any, updateEvent);
+
+    expect(result?.Tags).toEqual({});
+  });
+
+  it("end-to-end: resolving + enriching a lambda event makes exactly one GetFunction call", async () => {
+    // Real getFunctionFromLambdaEvent + real enrichFunctionsWithTags; only the
+    // GetFunction AWS SDK call is mocked. This proves the tags fetched while
+    // resolving the function are reused by enrichment instead of triggering a
+    // second GetFunction.
+    mockedGetLambdaFunction.mockResolvedValue({
+      Configuration: { FunctionName: "my-func", Runtime: "nodejs18.x" },
+      Tags: { env: "prod" },
+    } as any);
+
+    const fn = await getFunctionFromLambdaEvent({} as any, updateEvent);
+    const [enriched] = await enrichFunctionsWithTags({} as any, [fn!]);
+
+    // Exactly one GetFunction across resolve + enrich (was two before the fix).
+    expect(mockedGetLambdaFunction).toHaveBeenCalledTimes(1);
+    // Enrichment used the threaded tags (env:prod present alongside runtime).
+    expect(enriched.Tags?.has("env:prod")).toBe(true);
+    expect(enriched.Tags?.has("runtime:nodejs18.x")).toBe(true);
   });
 });
