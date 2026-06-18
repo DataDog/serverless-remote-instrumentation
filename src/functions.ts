@@ -596,27 +596,22 @@ export function needsInstrumentationUpdate(
   return { instrument: true, uninstrument: false, tag: true, untag: false };
 }
 
-// The maximum time, in seconds, to wait for a function to become Active before
-// giving up.
+// Max seconds to wait for a function to become Active before giving up.
 const FUNCTION_ACTIVE_MAX_WAIT_SECONDS = 10;
 
 export const waitUntilFunctionIsActive = async (
   functionName: string,
 ): Promise<boolean> => {
-  // Editing a function while it is in a pending state throws a resource
-  // conflict exception, so wait for it to become Active first.
-  // waitUntilFunctionActiveV2 polls the GetFunction API:
-  // https://github.com/aws/aws-sdk-js-v3/blob/main/clients/client-lambda/src/waiters/waitForFunctionActiveV2.ts
+  // Editing a function in a pending state throws a resource conflict, so wait
+  // for it to become Active. The waiter resolves on success and throws otherwise.
   const lambdaClient = getLambdaClient();
   try {
     await waitUntilFunctionActiveV2(
       { client: lambdaClient, maxWaitTime: FUNCTION_ACTIVE_MAX_WAIT_SECONDS },
       { FunctionName: functionName },
     );
-    // The waiter resolves only when the function reached the Active state.
     return true;
   } catch {
-    // waitUntil* throws on TIMEOUT/FAILURE; return false so callers can proceed.
     return false;
   }
 };
