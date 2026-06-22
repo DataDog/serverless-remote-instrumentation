@@ -3,13 +3,12 @@ import {
   GetResourcesCommand,
 } from "@aws-sdk/client-resource-groups-tagging-api";
 import type { GetResourcesCommandOutput } from "@aws-sdk/client-resource-groups-tagging-api";
-import { sleep } from "./sleep";
 import {
   GetFunctionCommand,
-  GetFunctionConfigurationCommand,
   ListFunctionsCommand,
   GetAccountSettingsCommand,
   LambdaClient,
+  waitUntilFunctionActiveV2,
 } from "@aws-sdk/client-lambda";
 import type {
   FunctionConfiguration,
@@ -597,30 +596,24 @@ export function needsInstrumentationUpdate(
   return { instrument: true, uninstrument: false, tag: true, untag: false };
 }
 
+// Max seconds to wait for a function to become Active before giving up.
+const FUNCTION_ACTIVE_MAX_WAIT_SECONDS = 10;
+
 export const waitUntilFunctionIsActive = async (
   functionName: string,
 ): Promise<boolean> => {
-  // Attempting to edit a function that is in a pending state will cause
-  // a resource conflict exception to be thrown, and they usually exit that
-  // state after a few seconds
+  // Editing a function in a pending state throws a resource conflict, so wait
+  // for it to become Active. The waiter resolves on success and throws otherwise.
   const lambdaClient = getLambdaClient();
-  let isFunctionReady = false;
-  let count = 0;
-  while (!isFunctionReady && count < 10) {
-    count += 1;
-    const functionStatus = await lambdaClient.send(
-      new GetFunctionConfigurationCommand({
-        FunctionName: functionName,
-      }),
+  try {
+    await waitUntilFunctionActiveV2(
+      { client: lambdaClient, maxWaitTime: FUNCTION_ACTIVE_MAX_WAIT_SECONDS },
+      { FunctionName: functionName },
     );
-    const { State } = functionStatus;
-    if (State !== "Pending") {
-      isFunctionReady = true;
-    } else {
-      await sleep(1000);
-    }
+    return true;
+  } catch {
+    return false;
   }
-  return isFunctionReady;
 };
 
 export function selectFunctionFieldsForLogging(
