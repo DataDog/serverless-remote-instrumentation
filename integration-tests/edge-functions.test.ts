@@ -14,42 +14,43 @@ let edgeFunctionName: string;
 describe.skipIf(region !== "us-east-1")(
   `Remote instrumenter edge function tests (requires us-east-1, current region: ${region})`,
   () => {
-  beforeAll(async () => {
-    edgeFunctionName = await getEdgeFunctionName();
-    await clearRemoteConfigs();
-  });
-
-  afterAll(async () => {
-    await clearRemoteConfigs();
-  });
-
-  beforeEach(async () => {
-    await clearKnownRemoteConfigs();
-  });
-
-  it("skips a Lambda@Edge function instead of instrumenting it", async () => {
-    await setRemoteConfig({
-      ruleFilters: [
-        {
-          key: "function_name",
-          values: [edgeFunctionName],
-          filter_type: "function_name",
-          allow: true,
-        },
-      ],
+    beforeAll(async () => {
+      edgeFunctionName = await getEdgeFunctionName();
+      await clearRemoteConfigs();
     });
 
-    const { payload, errors } = await invokeLambdaWithLambdaManagementEvent({
-      eventName: "CreateFunction20150331",
-      targetFunctionName: edgeFunctionName,
-      useEdgeInstrumenter: true,
+    afterAll(async () => {
+      await clearRemoteConfigs();
     });
 
-    expect(errors).toBeFalsy();
-    expect(Object.keys(payload.instrument.skipped)).toContain(edgeFunctionName);
-    expect(
-      payload.instrument.skipped[edgeFunctionName].reasonCode,
-    ).toStrictEqual("edge-function");
-  });
-},
+    beforeEach(async () => {
+      await clearKnownRemoteConfigs();
+    });
+
+    it("skips a Lambda@Edge function instead of instrumenting it", async () => {
+      await setRemoteConfig({
+        ruleFilters: [
+          {
+            key: "function_name",
+            values: [edgeFunctionName],
+            filter_type: "function_name",
+            allow: true,
+          },
+        ],
+      });
+
+      const { payload, errors } = await invokeLambdaWithLambdaManagementEvent({
+        eventName: "CreateFunction20150331",
+        targetFunctionName: edgeFunctionName,
+      });
+
+      expect(errors).toBeFalsy();
+      expect(Object.keys(payload.instrument.skipped)).toContain(
+        edgeFunctionName,
+      );
+      expect(
+        payload.instrument.skipped[edgeFunctionName].reasonCode,
+      ).toStrictEqual("edge-function");
+    });
+  },
 );

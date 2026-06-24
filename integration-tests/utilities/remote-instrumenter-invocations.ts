@@ -1,5 +1,5 @@
 import { InvokeCommand } from "@aws-sdk/client-lambda";
-import { getLambdaClient, getEdgeLambdaClient } from "./aws-resources";
+import { getLambdaClient } from "./aws-resources";
 import { functionName } from "../config.json";
 import { createPresignedUrl, deleteObject } from "./s3-helpers";
 
@@ -22,7 +22,6 @@ const invokeLambdaWithScheduledEvent = async (): Promise<any> => {
 interface InvokeLambdaWithLambdaManagementEventOptions {
   eventName?: string;
   targetFunctionName?: string;
-  useEdgeInstrumenter?: boolean;
 }
 
 interface InvokeLambdaWithLambdaManagementEventResult {
@@ -33,7 +32,6 @@ interface InvokeLambdaWithLambdaManagementEventResult {
 const invokeLambdaWithLambdaManagementEvent = async ({
   eventName = "UpdateFunctionConfiguration20150331v2",
   targetFunctionName,
-  useEdgeInstrumenter = false,
 }: InvokeLambdaWithLambdaManagementEventOptions): Promise<InvokeLambdaWithLambdaManagementEventResult> => {
   const command = new InvokeCommand({
     FunctionName: functionName,
@@ -52,9 +50,7 @@ const invokeLambdaWithLambdaManagementEvent = async ({
       name: `integration-tests${process.env.USER}`,
     }),
   });
-  const lambdaClient = useEdgeInstrumenter
-    ? await getEdgeLambdaClient()
-    : await getLambdaClient();
+  const lambdaClient = await getLambdaClient();
   const res = await lambdaClient.send(command);
   const payload = JSON.parse(Buffer.from(res.Payload).toString());
   return {

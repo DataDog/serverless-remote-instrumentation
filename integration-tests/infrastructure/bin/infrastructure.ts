@@ -16,31 +16,21 @@ class TestingStack extends Stack {
   constructor(scope: Construct, id: string, props?: any) {
     super(scope, id, props);
 
-    const stackRegion = this.region;
-
-    // IAM roles and S3 buckets are global, so names must differ when this stack
-    // is deployed to a region other than the primary test region. The primary
-    // region names already embed `region` (e.g. "…-eu-north-1-…"), so a simple
-    // replace keeps them stable while producing unique names elsewhere.
-    const effectiveRoleName = roleName.replace(region, stackRegion);
-    const effectiveBucketName = bucketName.replace(region, stackRegion);
-    const effectiveTestLambdaRole = testLambdaRole.replace(region, stackRegion);
-
     const assumedRole = new Role(this, 'AssumedRoleForTests', {
       assumedBy: new AccountRootPrincipal(),
-      roleName: effectiveRoleName,
+      roleName,
     });
 
     assumedRole.addToPolicy(new PolicyStatement({
       actions: ['s3:*'],
-      resources: [ `arn:aws:s3:::${effectiveBucketName}/*`, `arn:aws:s3:::${effectiveBucketName}` ],
+      resources: [ `arn:aws:s3:::${bucketName}/*`, `arn:aws:s3:::${bucketName}` ],
     }));
 
     assumedRole.addToPolicy(new PolicyStatement({
       actions: ['lambda:InvokeFunction'],
       resources: [
-        `arn:aws:lambda:${stackRegion}:${account}:function:${functionName}`,
-        `arn:aws:lambda:${stackRegion}:${account}:function:ri-test-*`,
+        `arn:aws:lambda:${region}:${account}:function:${functionName}`,
+        `arn:aws:lambda:${region}:${account}:function:ri-test-*`,
       ],
     }));
 
@@ -60,12 +50,12 @@ class TestingStack extends Stack {
 
     assumedRole.addToPolicy(new PolicyStatement({
       actions: ['secretsmanager:GetSecretValue'],
-      resources: [ `arn:aws:secretsmanager:${stackRegion}:${account}:secret:Remote_Instrumenter*` ],
+      resources: [ `arn:aws:secretsmanager:${region}:${account}:secret:Remote_Instrumenter*` ],
     }));
 
     assumedRole.addToPolicy(new PolicyStatement({
       actions: ['iam:PassRole'],
-      resources: [ `arn:aws:iam::${account}:role/${effectiveTestLambdaRole}` ],
+      resources: [ `arn:aws:iam::${account}:role/${testLambdaRole}` ],
     }));
 
     assumedRole.addToPolicy(new PolicyStatement({
@@ -85,21 +75,21 @@ class TestingStack extends Stack {
 
     new Role(this, 'TestLambdaExecutionRole', {
       assumedBy: new ServicePrincipal("lambda.amazonaws.com"),
-      roleName: effectiveTestLambdaRole,
+      roleName: testLambdaRole,
     });
 
     new CfnInclude(this, 'ImportedRemoteInstrumenterTemplate', {
-      templateFile: this.modifyTemplate(stackRegion),
+      templateFile: this.modifyTemplate(),
       parameters: {
         EnableCodeSigningConfigurations: false,
         UseExistingCloudTrailTrail: true,
         DdSite: ddSite,
         DdApiKey: SecretValue.secretsManager(apiSecretName),
-        BucketName: effectiveBucketName,
+        BucketName: bucketName,
       },
     });
 
-    if (stackRegion === 'us-east-1') {
+    if (region === 'us-east-1') {
       // S3 bucket used as the CloudFront origin. Lambda@Edge functions need a
       // real origin to be associated with a distribution.
       const originBucket = new Bucket(this, 'EdgeFunctionOriginBucket', {
@@ -165,13 +155,8 @@ exports.handler = (event, context, callback) => {
     }
   }
 
-  modifyTemplate(stackRegion: string): string {
-    // Use a region-specific output path so that two stacks synthesised in the
-    // same CDK app do not clobber each other's modified template file.
-    const isPrimaryRegion = stackRegion === region;
-    const modifiedPath = isPrimaryRegion
-      ? 'modified_template.yaml'
-      : `modified_template_${stackRegion}.yaml`;
+  modifyTemplate(): string {
+    const modifiedPath = 'modified_template.yaml';
     const version = readFileSync(`${process.env.SCRIPTS_PATH}/.layers/version`, { encoding: 'utf8', flag: 'r' }).trim();
     const template = yamlParse(readFileSync('template.yaml', { encoding: 'utf8', flag: 'r' }));
     template.Mappings.Constants.DdRemoteInstrumentLayerAwsAccount.Number = account;

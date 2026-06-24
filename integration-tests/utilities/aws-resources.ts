@@ -1,7 +1,16 @@
 import { SecretsManagerClient } from "@aws-sdk/client-secrets-manager";
 import { LambdaClient } from "@aws-sdk/client-lambda";
-import { CloudFormationClient, DescribeStacksCommand } from "@aws-sdk/client-cloudformation";
-import { account, roleName, region, edgeRoleName, stackName } from "../config.json";
+import {
+  CloudFormationClient,
+  DescribeStacksCommand,
+} from "@aws-sdk/client-cloudformation";
+import {
+  account,
+  roleName,
+  region,
+  edgeRoleName,
+  stackName,
+} from "../config.json";
 import { S3Client } from "@aws-sdk/client-s3";
 import { getCredentials } from "./get-credentials";
 import { CloudWatchLogsClient } from "@aws-sdk/client-cloudwatch-logs";
@@ -56,30 +65,27 @@ const getLogsClient = (): any => {
 
 const edgeArn = `arn:aws:iam::${account}:role/${edgeRoleName}`;
 
-let edgeLambdaClient: any;
-const getEdgeLambdaClient = async (): Promise<any> => {
-  if (!edgeLambdaClient) {
-    edgeLambdaClient = new LambdaClient({
-      credentials: getCredentials(edgeArn),
-      maxAttempts: 10,
-      retryMode: "adaptive",
-      region: "us-east-1",
-    });
-  }
-  return edgeLambdaClient;
-};
-
 const getEdgeFunctionName = async (): Promise<string> => {
   const cfClient = new CloudFormationClient({
     credentials: getCredentials(edgeArn),
-    region: "us-east-1",
+    region,
   });
-  const result = await cfClient.send(new DescribeStacksCommand({ StackName: stackName }));
-  const output = result.Stacks?.[0]?.Outputs?.find((o) => o.OutputKey === "EdgeFunctionName");
+  const result = await cfClient.send(
+    new DescribeStacksCommand({ StackName: stackName }),
+  );
+  const output = result.Stacks?.[0]?.Outputs?.find(
+    (o) => o.OutputKey === "EdgeFunctionName",
+  );
   if (!output?.OutputValue) {
     throw new Error(`EdgeFunctionName output not found in stack ${stackName}`);
   }
   return output.OutputValue;
 };
 
-export { getSecretsManagerClient, getLambdaClient, getEdgeLambdaClient, getS3Client, getLogsClient, getEdgeFunctionName };
+export {
+  getSecretsManagerClient,
+  getLambdaClient,
+  getS3Client,
+  getLogsClient,
+  getEdgeFunctionName,
+};
