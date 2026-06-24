@@ -201,6 +201,7 @@ export async function instrumentFunctions(
   instrumentOutcome: InstrumentOutcome,
   taggingClient: ResourceGroupsTaggingAPIClient,
   triggeredBy?: string,
+  edgeFunctionNames?: Set<string>,
 ): Promise<void> {
   logger.emitFrontendStartOrEndEvent(
     REMOTE_INSTRUMENTATION_STARTED,
@@ -231,6 +232,7 @@ export async function instrumentFunctions(
         functionsToCheck,
         config,
         instrumentOutcome,
+        edgeFunctionNames,
       );
     logger.log(
       `Functions to instrument: ${functionsToInstrumentOrTag.map((f) => f.FunctionName)}`,
