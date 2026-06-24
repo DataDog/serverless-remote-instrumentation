@@ -45,8 +45,6 @@ describe.skipIf(region !== "us-east-1")(
       useEdgeInstrumenter: true,
     });
 
-    console.log(payload);
-    console.log(errors);
     expect(errors).toBeFalsy();
     expect(Object.keys(payload.instrument.skipped)).toContain(edgeFunctionName);
     expect(

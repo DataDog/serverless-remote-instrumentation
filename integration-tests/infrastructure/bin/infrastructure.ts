@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { App, CfnOutput, SecretValue, Stack, RemovalPolicy, Duration, Tags } from 'aws-cdk-lib';
 import { AccountRootPrincipal, Role, ServicePrincipal, PolicyStatement, CompositePrincipal, ManagedPolicy } from 'aws-cdk-lib/aws-iam';
-import { Function as LambdaFunction, Runtime, Code, Version } from 'aws-cdk-lib/aws-lambda';
+import { Function as LambdaFunction, Runtime, Code, Version, CfnFunction } from 'aws-cdk-lib/aws-lambda';
 import { Distribution, LambdaEdgeEventType, ViewerProtocolPolicy } from 'aws-cdk-lib/aws-cloudfront';
 import { S3BucketOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
 import { Bucket, BlockPublicAccess } from 'aws-cdk-lib/aws-s3';
@@ -122,7 +122,6 @@ class TestingStack extends Stack {
 
       const edgeFunction = new LambdaFunction(this, 'EdgeFn', {
         runtime: Runtime.NODEJS_24_X,
-        removalPolicy: RemovalPolicy.RETAIN,
         handler: 'index.handler',
         code: Code.fromInline(`
 'use strict';
@@ -135,6 +134,7 @@ exports.handler = (event, context, callback) => {
         memorySize: 128,
         timeout: Duration.seconds(5),
       });
+      edgeFunction.applyRemovalPolicy(RemovalPolicy.RETAIN);
 
       // Lambda@Edge requires a published version (not $LATEST). CloudFormation
       // registers the function as Lambda@Edge when it sees LambdaFunctionAssociations

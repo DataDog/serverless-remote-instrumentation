@@ -1,11 +1,10 @@
 import { expect } from "vitest";
 import {
   GetFunctionConfigurationCommand,
-  InvokeCommand,
   ListTagsCommand,
 } from "@aws-sdk/client-lambda";
 import { getRemoteConfig } from "./remote-config";
-import { getLambdaClient, getEdgeLambdaClient } from "./aws-resources";
+import { getLambdaClient } from "./aws-resources";
 import { isFunctionInvokable } from "./lambda-functions";
 import { ddSite } from "../config.json";
 import { pollUntilTrue } from "./poll-until-true";
@@ -179,33 +178,9 @@ const expectFunctionsToBeInstrumented = async (
   );
 };
 
-// Lambda@Edge functions cannot have environment variables once associated with
-// a CloudFront distribution, so instrumentation is verified by layer presence
-// only. Uses a us-east-1 client since edge functions must live there.
-const isEdgeFunctionInstrumented = async (
-  functionName: string,
-): Promise<boolean> => {
-  const lambdaClient = await getEdgeLambdaClient();
-  const funConfig = await lambdaClient.send(
-    new GetFunctionConfigurationCommand({ FunctionName: functionName }),
-  );
-  const rc = await getRemoteConfig();
-  const { extension_version } = rc.data[0].attributes.instrumentation_settings;
-
-  if (!checkLayer(funConfig, "Datadog-Extension", extension_version)) {
-    return false;
-  }
-
-  const { StatusCode } = await lambdaClient.send(
-    new InvokeCommand({ FunctionName: functionName, Payload: "{}" }),
-  );
-  return StatusCode === 200;
-};
-
 export {
   hasRemoteInstrumenterTag,
   isFunctionInstrumented,
   isFunctionUninstrumented,
-  isEdgeFunctionInstrumented,
   expectFunctionsToBeInstrumented,
 };

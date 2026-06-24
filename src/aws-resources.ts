@@ -57,6 +57,7 @@ const getCloudFrontClient = () => {
   return cloudFrontClient;
 };
 
+// Lambda ARN format: arn:aws:lambda:REGION:ACCOUNT:function:NAME[:VERSION]
 const extractFunctionNameFromArn = (lambdaArn: string): string =>
   lambdaArn.split(":")[6];
 
@@ -81,16 +82,13 @@ const collectLambdaArnsFromDistribution = (
 export const getEdgeLambdaFunctionNames = async (): Promise<Set<string>> => {
   const client = getCloudFrontClient();
   const names = new Set<string>();
-  const allDistributions: DistributionSummary[] = [];
 
   let marker: string | undefined;
   do {
     const output = await client.send(
       new ListDistributionsCommand({ Marker: marker }),
     );
-    const page = output.DistributionList?.Items ?? [];
-    allDistributions.push(...page);
-    for (const dist of page) {
+    for (const dist of output.DistributionList?.Items ?? []) {
       for (const arn of collectLambdaArnsFromDistribution(dist)) {
         names.add(extractFunctionNameFromArn(arn));
       }
@@ -99,13 +97,6 @@ export const getEdgeLambdaFunctionNames = async (): Promise<Set<string>> => {
       ? output.DistributionList.NextMarker
       : undefined;
   } while (marker);
-
-  logger.log(
-    `CloudFront distributions: ${JSON.stringify(allDistributions.map((d) => ({ id: d.Id, domainName: d.DomainName, lambdaArns: collectLambdaArnsFromDistribution(d) })))}`,
-  );
-  logger.log(
-    `Lambda@Edge function names derived from CloudFront distributions: ${JSON.stringify([...names])}`,
-  );
 
   return names;
 };
