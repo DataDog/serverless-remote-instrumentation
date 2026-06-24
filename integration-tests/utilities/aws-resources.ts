@@ -4,12 +4,7 @@ import {
   CloudFormationClient,
   DescribeStacksCommand,
 } from "@aws-sdk/client-cloudformation";
-import {
-  account,
-  roleName,
-  region,
-  stackName,
-} from "../config.json";
+import { account, roleName, region, stackName } from "../config.json";
 import { S3Client } from "@aws-sdk/client-s3";
 import { getCredentials } from "./get-credentials";
 import { CloudWatchLogsClient } from "@aws-sdk/client-cloudwatch-logs";
