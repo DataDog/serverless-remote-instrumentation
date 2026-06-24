@@ -8,7 +8,6 @@ import {
   account,
   roleName,
   region,
-  edgeRoleName,
   stackName,
 } from "../config.json";
 import { S3Client } from "@aws-sdk/client-s3";
@@ -63,11 +62,9 @@ const getLogsClient = (): any => {
   return logsClient;
 };
 
-const edgeArn = `arn:aws:iam::${account}:role/${edgeRoleName}`;
-
 const getEdgeFunctionName = async (): Promise<string> => {
   const cfClient = new CloudFormationClient({
-    credentials: getCredentials(edgeArn),
+    credentials: getCredentials(arn),
     region,
   });
   const result = await cfClient.send(
