@@ -326,6 +326,11 @@ export function isRemotelyInstrumented(lambdaFunc: LambdaFunction): boolean {
   return tagKeys.has(DD_SLS_REMOTE_INSTRUMENTER_VERSION);
 }
 
+export function isTaggedWithCurrentVersion(lambdaFunc: LambdaFunction): boolean {
+  const expectedTag = `${DD_SLS_REMOTE_INSTRUMENTER_VERSION}:v${VERSION}`;
+  return (lambdaFunc.Tags as Set<string>).has(expectedTag);
+}
+
 const hasLayerMatching = (l: LambdaFunction, matcher: string): boolean =>
   l?.Layers?.some((layer) => layer.Arn!.includes(matcher))!;
 
@@ -643,8 +648,14 @@ export function needsInstrumentationUpdate(
     return { instrument: false, uninstrument: false, tag: false, untag: false };
   }
 
-  // Otherwise, instrument it
-  return { instrument: true, uninstrument: false, tag: true, untag: false };
+  // Otherwise, instrument it. Skip tagging if the function already has the
+  // current version tag — avoids a TagResources call on re-instrumentation.
+  return {
+    instrument: true,
+    uninstrument: false,
+    tag: !isTaggedWithCurrentVersion(lambdaFunc),
+    untag: false,
+  };
 }
 
 // Max seconds to wait for a function to become Active before giving up.
