@@ -326,7 +326,9 @@ export function isRemotelyInstrumented(lambdaFunc: LambdaFunction): boolean {
   return tagKeys.has(DD_SLS_REMOTE_INSTRUMENTER_VERSION);
 }
 
-export function isTaggedWithCurrentVersion(lambdaFunc: LambdaFunction): boolean {
+export function isTaggedWithCurrentVersion(
+  lambdaFunc: LambdaFunction,
+): boolean {
   const expectedTag = `${DD_SLS_REMOTE_INSTRUMENTER_VERSION}:v${VERSION}`;
   return (lambdaFunc.Tags as Set<string>).has(expectedTag);
 }

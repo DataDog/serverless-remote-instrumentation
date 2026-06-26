@@ -1,4 +1,7 @@
-import { GetFunctionConfigurationCommand, InvokeCommand } from "@aws-sdk/client-lambda";
+import {
+  GetFunctionConfigurationCommand,
+  InvokeCommand,
+} from "@aws-sdk/client-lambda";
 import { getLambdaClient } from "./aws-resources";
 import { functionName } from "../config.json";
 import { createPresignedUrl, deleteObject } from "./s3-helpers";
@@ -106,7 +109,9 @@ const invokeLambdaWithCFNUpdateEvent =
     return invokeLambdaWithCFNEvent("Update");
   };
 
-const getDeployedInstrumenterVersion = async (): Promise<string | undefined> => {
+const getDeployedInstrumenterVersion = async (): Promise<
+  string | undefined
+> => {
   const lambdaClient = await getLambdaClient();
   const config = await lambdaClient.send(
     new GetFunctionConfigurationCommand({ FunctionName: functionName }),
