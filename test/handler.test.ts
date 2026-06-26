@@ -109,6 +109,7 @@ describe("handler lambda management events", () => {
       expect.anything(),
       expect.anything(),
       LAMBDA_EVENT,
+      undefined,
     );
     expect(mockedErrorStorage.putError).not.toHaveBeenCalled();
   });
@@ -219,6 +220,8 @@ describe("scheduled invocation events", () => {
       "A",
       expect.anything(),
       expect.anything(),
+      undefined,
+      undefined,
     );
     expect(mockedErrorStorage.putError).toHaveBeenCalledTimes(1);
     expect(mockedErrorStorage.putError).toHaveBeenCalledWith(
@@ -315,6 +318,7 @@ describe("stack delete events", () => {
       expect.anything(),
       expect.anything(),
       "CloudformationDeleteEvent",
+      undefined,
     );
     expect(mockedCfnResponse.send).toHaveBeenCalledTimes(1);
     expect(mockedCfnResponse.send).toHaveBeenCalledWith(
@@ -367,6 +371,7 @@ describe("stack delete events", () => {
       expect.anything(),
       expect.anything(),
       "CloudformationDeleteEvent",
+      undefined,
     );
     expect(mockedCfnResponse.send).toHaveBeenCalledTimes(1);
     expect(mockedCfnResponse.send).toHaveBeenCalledWith(
@@ -490,6 +495,7 @@ describe("stack create events", () => {
       expect.anything(),
       expect.anything(),
       "CloudformationCreateEvent",
+      undefined,
     );
     expect(mockedCfnResponse.send).toHaveBeenCalledTimes(1);
     expect(mockedCfnResponse.send).toHaveBeenCalledWith(

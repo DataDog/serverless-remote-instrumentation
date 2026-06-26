@@ -1,6 +1,10 @@
 import { SecretsManagerClient } from "@aws-sdk/client-secrets-manager";
 import { LambdaClient } from "@aws-sdk/client-lambda";
-import { account, roleName, region } from "../config.json";
+import {
+  CloudFormationClient,
+  DescribeStacksCommand,
+} from "@aws-sdk/client-cloudformation";
+import { account, roleName, region, stackName } from "../config.json";
 import { S3Client } from "@aws-sdk/client-s3";
 import { getCredentials } from "./get-credentials";
 import { CloudWatchLogsClient } from "@aws-sdk/client-cloudwatch-logs";
@@ -53,4 +57,27 @@ const getLogsClient = (): any => {
   return logsClient;
 };
 
-export { getSecretsManagerClient, getLambdaClient, getS3Client, getLogsClient };
+const getEdgeFunctionName = async (): Promise<string> => {
+  const cfClient = new CloudFormationClient({
+    credentials: getCredentials(arn),
+    region,
+  });
+  const result = await cfClient.send(
+    new DescribeStacksCommand({ StackName: stackName }),
+  );
+  const output = result.Stacks?.[0]?.Outputs?.find(
+    (o) => o.OutputKey === "EdgeFunctionName",
+  );
+  if (!output?.OutputValue) {
+    throw new Error(`EdgeFunctionName output not found in stack ${stackName}`);
+  }
+  return output.OutputValue;
+};
+
+export {
+  getSecretsManagerClient,
+  getLambdaClient,
+  getS3Client,
+  getLogsClient,
+  getEdgeFunctionName,
+};

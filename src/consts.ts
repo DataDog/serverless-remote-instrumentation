@@ -154,6 +154,7 @@ export const ALREADY_MANUALLY_INSTRUMENTED = "already-manually-instrumented";
 export const REMOTE_INSTRUMENTER_FUNCTION = "remote-instrumenter-function";
 export const FUNCTION_NOT_FOUND = "function-not-found";
 export const DATADOG_CI_ERROR = "datadog-ci-error";
+export const EDGE_FUNCTION = "edge-function";
 
 // Remote instrumentation tag values and environment variable key names
 export const VERSION = process.env.DD_INSTRUMENTER_VERSION;

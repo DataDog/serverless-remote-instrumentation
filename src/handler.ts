@@ -38,6 +38,7 @@ import {
   getLambdaClient,
   getS3Client,
   getTaggingClient,
+  getEdgeLambdaFunctionNames,
 } from "./aws-resources";
 import { instrumentFunctions } from "./instrument";
 import { submitInstrumentationMetrics } from "./metrics";
@@ -71,6 +72,23 @@ export const handler = async (
     uninstrument: { succeeded: {}, failed: {}, skipped: {} },
   };
 
+  // In us-east-1, Lambda@Edge functions appear in ListFunctions but cannot be
+  // instrumented (no env vars, read-only replicas). Start fetching their names
+  // now so the network call overlaps with the event-specific setup below.
+  const edgeFunctionNamesPromise: Promise<Set<string> | undefined> =
+    process.env.AWS_REGION === "us-east-1"
+      ? getEdgeLambdaFunctionNames().catch((error) => {
+          logger.warn(
+            `Failed to list CloudFront distributions for Lambda@Edge detection: ${error}`,
+          );
+          return undefined;
+        })
+      : Promise.resolve(undefined);
+
+  // Alias so call sites read clearly — awaiting the same promise multiple times
+  // is safe and returns the cached result immediately after the first resolution.
+  const resolveEdgeFunctionNames = () => edgeFunctionNamesPromise;
+
   // If it's a stack event, send a response to CloudFormation for custom resource management
   if (isStackCreatedEvent(event)) {
     try {
@@ -88,6 +106,7 @@ export const handler = async (
         instrumentOutcome,
         taggingClient,
         CLOUDFORMATION_CREATE_EVENT,
+        await resolveEdgeFunctionNames(),
       );
     } catch (e) {
       logger.error(e instanceof Error ? e.message : String(e));
@@ -111,6 +130,7 @@ export const handler = async (
       instrumentOutcome,
       taggingClient,
       CLOUDFORMATION_DELETE_EVENT,
+      await resolveEdgeFunctionNames(),
     );
     const failedToUninstrument = Object.keys(
       instrumentOutcome.uninstrument.failed,
@@ -174,6 +194,7 @@ export const handler = async (
       instrumentOutcome,
       taggingClient,
       LAMBDA_EVENT,
+      await resolveEdgeFunctionNames(),
     );
 
     if (process.env[DD_INTERNAL_SEND_DEBUG_INFORMATION] === "true") {
@@ -247,6 +268,7 @@ export const handler = async (
         instrumentOutcome,
         taggingClient,
         SCHEDULED_INVOCATION_EVENT,
+        await resolveEdgeFunctionNames(),
       );
 
       await updateConfigHash(s3Client, configs);
@@ -300,6 +322,8 @@ export const handler = async (
         enrichedFunctions,
         instrumentOutcome,
         taggingClient,
+        undefined,
+        await resolveEdgeFunctionNames(),
       );
     } else {
       logger.log("Configuration has not changed. Skipping instrumentation.");

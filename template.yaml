@@ -207,6 +207,7 @@ Resources:
               - tag:UntagResources
               - lambda:ListFunctions
               - lambda:GetAccountSettings
+              - cloudfront:ListDistributions
             Resource: '*'
             Condition:
               ArnEquals:

@@ -34,6 +34,7 @@ import {
   REMOTE_INSTRUMENTER_FUNCTION,
   UNSUPPORTED_RUNTIME,
   ALREADY_CORRECT_EXTENSION_AND_LAYER,
+  EDGE_FUNCTION,
   SUPPORTED_RUNTIME_CONFIGURATIONS,
   getRuntimeConfig,
   type LambdaFunction,
@@ -286,6 +287,7 @@ export function filterFunctionsToChangeInstrumentation(
   functions: LambdaFunction[],
   config: Config,
   instrumentOutcome: InstrumentOutcome,
+  edgeFunctionNames?: Set<string>,
 ): {
   functionsToInstrumentOrTag: LambdaFunction[];
   functionsToUninstrumentOrUntag: LambdaFunction[];
@@ -299,6 +301,7 @@ export function filterFunctionsToChangeInstrumentation(
       config,
       instrumentOutcome,
       emitProcessingLogs,
+      edgeFunctionNames,
     );
     if (instrument || tag) {
       lambdaFunc.needsInstrumentation = instrument;
@@ -429,6 +432,7 @@ export function needsInstrumentationUpdate(
   config: Config,
   instrumentOutcome: InstrumentOutcome,
   emitProcessingLogs: boolean,
+  edgeFunctionNames?: Set<string>,
 ): {
   instrument: boolean;
   uninstrument: boolean;
@@ -441,6 +445,34 @@ export function needsInstrumentationUpdate(
   const isCurrentlyRemotelyInstrumented = isRemotelyInstrumented(lambdaFunc);
   const runtime = lambdaFunc.Runtime!;
   const isCurrentlyInstrumented = isInstrumented(lambdaFunc);
+
+  // Lambda@Edge functions cannot have environment variables set and should never
+  // be instrumented. Skip them unconditionally when a set of known edge function
+  // names is provided.
+  if (edgeFunctionNames?.has(functionName)) {
+    if (emitProcessingLogs) {
+      logger.emitFrontendProcessingEvent(
+        functionName,
+        `Skipping function '${functionName}' because it is a Lambda@Edge function.`,
+      );
+    }
+    const reason = `Function '${functionName}' is a Lambda@Edge function.`;
+    instrumentOutcome.instrument.skipped[functionName] = {
+      functionArn,
+      reason,
+      reasonCode: EDGE_FUNCTION,
+    };
+    logger.logInstrumentOutcome({
+      ddSlsEventName: INSTRUMENT,
+      outcome: SKIPPED,
+      targetFunctionName: functionName,
+      targetFunctionArn: functionArn,
+      runtime,
+      reason,
+      reasonCode: EDGE_FUNCTION,
+    });
+    return { instrument: false, uninstrument: false, tag: false, untag: false };
+  }
 
   // If it is instrumented but not by the remote instrumenter
   if (isCurrentlyInstrumented && !isCurrentlyRemotelyInstrumented) {
