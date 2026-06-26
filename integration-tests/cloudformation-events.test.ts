@@ -19,7 +19,11 @@ import {
   clearRemoteConfigs,
 } from "./utilities/remote-config";
 import { sleep } from "./utilities/sleep";
-import { doesObjectExist, deleteObject } from "./utilities/s3-helpers";
+import {
+  doesObjectExist,
+  deleteObject,
+  putObject,
+} from "./utilities/s3-helpers";
 import {
   createFunction,
   deleteTestFunctions,
@@ -27,7 +31,10 @@ import {
 import {
   invokeLambdaWithCFNCreateEvent,
   invokeLambdaWithCFNDeleteEvent,
+  invokeLambdaWithCFNUpdateEvent,
 } from "./utilities/remote-instrumenter-invocations";
+
+const CONFIG_HASH_KEY = "datadog_remote_instrumentation_config.txt";
 
 describe("Remote instrumenter cloudformation event tests", () => {
   let keysToDelete: string[] = [];
@@ -97,5 +104,24 @@ describe("Remote instrumenter cloudformation event tests", () => {
     // And instruments the lambda
     const isInstrumented = await isFunctionInstrumented(functionName);
     expect(isInstrumented).toStrictEqual(true);
+  });
+
+  it("deletes the config hash on stack update", async () => {
+    // Given a config hash already exists in S3
+    await putObject(CONFIG_HASH_KEY, "some-stale-config-hash");
+    expect(await doesObjectExist(CONFIG_HASH_KEY)).toStrictEqual(true);
+
+    // The remote instrumenter being called like it would be on stack update
+    const { s3Key } = await invokeLambdaWithCFNUpdateEvent();
+    keysToDelete.push(s3Key);
+
+    // Responds to CloudFormation so the custom resource update completes
+    const didCfnCallbackHappen = await doesObjectExist(s3Key);
+    expect(didCfnCallbackHappen).toEqual(true);
+
+    // And the config hash has been deleted so the next scheduled invocation
+    // re-evaluates instrumentation
+    const configHashStillExists = await doesObjectExist(CONFIG_HASH_KEY);
+    expect(configHashStillExists).toStrictEqual(false);
   });
 });

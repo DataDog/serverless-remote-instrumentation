@@ -12,10 +12,9 @@ const getRemoteConfig = async (): Promise<RemoteConfigData> => {
   const [apiKey, appKey] = await Promise.all([getApiKey(), getAppKey()]);
 
   const url =
-    "https://{DD_SITE}/api/v2/remote_config/products/serverless_remote_instrumentation/config?filter%5Baws_account_id%5D={AWS_ACCOUNT_SLOT}&filter%5Bregion%5D={REGION_SLOT}"
+    "https://{DD_SITE}/api/v2/remote_config/products/serverless_remote_instrumentation/config?filter%5Baws_account_id%5D={AWS_ACCOUNT_SLOT}"
       .replace("{DD_SITE}", ddSite)
-      .replace("{AWS_ACCOUNT_SLOT}", account)
-      .replace("{REGION_SLOT}", region);
+      .replace("{AWS_ACCOUNT_SLOT}", account);
 
   const response = await fetch(url, {
     headers: {
