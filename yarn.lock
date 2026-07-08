@@ -820,9 +820,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@datadog/datadog-ci-plugin-lambda@npm:^5.17.0":
-  version: 5.17.0
-  resolution: "@datadog/datadog-ci-plugin-lambda@npm:5.17.0"
+"@datadog/datadog-ci-plugin-lambda@npm:^5.21.0":
+  version: 5.21.0
+  resolution: "@datadog/datadog-ci-plugin-lambda@npm:5.21.0"
   peerDependencies:
     "@aws-sdk/client-cloudwatch-logs": ^3.1045.0
     "@aws-sdk/client-iam": ^3.1045.0
@@ -843,7 +843,7 @@ __metadata:
       optional: true
     "@smithy/util-retry":
       optional: true
-  checksum: 10c0/6f40718d8184d7ebb7a5a249086609fa6a77c765a2efe9415de1e79de1ab764540874903a48d44c1c6fd1b7fb1effe863065a8afa81cde72231d2bb09a9f22aa
+  checksum: 10c0/553fd941e6dd1c0d815fb5bf0c512d7f4891a9ff0acbcce32e443cf0e159f13857e29a3f68ce1fdd04e20fd9d2904084b130543c6fdbb122f9d55b70397f3739
   languageName: node
   linkType: hard
 
@@ -3038,7 +3038,7 @@ __metadata:
     "@aws-sdk/client-secrets-manager": "npm:^3.1050.0"
     "@aws-sdk/s3-request-presigner": "npm:^3.1050.0"
     "@datadog/datadog-api-client": "npm:^1.58.0"
-    "@datadog/datadog-ci-plugin-lambda": "npm:^5.17.0"
+    "@datadog/datadog-ci-plugin-lambda": "npm:^5.21.0"
     "@smithy/property-provider": "npm:2.2.0"
     "@smithy/util-retry": "npm:2.2.0"
     "@types/aws-lambda": "npm:^8.10.161"
