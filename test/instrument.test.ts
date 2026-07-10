@@ -217,6 +217,36 @@ describe("instrumentFunctions", () => {
     );
   });
 
+  test("should instrument but skip tagging a function that already has the current version tag", async () => {
+    const functionBaz: LambdaFunction = {
+      FunctionName: "baz",
+      FunctionArn: "arn:aws:lambda:us-east-2:123456789:function:baz",
+      Runtime: "nodejs18.x",
+      Tags: new Set([
+        "env:prod",
+        `${DD_SLS_REMOTE_INSTRUMENTER_VERSION}:v${VERSION}`,
+      ]),
+    };
+    (getInstrumentedFunctionConfig as any).mockResolvedValue({
+      functionARN: functionBaz.FunctionArn,
+      lambdaConfig: functionBaz,
+      updateFunctionConfigurationCommandInput: {},
+    });
+
+    await instrument.instrumentFunctions(
+      mockS3Client,
+      [rcConfig],
+      [functionBaz],
+      baseInstrumentOutcome,
+      mockTaggingClient,
+      SCHEDULED_INVOCATION_EVENT,
+    );
+
+    expect(getInstrumentedFunctionConfig).toHaveBeenCalledTimes(1);
+    expect(updateLambdaFunctionConfig).toHaveBeenCalledTimes(1);
+    expect(mockTaggingClient.send).not.toHaveBeenCalled();
+  });
+
   test("should uninstrument and untag functions that need it", async () => {
     await instrument.instrumentFunctions(
       mockS3Client,
