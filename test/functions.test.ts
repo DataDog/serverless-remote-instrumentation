@@ -1297,7 +1297,7 @@ describe("needsInstrumentationUpdate", () => {
         runtime: "nodejs14.x",
         tags: new Set([
           "foo:bar",
-          DD_SLS_REMOTE_INSTRUMENTER_VERSION + ":" + VERSION,
+          `${DD_SLS_REMOTE_INSTRUMENTER_VERSION}:v${VERSION}`,
         ]),
         layers: layers,
         envVars: {
@@ -1333,6 +1333,59 @@ describe("needsInstrumentationUpdate", () => {
       expect(instrument).toBe(false);
       expect(uninstrument).toBe(false);
       expect(tag).toBe(false);
+      expect(untag).toBe(false);
+    });
+    test("correctly instrumented function with an outdated version tag should be retagged", () => {
+      const layers = [
+        {
+          Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Node:1",
+        },
+        {
+          Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Extension:1",
+        },
+      ];
+      const lambdaFunc = createTestLambdaFunction({
+        functionName: "functionA",
+        functionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionA",
+        runtime: "nodejs14.x",
+        tags: new Set([
+          "foo:bar",
+          `${DD_SLS_REMOTE_INSTRUMENTER_VERSION}:v1.0.0`,
+        ]),
+        layers: layers,
+        envVars: {
+          [DD_TRACE_ENABLED]: "true",
+          [DD_SERVERLESS_LOGS_ENABLED]: "false",
+        },
+      });
+      const ruleFilters = [
+        {
+          key: "foo",
+          values: ["bar"],
+          allow: true,
+          filterType: "tag",
+        },
+      ];
+      const config = createTestConfig({
+        entityType: "lambda",
+        extensionVersion: 1,
+        nodeLayerVersion: 1,
+        pythonLayerVersion: 1,
+        ddTraceEnabled: true,
+        ddServerlessLogsEnabled: false,
+        priority: 1,
+        ruleFilters: ruleFilters,
+      });
+      const { instrument, uninstrument, tag, untag } =
+        needsInstrumentationUpdate(
+          lambdaFunc,
+          config,
+          baseInstrumentOutcome,
+          false,
+        );
+      expect(instrument).toBe(false);
+      expect(uninstrument).toBe(false);
+      expect(tag).toBe(true);
       expect(untag).toBe(false);
     });
   });

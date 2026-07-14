@@ -29,6 +29,7 @@ import {
   createFunction,
   deleteTestFunctions,
   createFunctions,
+  tagFunction,
 } from "./utilities/lambda-functions";
 import { Runtime } from "@aws-sdk/client-lambda";
 import {
@@ -436,6 +437,20 @@ describe("Remote instrumenter scheduled event tests", () => {
       getDeployedInstrumenterVersion(),
     ]);
     expect(tagValue).toBe(`v${deployedVersion}`);
+
+    // Reset the tag to an old version and re-invoke to confirm it gets corrected again
+    await tagFunction(functionName, {
+      dd_sls_remote_instrumenter_version: oldVersion,
+    });
+
+    await invokeLambdaWithScheduledEvent();
+
+    let correctedTagValue: string | undefined;
+    await pollUntilTrue(60000, 5000, async () => {
+      correctedTagValue = await getRemoteInstrumenterTagValue(functionArn);
+      return correctedTagValue === `v${deployedVersion}`;
+    });
+    expect(correctedTagValue).toBe(`v${deployedVersion}`);
   });
 
   it("instruments a function whose tag key uses colons when the rule filter uses underscores (REDAPL normalization)", async () => {

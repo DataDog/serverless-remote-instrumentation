@@ -647,7 +647,12 @@ export function needsInstrumentationUpdate(
       reason: reason,
       reasonCode: ALREADY_CORRECT_EXTENSION_AND_LAYER,
     };
-    return { instrument: false, uninstrument: false, tag: false, untag: false };
+    return {
+      instrument: false,
+      uninstrument: false,
+      tag: !isTaggedWithCurrentVersion(lambdaFunc),
+      untag: false,
+    };
   }
 
   // Otherwise, instrument it. Skip tagging if the function already has the
