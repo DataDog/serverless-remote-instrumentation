@@ -57,6 +57,16 @@ const hasRemoteInstrumenterTag = async (
   }
 };
 
+const getRemoteInstrumenterTagValue = async (
+  functionArn: string,
+): Promise<string | undefined> => {
+  const lambdaClient = await getLambdaClient();
+  const tagsResponse = await lambdaClient.send(
+    new ListTagsCommand({ Resource: functionArn }),
+  );
+  return tagsResponse.Tags?.["dd_sls_remote_instrumenter_version"];
+};
+
 // A function is considered instrumented if all are true:
 // 1. If the extension layer is configured, there is a Datadog-Extension with matching version
 // 2. If there is a language layer configured, there should is a matching version of the language layer
@@ -180,6 +190,7 @@ const expectFunctionsToBeInstrumented = async (
 
 export {
   hasRemoteInstrumenterTag,
+  getRemoteInstrumenterTagValue,
   isFunctionInstrumented,
   isFunctionUninstrumented,
   expectFunctionsToBeInstrumented,

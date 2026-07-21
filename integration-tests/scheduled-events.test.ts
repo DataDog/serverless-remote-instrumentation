@@ -13,6 +13,7 @@ import {
   isFunctionInstrumented,
   isFunctionUninstrumented,
   hasRemoteInstrumenterTag,
+  getRemoteInstrumenterTagValue,
   expectFunctionsToBeInstrumented,
 } from "./utilities/is-function-instrumented";
 import {
@@ -20,11 +21,15 @@ import {
   clearKnownRemoteConfigs,
   clearRemoteConfigs,
 } from "./utilities/remote-config";
-import { invokeLambdaWithScheduledEvent } from "./utilities/remote-instrumenter-invocations";
+import {
+  invokeLambdaWithScheduledEvent,
+  getDeployedInstrumenterVersion,
+} from "./utilities/remote-instrumenter-invocations";
 import {
   createFunction,
   deleteTestFunctions,
   createFunctions,
+  tagFunction,
 } from "./utilities/lambda-functions";
 import { Runtime } from "@aws-sdk/client-lambda";
 import {
@@ -410,6 +415,42 @@ describe("Remote instrumenter scheduled event tests", () => {
       isFunctionInstrumented(functionName),
     );
     expect(isInstrumented).toStrictEqual(true);
+  });
+
+  it("updates an outdated instrumenter version tag to the current version", async () => {
+    const oldVersion = "v0.0.1";
+    const { FunctionName: functionName, FunctionArn: functionArn } =
+      await createFunction({
+        Tags: { foo: "bar", dd_sls_remote_instrumenter_version: oldVersion },
+      });
+    await setRemoteConfig();
+
+    await invokeLambdaWithScheduledEvent();
+
+    const isInstrumented = await pollUntilTrue(60000, 5000, () =>
+      isFunctionInstrumented(functionName),
+    );
+    expect(isInstrumented).toStrictEqual(true);
+
+    const [tagValue, deployedVersion] = await Promise.all([
+      getRemoteInstrumenterTagValue(functionArn),
+      getDeployedInstrumenterVersion(),
+    ]);
+    expect(tagValue).toBe(`v${deployedVersion}`);
+
+    // Reset the tag to an old version and re-invoke to confirm it gets corrected again
+    await tagFunction(functionName, {
+      dd_sls_remote_instrumenter_version: oldVersion,
+    });
+
+    await invokeLambdaWithScheduledEvent();
+
+    let correctedTagValue: string | undefined;
+    await pollUntilTrue(60000, 5000, async () => {
+      correctedTagValue = await getRemoteInstrumenterTagValue(functionArn);
+      return correctedTagValue === `v${deployedVersion}`;
+    });
+    expect(correctedTagValue).toBe(`v${deployedVersion}`);
   });
 
   it("instruments a function whose tag key uses colons when the rule filter uses underscores (REDAPL normalization)", async () => {

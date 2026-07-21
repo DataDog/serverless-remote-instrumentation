@@ -7,6 +7,7 @@ import {
   needsInstrumentationUpdate,
   filterFunctionsToChangeInstrumentation,
   isInstrumented,
+  isTaggedWithCurrentVersion,
   waitUntilFunctionIsActive,
   selectFunctionFieldsForLogging,
   enrichFunctionsWithTags,
@@ -1296,7 +1297,7 @@ describe("needsInstrumentationUpdate", () => {
         runtime: "nodejs14.x",
         tags: new Set([
           "foo:bar",
-          DD_SLS_REMOTE_INSTRUMENTER_VERSION + ":" + VERSION,
+          `${DD_SLS_REMOTE_INSTRUMENTER_VERSION}:v${VERSION}`,
         ]),
         layers: layers,
         envVars: {
@@ -1334,15 +1335,13 @@ describe("needsInstrumentationUpdate", () => {
       expect(tag).toBe(false);
       expect(untag).toBe(false);
     });
-  });
-  describe("When the function needs to be instrumented", () => {
-    test("function should be instrumented and tagged", () => {
+    test("correctly instrumented function with an outdated version tag should be retagged", () => {
       const layers = [
         {
-          Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Node:2",
+          Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Node:1",
         },
         {
-          Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Extension:3",
+          Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Extension:1",
         },
       ];
       const lambdaFunc = createTestLambdaFunction({
@@ -1351,9 +1350,53 @@ describe("needsInstrumentationUpdate", () => {
         runtime: "nodejs14.x",
         tags: new Set([
           "foo:bar",
-          DD_SLS_REMOTE_INSTRUMENTER_VERSION + ":" + VERSION,
+          `${DD_SLS_REMOTE_INSTRUMENTER_VERSION}:v1.0.0`,
         ]),
         layers: layers,
+        envVars: {
+          [DD_TRACE_ENABLED]: "true",
+          [DD_SERVERLESS_LOGS_ENABLED]: "false",
+        },
+      });
+      const ruleFilters = [
+        {
+          key: "foo",
+          values: ["bar"],
+          allow: true,
+          filterType: "tag",
+        },
+      ];
+      const config = createTestConfig({
+        entityType: "lambda",
+        extensionVersion: 1,
+        nodeLayerVersion: 1,
+        pythonLayerVersion: 1,
+        ddTraceEnabled: true,
+        ddServerlessLogsEnabled: false,
+        priority: 1,
+        ruleFilters: ruleFilters,
+      });
+      const { instrument, uninstrument, tag, untag } =
+        needsInstrumentationUpdate(
+          lambdaFunc,
+          config,
+          baseInstrumentOutcome,
+          false,
+        );
+      expect(instrument).toBe(false);
+      expect(uninstrument).toBe(false);
+      expect(tag).toBe(true);
+      expect(untag).toBe(false);
+    });
+  });
+  describe("When the function needs to be instrumented", () => {
+    test("function without version tag should be instrumented and tagged", () => {
+      const lambdaFunc = createTestLambdaFunction({
+        functionName: "functionA",
+        functionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionA",
+        runtime: "nodejs14.x",
+        tags: new Set(["foo:bar"]),
+        layers: [],
       });
       const ruleFilters = [
         {
@@ -1391,10 +1434,7 @@ describe("needsInstrumentationUpdate", () => {
         functionName: "functionA",
         functionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionA",
         runtime: "nodejs14.x",
-        tags: new Set([
-          "foo:bar",
-          DD_SLS_REMOTE_INSTRUMENTER_VERSION + ":" + VERSION,
-        ]),
+        tags: new Set(["foo:bar"]),
         layers: [],
         envVars: {},
       });
@@ -1428,6 +1468,116 @@ describe("needsInstrumentationUpdate", () => {
       expect(uninstrument).toBe(false);
       expect(tag).toBe(true);
       expect(untag).toBe(false);
+    });
+    test("function with current version tag should be instrumented but not re-tagged", () => {
+      const lambdaFunc = createTestLambdaFunction({
+        functionName: "functionA",
+        functionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionA",
+        runtime: "nodejs14.x",
+        tags: new Set([
+          "foo:bar",
+          `${DD_SLS_REMOTE_INSTRUMENTER_VERSION}:v${VERSION}`,
+        ]),
+        layers: [],
+        envVars: {},
+      });
+      const ruleFilters = [
+        {
+          key: "foo",
+          values: ["bar"],
+          allow: true,
+          filterType: "tag",
+        },
+      ];
+      const config = createTestConfig({
+        entityType: "lambda",
+        extensionVersion: 1,
+        nodeLayerVersion: 1,
+        pythonLayerVersion: 1,
+        ddTraceEnabled: true,
+        ddServerlessLogsEnabled: false,
+        priority: 1,
+        ruleFilters: ruleFilters,
+        instrumenterFunctionName: "datadog-remote-instrumenter",
+      });
+      const { instrument, uninstrument, tag, untag } =
+        needsInstrumentationUpdate(
+          lambdaFunc,
+          config,
+          baseInstrumentOutcome,
+          false,
+        );
+      expect(instrument).toBe(true);
+      expect(uninstrument).toBe(false);
+      expect(tag).toBe(false);
+      expect(untag).toBe(false);
+    });
+    test("function with outdated version tag should be instrumented and re-tagged", () => {
+      const lambdaFunc = createTestLambdaFunction({
+        functionName: "functionA",
+        functionArn: "arn:aws:lambda:us-east-1:123456789012:function:functionA",
+        runtime: "nodejs14.x",
+        tags: new Set([
+          "foo:bar",
+          `${DD_SLS_REMOTE_INSTRUMENTER_VERSION}:v1.0.0`,
+        ]),
+        layers: [],
+        envVars: {},
+      });
+      const ruleFilters = [
+        {
+          key: "foo",
+          values: ["bar"],
+          allow: true,
+          filterType: "tag",
+        },
+      ];
+      const config = createTestConfig({
+        entityType: "lambda",
+        extensionVersion: 1,
+        nodeLayerVersion: 1,
+        pythonLayerVersion: 1,
+        ddTraceEnabled: true,
+        ddServerlessLogsEnabled: false,
+        priority: 1,
+        ruleFilters: ruleFilters,
+        instrumenterFunctionName: "datadog-remote-instrumenter",
+      });
+      const { instrument, uninstrument, tag, untag } =
+        needsInstrumentationUpdate(
+          lambdaFunc,
+          config,
+          baseInstrumentOutcome,
+          false,
+        );
+      expect(instrument).toBe(true);
+      expect(uninstrument).toBe(false);
+      expect(tag).toBe(true);
+      expect(untag).toBe(false);
+    });
+  });
+
+  describe("isTaggedWithCurrentVersion", () => {
+    test("returns true when function has current version tag", () => {
+      const lambdaFunc = createTestLambdaFunction({
+        functionName: "functionA",
+        tags: new Set([`${DD_SLS_REMOTE_INSTRUMENTER_VERSION}:v${VERSION}`]),
+      });
+      expect(isTaggedWithCurrentVersion(lambdaFunc)).toBe(true);
+    });
+    test("returns false when function has no version tag", () => {
+      const lambdaFunc = createTestLambdaFunction({
+        functionName: "functionA",
+        tags: new Set(["foo:bar"]),
+      });
+      expect(isTaggedWithCurrentVersion(lambdaFunc)).toBe(false);
+    });
+    test("returns false when function has outdated version tag", () => {
+      const lambdaFunc = createTestLambdaFunction({
+        functionName: "functionA",
+        tags: new Set([`${DD_SLS_REMOTE_INSTRUMENTER_VERSION}:v1.0.0`]),
+      });
+      expect(isTaggedWithCurrentVersion(lambdaFunc)).toBe(false);
     });
   });
 });
