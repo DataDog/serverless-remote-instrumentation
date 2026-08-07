@@ -20,6 +20,7 @@ import {
 } from "./utilities/remote-config";
 import {
   createFunction,
+  createContainerImageFunction,
   createFunctions,
   deleteTestFunctions,
   tagFunction,
@@ -28,6 +29,7 @@ import {
   invokeLambdaWithScheduledEvent,
   invokeLambdaWithLambdaManagementEvent,
 } from "./utilities/remote-instrumenter-invocations";
+import { containerImageUri } from "./config.json";
 
 describe("Remote instrumenter lambda management event tests", () => {
   afterAll(async () => {
@@ -223,5 +225,38 @@ describe("Remote instrumenter lambda management event tests", () => {
       targetFunctionName: "LambdaEventThisDoesNotExist",
     });
     expect(errors).toBeFalsy();
+  });
+
+  // Container image Lambdas have Runtime: undefined in API responses.
+  // A lambda management event (e.g. UpdateFunctionConfiguration) targeting one
+  // must be handled without throwing — otherwise the instrumenter Lambda itself
+  // would crash and return a FunctionError, breaking the event pipeline.
+  it("container image Lambda (Runtime: undefined) is skipped without crashing the instrumenter", async () => {
+    await setRemoteConfig();
+
+    const { FunctionName: imageFunctionName } = await createContainerImageFunction(
+      containerImageUri,
+      { Tags: { foo: "bar" } },
+    );
+
+    const { payload, errors } =
+      await invokeLambdaWithLambdaManagementEvent({
+        targetFunctionName: imageFunctionName,
+      });
+
+    // The instrumenter Lambda itself must not have errored.
+    expect(errors).toBeFalsy();
+
+    // The container image function must have been skipped, not succeeded or failed.
+    expect(Object.keys(payload.instrument.skipped)).toContain(imageFunctionName);
+    expect(payload.instrument.skipped[imageFunctionName].reasonCode).toStrictEqual(
+      "unsupported-runtime",
+    );
+    expect(Object.keys(payload.instrument.succeeded)).not.toContain(imageFunctionName);
+    expect(Object.keys(payload.instrument.failed)).not.toContain(imageFunctionName);
+
+    // And the function must remain un-instrumented.
+    const isUninstrumented = await isFunctionUninstrumented(imageFunctionName);
+    expect(isUninstrumented).toStrictEqual(true);
   });
 });
