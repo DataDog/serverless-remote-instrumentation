@@ -1580,6 +1580,49 @@ describe("needsInstrumentationUpdate", () => {
       expect(isTaggedWithCurrentVersion(lambdaFunc)).toBe(false);
     });
   });
+
+  describe("When the function is a container image Lambda (Runtime is undefined)", () => {
+    test("should skip without throwing, not crash the batch", () => {
+      const ruleFilters = [
+        { key: "foo", values: ["bar"], allow: true, filterType: "tag" },
+      ];
+      const lambdaFunc = createTestLambdaFunction({
+        functionName: "containerImageFn",
+        functionArn:
+          "arn:aws:lambda:us-east-1:123456789012:function:containerImageFn",
+        runtime: undefined,
+        tags: new Set(["foo:bar"]),
+        layers: [],
+      });
+      const config = createTestConfig({
+        entityType: "lambda",
+        extensionVersion: 1,
+        nodeLayerVersion: 1,
+        pythonLayerVersion: 1,
+        priority: 1,
+        ruleFilters,
+      });
+      expect(() =>
+        needsInstrumentationUpdate(
+          lambdaFunc,
+          config,
+          baseInstrumentOutcome,
+          false,
+        ),
+      ).not.toThrow();
+      const { instrument, uninstrument, tag, untag } =
+        needsInstrumentationUpdate(
+          lambdaFunc,
+          config,
+          baseInstrumentOutcome,
+          false,
+        );
+      expect(instrument).toBe(false);
+      expect(uninstrument).toBe(false);
+      expect(tag).toBe(false);
+      expect(untag).toBe(false);
+    });
+  });
 });
 
 describe("filterFunctionsToChangeInstrumentation", () => {

@@ -114,11 +114,13 @@ export const SUPPORTED_RUNTIME_CONFIGURATIONS: Record<
 };
 
 export const getRuntimeConfig = (
-  runtime: string,
-): RuntimeConfiguration | undefined =>
-  Object.entries(SUPPORTED_RUNTIME_CONFIGURATIONS).find(([, config]) =>
+  runtime: string | undefined,
+): RuntimeConfiguration | undefined => {
+  if (!runtime) return undefined;
+  return Object.entries(SUPPORTED_RUNTIME_CONFIGURATIONS).find(([, config]) =>
     config.isSupportedRuntime(runtime),
   )?.[1];
+};
 
 // Event Types
 export const LAMBDA_EVENT = "LambdaEvent";
