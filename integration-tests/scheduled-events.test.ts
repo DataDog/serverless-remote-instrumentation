@@ -31,7 +31,6 @@ import {
   deleteTestFunctions,
   createFunctions,
   tagFunction,
-  CONTAINER_IMAGE_URI,
 } from "./utilities/lambda-functions";
 import { Runtime } from "@aws-sdk/client-lambda";
 import {
@@ -40,6 +39,11 @@ import {
   doesErrorObjectExist,
 } from "./utilities/s3-error-object";
 import { region } from "./config.json";
+// containerImageUri is optional — add it to config.json during environment setup.
+// Tests that require it are skipped automatically when it's absent.
+import configJson from "./config.json";
+const containerImageUri: string | undefined = (configJson as any)
+  .containerImageUri;
 
 describe("Remote instrumenter scheduled event tests", () => {
   const functionThatDoesntExist = "ThisDoesNotExist";
@@ -504,46 +508,51 @@ describe("Remote instrumenter scheduled event tests", () => {
   // The instrumenter must skip them gracefully rather than crashing the batch:
   // a TypeError in isSupportedRuntime would previously abort the entire scheduled run,
   // leaving all other functions in the account un-instrumented as well.
-  it("container image Lambda (Runtime: undefined) is skipped without crashing the batch", async () => {
-    await setRemoteConfig();
+  it.skipIf(!containerImageUri)(
+    "container image Lambda (Runtime: undefined) is skipped without crashing the batch",
+    async () => {
+      await setRemoteConfig();
 
-    // Create one zip-based function that should get instrumented
-    const { FunctionName: zipFunctionName } = await createFunction({
-      Tags: { foo: "bar" },
-    });
-
-    // Create a container image function with tags that match the targeting rule.
-    // Its Runtime will be undefined in the Lambda API response.
-    const { FunctionName: imageFunctionName } =
-      await createContainerImageFunction(CONTAINER_IMAGE_URI, {
+      // Create one zip-based function that should get instrumented
+      const { FunctionName: zipFunctionName } = await createFunction({
         Tags: { foo: "bar" },
       });
 
-    const res = await invokeLambdaWithScheduledEvent();
+      // Create a container image function with tags that match the targeting rule.
+      // Its Runtime will be undefined in the Lambda API response.
+      const { FunctionName: imageFunctionName } =
+        await createContainerImageFunction(containerImageUri!, {
+          Tags: { foo: "bar" },
+        });
 
-    // The container image function must appear in skipped with unsupported-runtime,
-    // not in failed and not in succeeded.
-    expect(Object.keys(res.instrument.skipped)).toContain(imageFunctionName);
-    expect(res.instrument.skipped[imageFunctionName].reasonCode).toStrictEqual(
-      "unsupported-runtime",
-    );
-    expect(Object.keys(res.instrument.failed)).not.toContain(imageFunctionName);
-    expect(Object.keys(res.instrument.succeeded)).not.toContain(
-      imageFunctionName,
-    );
+      const res = await invokeLambdaWithScheduledEvent();
 
-    // The container image function must remain un-instrumented (no layers, no env vars).
-    const isImageFunctionUninstrumented =
-      await isFunctionUninstrumented(imageFunctionName);
-    expect(isImageFunctionUninstrumented).toStrictEqual(true);
+      // The container image function must appear in skipped with unsupported-runtime,
+      // not in failed and not in succeeded.
+      expect(Object.keys(res.instrument.skipped)).toContain(imageFunctionName);
+      expect(
+        res.instrument.skipped[imageFunctionName].reasonCode,
+      ).toStrictEqual("unsupported-runtime");
+      expect(Object.keys(res.instrument.failed)).not.toContain(
+        imageFunctionName,
+      );
+      expect(Object.keys(res.instrument.succeeded)).not.toContain(
+        imageFunctionName,
+      );
 
-    // The zip-based function in the same batch must still have been instrumented,
-    // proving the container image function did not crash the batch.
-    const isZipFunctionInstrumented = await pollUntilTrue(60000, 5000, () =>
-      isFunctionInstrumented(zipFunctionName),
-    );
-    expect(isZipFunctionInstrumented).toStrictEqual(true);
-  });
+      // The container image function must remain un-instrumented (no layers, no env vars).
+      const isImageFunctionUninstrumented =
+        await isFunctionUninstrumented(imageFunctionName);
+      expect(isImageFunctionUninstrumented).toStrictEqual(true);
+
+      // The zip-based function in the same batch must still have been instrumented,
+      // proving the container image function did not crash the batch.
+      const isZipFunctionInstrumented = await pollUntilTrue(60000, 5000, () =>
+        isFunctionInstrumented(zipFunctionName),
+      );
+      expect(isZipFunctionInstrumented).toStrictEqual(true);
+    },
+  );
 
   it("correctly tags instrumented functions", async () => {
     const functions = await createFunctions({}, 51);

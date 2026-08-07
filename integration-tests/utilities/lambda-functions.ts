@@ -14,11 +14,6 @@ import { account, region, namingSeed, testLambdaRole } from "../config.json";
 import { getLambdaClient } from "./aws-resources";
 import { sleep } from "./sleep";
 
-// Public AWS Lambda base image used by container image integration tests.
-// Using a public ECR image ensures tests always run in CI without needing
-// a private ECR repository or dynamically generated config.
-export const CONTAINER_IMAGE_URI = "public.ecr.aws/lambda/python:3.12";
-
 const functionNamesToCleanUp: string[] = [];
 const functionNameCount: Record<string, number> = {};
 
