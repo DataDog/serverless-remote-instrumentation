@@ -29,7 +29,9 @@ import {
   invokeLambdaWithScheduledEvent,
   invokeLambdaWithLambdaManagementEvent,
 } from "./utilities/remote-instrumenter-invocations";
-import { containerImageUri } from "./config.json";
+import config from "./config.json";
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const containerImageUri = (config as any).containerImageUri as string;
 
 describe("Remote instrumenter lambda management event tests", () => {
   afterAll(async () => {
@@ -231,41 +233,37 @@ describe("Remote instrumenter lambda management event tests", () => {
   // A lambda management event (e.g. UpdateFunctionConfiguration) targeting one
   // must be handled without throwing — otherwise the instrumenter Lambda itself
   // would crash and return a FunctionError, breaking the event pipeline.
-  it(
-    "container image Lambda (Runtime: undefined) is skipped without crashing the instrumenter",
-    async () => {
-      await setRemoteConfig();
+  it("container image Lambda (Runtime: undefined) is skipped without crashing the instrumenter", async () => {
+    await setRemoteConfig();
 
-      const { FunctionName: imageFunctionName } =
-        await createContainerImageFunction(containerImageUri, {
-          Tags: { foo: "bar" },
-        });
-
-      const { payload, errors } = await invokeLambdaWithLambdaManagementEvent({
-        targetFunctionName: imageFunctionName,
+    const { FunctionName: imageFunctionName } =
+      await createContainerImageFunction(containerImageUri, {
+        Tags: { foo: "bar" },
       });
 
-      // The instrumenter Lambda itself must not have errored.
-      expect(errors).toBeFalsy();
+    const { payload, errors } = await invokeLambdaWithLambdaManagementEvent({
+      targetFunctionName: imageFunctionName,
+    });
 
-      // The container image function must have been skipped, not succeeded or failed.
-      expect(Object.keys(payload.instrument.skipped)).toContain(
-        imageFunctionName,
-      );
-      expect(
-        payload.instrument.skipped[imageFunctionName].reasonCode,
-      ).toStrictEqual("unsupported-runtime");
-      expect(Object.keys(payload.instrument.succeeded)).not.toContain(
-        imageFunctionName,
-      );
-      expect(Object.keys(payload.instrument.failed)).not.toContain(
-        imageFunctionName,
-      );
+    // The instrumenter Lambda itself must not have errored.
+    expect(errors).toBeFalsy();
 
-      // And the function must remain un-instrumented.
-      const isUninstrumented =
-        await isFunctionUninstrumented(imageFunctionName);
-      expect(isUninstrumented).toStrictEqual(true);
-    },
-  );
+    // The container image function must have been skipped, not succeeded or failed.
+    expect(Object.keys(payload.instrument.skipped)).toContain(
+      imageFunctionName,
+    );
+    expect(
+      payload.instrument.skipped[imageFunctionName].reasonCode,
+    ).toStrictEqual("unsupported-runtime");
+    expect(Object.keys(payload.instrument.succeeded)).not.toContain(
+      imageFunctionName,
+    );
+    expect(Object.keys(payload.instrument.failed)).not.toContain(
+      imageFunctionName,
+    );
+
+    // And the function must remain un-instrumented.
+    const isUninstrumented = await isFunctionUninstrumented(imageFunctionName);
+    expect(isUninstrumented).toStrictEqual(true);
+  });
 });
