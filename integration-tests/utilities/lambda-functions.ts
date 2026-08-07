@@ -177,6 +177,7 @@ const createContainerImageFunction = async (
 ): Promise<any> => {
   const lambdaClient = await getLambdaClient();
   const functionName = generateTestFunctionName();
+  const { Tags: extraTags, ...restProps } = extraProps;
 
   const command = new CreateFunctionCommand({
     FunctionName: functionName,
@@ -186,9 +187,9 @@ const createContainerImageFunction = async (
     MemorySize: 128,
     Tags: {
       dd_serverless_service: "remote_instrumenter_testing",
-      ...(extraProps.Tags as Record<string, string>),
+      ...(extraTags as Record<string, string>),
     },
-    ...extraProps,
+    ...restProps,
   });
 
   let lambda;
@@ -206,6 +207,21 @@ const createContainerImageFunction = async (
   }
 
   functionNamesToCleanUp.push(lambda.FunctionName);
+
+  // Wait for the function to leave Pending state before returning
+  let state = "Pending";
+  while (state === "Pending") {
+    const status = await lambdaClient.send(
+      new GetFunctionConfigurationCommand({
+        FunctionName: lambda.FunctionName,
+      }),
+    );
+    state = status.State ?? "Active";
+    if (state === "Pending") {
+      await sleep(1000);
+    }
+  }
+
   return lambda;
 };
 

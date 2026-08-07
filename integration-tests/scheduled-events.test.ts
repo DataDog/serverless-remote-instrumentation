@@ -38,11 +38,12 @@ import {
   putErrorObject,
   doesErrorObjectExist,
 } from "./utilities/s3-error-object";
-import config from "./config.json";
-const { region } = config;
+import { region } from "./config.json";
 // containerImageUri is optional — add it to config.json during environment setup.
 // Tests that require it are skipped automatically when it's absent.
-const containerImageUri: string | undefined = (config as any).containerImageUri;
+import configJson from "./config.json";
+const containerImageUri: string | undefined = (configJson as any)
+  .containerImageUri;
 
 describe("Remote instrumenter scheduled event tests", () => {
   const functionThatDoesntExist = "ThisDoesNotExist";
