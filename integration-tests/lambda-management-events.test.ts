@@ -29,10 +29,7 @@ import {
   invokeLambdaWithScheduledEvent,
   invokeLambdaWithLambdaManagementEvent,
 } from "./utilities/remote-instrumenter-invocations";
-import config from "./config.json";
-// containerImageUri is optional — add it to config.json during environment setup.
-// Tests that require it are skipped automatically when it's absent.
-const containerImageUri: string | undefined = (config as any).containerImageUri;
+import { containerImageUri } from "./config.json";
 
 describe("Remote instrumenter lambda management event tests", () => {
   afterAll(async () => {
@@ -234,13 +231,13 @@ describe("Remote instrumenter lambda management event tests", () => {
   // A lambda management event (e.g. UpdateFunctionConfiguration) targeting one
   // must be handled without throwing — otherwise the instrumenter Lambda itself
   // would crash and return a FunctionError, breaking the event pipeline.
-  it.skipIf(!containerImageUri)(
+  it(
     "container image Lambda (Runtime: undefined) is skipped without crashing the instrumenter",
     async () => {
       await setRemoteConfig();
 
       const { FunctionName: imageFunctionName } =
-        await createContainerImageFunction(containerImageUri!, {
+        await createContainerImageFunction(containerImageUri, {
           Tags: { foo: "bar" },
         });
 

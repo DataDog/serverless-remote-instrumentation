@@ -38,12 +38,7 @@ import {
   putErrorObject,
   doesErrorObjectExist,
 } from "./utilities/s3-error-object";
-import { region } from "./config.json";
-// containerImageUri is optional — add it to config.json during environment setup.
-// Tests that require it are skipped automatically when it's absent.
-import configJson from "./config.json";
-const containerImageUri: string | undefined = (configJson as any)
-  .containerImageUri;
+import { region, containerImageUri } from "./config.json";
 
 describe("Remote instrumenter scheduled event tests", () => {
   const functionThatDoesntExist = "ThisDoesNotExist";
@@ -508,7 +503,7 @@ describe("Remote instrumenter scheduled event tests", () => {
   // The instrumenter must skip them gracefully rather than crashing the batch:
   // a TypeError in isSupportedRuntime would previously abort the entire scheduled run,
   // leaving all other functions in the account un-instrumented as well.
-  it.skipIf(!containerImageUri)(
+  it(
     "container image Lambda (Runtime: undefined) is skipped without crashing the batch",
     async () => {
       await setRemoteConfig();
@@ -521,7 +516,7 @@ describe("Remote instrumenter scheduled event tests", () => {
       // Create a container image function with tags that match the targeting rule.
       // Its Runtime will be undefined in the Lambda API response.
       const { FunctionName: imageFunctionName } =
-        await createContainerImageFunction(containerImageUri!, {
+        await createContainerImageFunction(containerImageUri, {
           Tags: { foo: "bar" },
         });
 
