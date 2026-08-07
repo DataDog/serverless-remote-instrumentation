@@ -186,7 +186,7 @@ const createContainerImageFunction = async (
     MemorySize: 128,
     Tags: {
       dd_serverless_service: "remote_instrumenter_testing",
-      ...((extraProps.Tags as Record<string, string>) ?? {}),
+      ...(extraProps.Tags as Record<string, string>),
     },
     ...extraProps,
   });
