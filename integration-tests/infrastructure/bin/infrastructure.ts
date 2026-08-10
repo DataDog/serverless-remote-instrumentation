@@ -6,7 +6,9 @@ import { Distribution, LambdaEdgeEventType, ViewerProtocolPolicy } from 'aws-cdk
 import { S3BucketOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
 import { Bucket, BlockPublicAccess } from 'aws-cdk-lib/aws-s3';
 import { CfnInclude } from 'aws-cdk-lib/cloudformation-include';
+import { DockerImageAsset, Platform } from 'aws-cdk-lib/aws-ecr-assets';
 import { Construct } from 'constructs';
+import path from 'path';
 import { region, account, roleName, stackName, functionName, bucketName, testLambdaRole, ddSite, apiSecretName } from '../../config.json';
 import { readFileSync, writeFileSync } from 'fs'
 import { yamlParse, yamlDump } from 'yaml-cfn'
@@ -76,6 +78,18 @@ class TestingStack extends Stack {
     new Role(this, 'TestLambdaExecutionRole', {
       assumedBy: new ServicePrincipal("lambda.amazonaws.com"),
       roleName: testLambdaRole,
+    });
+
+    // Minimal Lambda container image used by tests that verify the instrumenter
+    // skips container-image functions gracefully. CDK builds and pushes this to
+    // the CDK bootstrap ECR repo during `cdk deploy`, keyed by Dockerfile hash
+    // so it only rebuilds when the Dockerfile changes.
+    const testContainerImage = new DockerImageAsset(this, 'TestContainerImage', {
+      directory: path.join(__dirname, '../../test-container'),
+      platform: Platform.LINUX_AMD64,
+    });
+    new CfnOutput(this, 'TestContainerImageUri', {
+      value: testContainerImage.imageUri,
     });
 
     new CfnInclude(this, 'ImportedRemoteInstrumenterTemplate', {
