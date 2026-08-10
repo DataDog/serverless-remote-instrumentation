@@ -9,6 +9,7 @@ import { CfnInclude } from 'aws-cdk-lib/cloudformation-include';
 import { DockerImageAsset, Platform } from 'aws-cdk-lib/aws-ecr-assets';
 import { Construct } from 'constructs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { region, account, roleName, stackName, functionName, bucketName, testLambdaRole, ddSite, apiSecretName } from '../../config.json';
 import { readFileSync, writeFileSync } from 'fs'
 import { yamlParse, yamlDump } from 'yaml-cfn'
@@ -85,7 +86,7 @@ class TestingStack extends Stack {
     // the CDK bootstrap ECR repo during `cdk deploy`, keyed by Dockerfile hash
     // so it only rebuilds when the Dockerfile changes.
     const testContainerImage = new DockerImageAsset(this, 'TestContainerImage', {
-      directory: path.join(__dirname, '../../test-container'),
+      directory: path.join(path.dirname(fileURLToPath(import.meta.url)), '../../test-container'),
       platform: Platform.LINUX_AMD64,
     });
     new CfnOutput(this, 'TestContainerImageUri', {
