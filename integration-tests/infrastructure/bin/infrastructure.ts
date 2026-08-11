@@ -80,16 +80,16 @@ class TestingStack extends Stack {
     });
 
     // A single container image Lambda shared across tests that verify the
-    // instrumenter skips PackageType:Image functions gracefully. References a
-    // pre-built image in a private ECR repo (one-time setup: push
-    // test-container/Dockerfile to remote-instrumenter-test-container in each
-    // CI region). No Docker daemon required during cdk deploy.
+    // instrumenter skips PackageType:Image functions gracefully. Uses the
+    // self-monitoring-lambda-extension ECR repo in us-east-1 (sandbox-layer-deployer
+    // already has push permissions there). CI builds and pushes the image under
+    // the ci-test-container tag before cdk deploy.
     // Tagged foo:bar so scheduled-event targeting rules pick it up automatically.
     const ecrRepo = Repository.fromRepositoryName(
-      this, 'ContainerImageRepo', 'remote-instrumenter-test-container'
+      this, 'ContainerImageRepo', 'self-monitoring-lambda-extension'
     );
     const containerImageFn = new DockerImageFunction(this, 'ContainerImageTestFn', {
-      code: DockerImageCode.fromEcrImage(ecrRepo, { tag: 'latest' }),
+      code: DockerImageCode.fromEcr(ecrRepo, { tag: 'ci-test-container' }),
       role: testLambdaExecutionRole,
       memorySize: 128,
       timeout: Duration.seconds(30),
