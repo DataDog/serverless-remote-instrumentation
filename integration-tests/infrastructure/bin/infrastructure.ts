@@ -6,10 +6,8 @@ import { Distribution, LambdaEdgeEventType, ViewerProtocolPolicy } from 'aws-cdk
 import { S3BucketOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
 import { Bucket, BlockPublicAccess } from 'aws-cdk-lib/aws-s3';
 import { CfnInclude } from 'aws-cdk-lib/cloudformation-include';
-import { Platform } from 'aws-cdk-lib/aws-ecr-assets';
+import { Repository } from 'aws-cdk-lib/aws-ecr';
 import { Construct } from 'constructs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { region, account, roleName, stackName, functionName, bucketName, testLambdaRole, ddSite, apiSecretName } from '../../config.json';
 import { readFileSync, writeFileSync } from 'fs'
 import { yamlParse, yamlDump } from 'yaml-cfn'
@@ -82,15 +80,16 @@ class TestingStack extends Stack {
     });
 
     // A single container image Lambda shared across tests that verify the
-    // instrumenter skips PackageType:Image functions gracefully. CDK builds
-    // the image from test-container/Dockerfile and pushes it to the CDK
-    // bootstrap ECR repo during `cdk deploy` (requires DinD in CI).
+    // instrumenter skips PackageType:Image functions gracefully. References a
+    // pre-built image in a private ECR repo (one-time setup: push
+    // test-container/Dockerfile to remote-instrumenter-test-container in each
+    // CI region). No Docker daemon required during cdk deploy.
     // Tagged foo:bar so scheduled-event targeting rules pick it up automatically.
+    const ecrRepo = Repository.fromRepositoryName(
+      this, 'ContainerImageRepo', 'remote-instrumenter-test-container'
+    );
     const containerImageFn = new DockerImageFunction(this, 'ContainerImageTestFn', {
-      code: DockerImageCode.fromImageAsset(
-        path.join(path.dirname(fileURLToPath(import.meta.url)), '../../test-container'),
-        { platform: Platform.LINUX_AMD64 },
-      ),
+      code: DockerImageCode.fromEcrImage(ecrRepo, { tag: 'latest' }),
       role: testLambdaExecutionRole,
       memorySize: 128,
       timeout: Duration.seconds(30),
