@@ -20,7 +20,6 @@ import {
 } from "./utilities/remote-config";
 import {
   createFunction,
-  createContainerImageFunction,
   createFunctions,
   deleteTestFunctions,
   tagFunction,
@@ -31,7 +30,7 @@ import {
 } from "./utilities/remote-instrumenter-invocations";
 import config from "./config.json";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const containerImageUri = (config as any).containerImageUri as string;
+const containerImageFunctionName = (config as any).containerImageFunctionName as string;
 
 describe("Remote instrumenter lambda management event tests", () => {
   afterAll(async () => {
@@ -236,13 +235,9 @@ describe("Remote instrumenter lambda management event tests", () => {
   it("container image Lambda (Runtime: undefined) is skipped without crashing the instrumenter", async () => {
     await setRemoteConfig();
 
-    const { FunctionName: imageFunctionName } =
-      await createContainerImageFunction(containerImageUri, {
-        Tags: { foo: "bar" },
-      });
-
+    // Use the container image Lambda pre-created in CDK — no per-test create/delete needed.
     const { payload, errors } = await invokeLambdaWithLambdaManagementEvent({
-      targetFunctionName: imageFunctionName,
+      targetFunctionName: containerImageFunctionName,
     });
 
     // The instrumenter Lambda itself must not have errored.
@@ -250,20 +245,20 @@ describe("Remote instrumenter lambda management event tests", () => {
 
     // The container image function must have been skipped, not succeeded or failed.
     expect(Object.keys(payload.instrument.skipped)).toContain(
-      imageFunctionName,
+      containerImageFunctionName,
     );
     expect(
-      payload.instrument.skipped[imageFunctionName].reasonCode,
+      payload.instrument.skipped[containerImageFunctionName].reasonCode,
     ).toStrictEqual("unsupported-runtime");
     expect(Object.keys(payload.instrument.succeeded)).not.toContain(
-      imageFunctionName,
+      containerImageFunctionName,
     );
     expect(Object.keys(payload.instrument.failed)).not.toContain(
-      imageFunctionName,
+      containerImageFunctionName,
     );
 
     // And the function must remain un-instrumented.
-    const isUninstrumented = await isFunctionUninstrumented(imageFunctionName);
+    const isUninstrumented = await isFunctionUninstrumented(containerImageFunctionName);
     expect(isUninstrumented).toStrictEqual(true);
   });
 });

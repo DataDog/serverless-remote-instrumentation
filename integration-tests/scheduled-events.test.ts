@@ -27,7 +27,6 @@ import {
 } from "./utilities/remote-instrumenter-invocations";
 import {
   createFunction,
-  createContainerImageFunction,
   deleteTestFunctions,
   createFunctions,
   tagFunction,
@@ -40,7 +39,7 @@ import {
 } from "./utilities/s3-error-object";
 import config, { region } from "./config.json";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const containerImageUri = (config as any).containerImageUri as string;
+const containerImageFunctionName = (config as any).containerImageFunctionName as string;
 
 describe("Remote instrumenter scheduled event tests", () => {
   const functionThatDoesntExist = "ThisDoesNotExist";
@@ -513,29 +512,25 @@ describe("Remote instrumenter scheduled event tests", () => {
       Tags: { foo: "bar" },
     });
 
-    // Create a container image function with tags that match the targeting rule.
-    // Its Runtime will be undefined in the Lambda API response.
-    const { FunctionName: imageFunctionName } =
-      await createContainerImageFunction(containerImageUri, {
-        Tags: { foo: "bar" },
-      });
-
+    // The container image Lambda is pre-created in CDK (tagged foo:bar) so it is
+    // automatically picked up by the scheduled event targeting rule — no per-test
+    // create/delete needed.
     const res = await invokeLambdaWithScheduledEvent();
 
     // The container image function must appear in skipped with unsupported-runtime,
     // not in failed and not in succeeded.
-    expect(Object.keys(res.instrument.skipped)).toContain(imageFunctionName);
-    expect(res.instrument.skipped[imageFunctionName].reasonCode).toStrictEqual(
+    expect(Object.keys(res.instrument.skipped)).toContain(containerImageFunctionName);
+    expect(res.instrument.skipped[containerImageFunctionName].reasonCode).toStrictEqual(
       "unsupported-runtime",
     );
-    expect(Object.keys(res.instrument.failed)).not.toContain(imageFunctionName);
+    expect(Object.keys(res.instrument.failed)).not.toContain(containerImageFunctionName);
     expect(Object.keys(res.instrument.succeeded)).not.toContain(
-      imageFunctionName,
+      containerImageFunctionName,
     );
 
     // The container image function must remain un-instrumented (no layers, no env vars).
     const isImageFunctionUninstrumented =
-      await isFunctionUninstrumented(imageFunctionName);
+      await isFunctionUninstrumented(containerImageFunctionName);
     expect(isImageFunctionUninstrumented).toStrictEqual(true);
 
     // The zip-based function in the same batch must still have been instrumented,

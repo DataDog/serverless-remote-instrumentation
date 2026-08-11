@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 import { App, CfnOutput, SecretValue, Stack, RemovalPolicy, Duration, Tags } from 'aws-cdk-lib';
 import { AccountRootPrincipal, Role, ServicePrincipal, PolicyStatement, CompositePrincipal, ManagedPolicy } from 'aws-cdk-lib/aws-iam';
-import { Function as LambdaFunction, Runtime, Code, Version, CfnFunction } from 'aws-cdk-lib/aws-lambda';
+import { Function as LambdaFunction, Runtime, Code, Version, DockerImageCode, DockerImageFunction } from 'aws-cdk-lib/aws-lambda';
 import { Distribution, LambdaEdgeEventType, ViewerProtocolPolicy } from 'aws-cdk-lib/aws-cloudfront';
 import { S3BucketOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
 import { Bucket, BlockPublicAccess } from 'aws-cdk-lib/aws-s3';
 import { CfnInclude } from 'aws-cdk-lib/cloudformation-include';
-import { DockerImageAsset, Platform } from 'aws-cdk-lib/aws-ecr-assets';
+import { Platform } from 'aws-cdk-lib/aws-ecr-assets';
 import { Construct } from 'constructs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -76,21 +76,29 @@ class TestingStack extends Stack {
       resources: ["*"],
     }));
 
-    new Role(this, 'TestLambdaExecutionRole', {
+    const testLambdaExecutionRole = new Role(this, 'TestLambdaExecutionRole', {
       assumedBy: new ServicePrincipal("lambda.amazonaws.com"),
       roleName: testLambdaRole,
     });
 
-    // Minimal Lambda container image used by tests that verify the instrumenter
-    // skips container-image functions gracefully. CDK builds and pushes this to
-    // the CDK bootstrap ECR repo during `cdk deploy`, keyed by Dockerfile hash
-    // so it only rebuilds when the Dockerfile changes.
-    const testContainerImage = new DockerImageAsset(this, 'TestContainerImage', {
-      directory: path.join(path.dirname(fileURLToPath(import.meta.url)), '../../test-container'),
-      platform: Platform.LINUX_AMD64,
+    // A single container image Lambda shared across tests that verify the
+    // instrumenter skips PackageType:Image functions gracefully. CDK builds
+    // the image from test-container/Dockerfile and pushes it to the CDK
+    // bootstrap ECR repo during `cdk deploy` (requires DinD in CI).
+    // Tagged foo:bar so scheduled-event targeting rules pick it up automatically.
+    const containerImageFn = new DockerImageFunction(this, 'ContainerImageTestFn', {
+      code: DockerImageCode.fromImageAsset(
+        path.join(path.dirname(fileURLToPath(import.meta.url)), '../../test-container'),
+        { platform: Platform.LINUX_AMD64 },
+      ),
+      role: testLambdaExecutionRole,
+      memorySize: 128,
+      timeout: Duration.seconds(30),
     });
-    new CfnOutput(this, 'TestContainerImageUri', {
-      value: testContainerImage.imageUri,
+    Tags.of(containerImageFn).add('foo', 'bar');
+    Tags.of(containerImageFn).add('dd_serverless_service', 'remote_instrumenter_testing');
+    new CfnOutput(this, 'ContainerImageFunctionName', {
+      value: containerImageFn.functionName,
     });
 
     new CfnInclude(this, 'ImportedRemoteInstrumenterTemplate', {

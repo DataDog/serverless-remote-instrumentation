@@ -11,7 +11,7 @@ declare const config: {
   version: string;
   apiSecretName: string;
   appSecretName: string;
-  containerImageUri: string;
+  containerImageFunctionName: string;
 };
 
 export = config;
