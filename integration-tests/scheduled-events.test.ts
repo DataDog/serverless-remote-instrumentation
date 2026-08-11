@@ -37,10 +37,8 @@ import {
   putErrorObject,
   doesErrorObjectExist,
 } from "./utilities/s3-error-object";
-import config, { region } from "./config.json";
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const containerImageFunctionName = (config as any)
-  .containerImageFunctionName as string;
+import { region } from "./config.json";
+import { getContainerImageFunctionName } from "./utilities/aws-resources";
 
 describe("Remote instrumenter scheduled event tests", () => {
   const functionThatDoesntExist = "ThisDoesNotExist";
@@ -516,6 +514,7 @@ describe("Remote instrumenter scheduled event tests", () => {
     // The container image Lambda is pre-created in CDK (tagged foo:bar) so it is
     // automatically picked up by the scheduled event targeting rule — no per-test
     // create/delete needed.
+    const containerImageFunctionName = await getContainerImageFunctionName();
     const res = await invokeLambdaWithScheduledEvent();
 
     // The container image function must appear in skipped with unsupported-runtime,

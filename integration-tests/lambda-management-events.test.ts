@@ -28,10 +28,7 @@ import {
   invokeLambdaWithScheduledEvent,
   invokeLambdaWithLambdaManagementEvent,
 } from "./utilities/remote-instrumenter-invocations";
-import config from "./config.json";
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const containerImageFunctionName = (config as any)
-  .containerImageFunctionName as string;
+import { getContainerImageFunctionName } from "./utilities/aws-resources";
 
 describe("Remote instrumenter lambda management event tests", () => {
   afterAll(async () => {
@@ -237,6 +234,7 @@ describe("Remote instrumenter lambda management event tests", () => {
     await setRemoteConfig();
 
     // Use the container image Lambda pre-created in CDK — no per-test create/delete needed.
+    const containerImageFunctionName = await getContainerImageFunctionName();
     const { payload, errors } = await invokeLambdaWithLambdaManagementEvent({
       targetFunctionName: containerImageFunctionName,
     });
