@@ -182,14 +182,16 @@ describe("Remote instrumenter lambda management event tests", () => {
     );
     const functionNames = functions.map((lambda: any) => lambda.FunctionName);
 
-    // For each of the 20 functions
-    for (const functionName of functionNames) {
-      // After some time
-      const isInstrumented = await pollUntilTrue(60000, 5000, () =>
-        isFunctionInstrumented(functionName),
-      );
+    // Poll all 20 functions concurrently — they all receive management events
+    // at roughly the same time, so sequential polling would time out.
+    const results = await Promise.all(
+      functionNames.map((functionName: string) =>
+        pollUntilTrue(60000, 5000, () => isFunctionInstrumented(functionName)),
+      ),
+    );
 
-      // The function is instrumented correctly
+    // Every function must be instrumented
+    for (const isInstrumented of results) {
       expect(isInstrumented).toStrictEqual(true);
     }
   }, 120000);
