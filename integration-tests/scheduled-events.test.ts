@@ -39,7 +39,8 @@ import {
 } from "./utilities/s3-error-object";
 import config, { region } from "./config.json";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const containerImageFunctionName = (config as any).containerImageFunctionName as string;
+const containerImageFunctionName = (config as any)
+  .containerImageFunctionName as string;
 
 describe("Remote instrumenter scheduled event tests", () => {
   const functionThatDoesntExist = "ThisDoesNotExist";
@@ -519,18 +520,23 @@ describe("Remote instrumenter scheduled event tests", () => {
 
     // The container image function must appear in skipped with unsupported-runtime,
     // not in failed and not in succeeded.
-    expect(Object.keys(res.instrument.skipped)).toContain(containerImageFunctionName);
-    expect(res.instrument.skipped[containerImageFunctionName].reasonCode).toStrictEqual(
-      "unsupported-runtime",
+    expect(Object.keys(res.instrument.skipped)).toContain(
+      containerImageFunctionName,
     );
-    expect(Object.keys(res.instrument.failed)).not.toContain(containerImageFunctionName);
+    expect(
+      res.instrument.skipped[containerImageFunctionName].reasonCode,
+    ).toStrictEqual("unsupported-runtime");
+    expect(Object.keys(res.instrument.failed)).not.toContain(
+      containerImageFunctionName,
+    );
     expect(Object.keys(res.instrument.succeeded)).not.toContain(
       containerImageFunctionName,
     );
 
     // The container image function must remain un-instrumented (no layers, no env vars).
-    const isImageFunctionUninstrumented =
-      await isFunctionUninstrumented(containerImageFunctionName);
+    const isImageFunctionUninstrumented = await isFunctionUninstrumented(
+      containerImageFunctionName,
+    );
     expect(isImageFunctionUninstrumented).toStrictEqual(true);
 
     // The zip-based function in the same batch must still have been instrumented,

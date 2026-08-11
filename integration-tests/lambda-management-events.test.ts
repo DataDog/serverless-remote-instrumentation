@@ -30,7 +30,8 @@ import {
 } from "./utilities/remote-instrumenter-invocations";
 import config from "./config.json";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const containerImageFunctionName = (config as any).containerImageFunctionName as string;
+const containerImageFunctionName = (config as any)
+  .containerImageFunctionName as string;
 
 describe("Remote instrumenter lambda management event tests", () => {
   afterAll(async () => {
@@ -258,7 +259,9 @@ describe("Remote instrumenter lambda management event tests", () => {
     );
 
     // And the function must remain un-instrumented.
-    const isUninstrumented = await isFunctionUninstrumented(containerImageFunctionName);
+    const isUninstrumented = await isFunctionUninstrumented(
+      containerImageFunctionName,
+    );
     expect(isUninstrumented).toStrictEqual(true);
   });
 });
