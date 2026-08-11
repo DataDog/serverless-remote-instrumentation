@@ -75,7 +75,8 @@ const getStackOutput = async (outputKey: string): Promise<string> => {
 };
 
 const getEdgeFunctionName = () => getStackOutput("EdgeFunctionName");
-const getContainerImageFunctionName = () => getStackOutput("ContainerImageFunctionName");
+const getContainerImageFunctionName = () =>
+  getStackOutput("ContainerImageFunctionName");
 
 export {
   getSecretsManagerClient,
