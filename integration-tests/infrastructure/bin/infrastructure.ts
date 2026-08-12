@@ -81,7 +81,7 @@ class TestingStack extends Stack {
 
     // A single container image Lambda shared across tests that verify the
     // instrumenter skips PackageType:Image functions gracefully. Uses the
-    // self-monitoring-lambda-extension ECR repo in us-east-1 (sandbox-layer-deployer
+    // self-monitoring-lambda-extension ECR repo in eu-south-1 (sandbox-layer-deployer
     // already has push permissions there). The image must be pushed manually — see
     // the Confluence runbook for instructions:
     // https://datadoghq.atlassian.net/wiki/spaces/SLS/pages/3697541962/Lambda+Remote+Instrumentation
