@@ -82,8 +82,9 @@ class TestingStack extends Stack {
     // A single container image Lambda shared across tests that verify the
     // instrumenter skips PackageType:Image functions gracefully. Uses the
     // self-monitoring-lambda-extension ECR repo in us-east-1 (sandbox-layer-deployer
-    // already has push permissions there). CI builds and pushes the image under
-    // the ci-test-container tag before cdk deploy.
+    // already has push permissions there). The image must be pushed manually — see
+    // the Confluence runbook for instructions:
+    // https://datadoghq.atlassian.net/wiki/spaces/SLS/pages/3697541962/Lambda+Remote+Instrumentation
     // Tagged foo:bar so scheduled-event targeting rules pick it up automatically.
     const ecrRepo = Repository.fromRepositoryName(
       this, 'ContainerImageRepo', 'self-monitoring-lambda-extension'
