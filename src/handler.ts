@@ -140,12 +140,14 @@ export const handler = async (
     await emptyBucketResponsePromise;
 
     if (failedToUninstrument.length) {
-      await cfnResponse.send(event, context, "FAILED", {
-        failed: failedToUninstrument,
-      });
-    } else {
-      await cfnResponse.send(event, context, "SUCCESS");
+      // Log failures but always return SUCCESS on Delete so CloudFormation can
+      // complete stack teardown. Returning FAILED here puts the stack in
+      // DELETE_FAILED state permanently, blocking future test runs.
+      logger.error(
+        `Failed to uninstrument: ${failedToUninstrument.join(", ")}`,
+      );
     }
+    await cfnResponse.send(event, context, "SUCCESS");
   } else if (isStackUpdatedEvent(event)) {
     // On a stack update, delete the config hash so the next scheduled
     // invocation treats the config as changed and re-instruments all functions.
