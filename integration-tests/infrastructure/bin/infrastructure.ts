@@ -123,11 +123,7 @@ class TestingStack extends Stack {
 
       // Lambda@Edge requires the execution role to trust edgelambda.amazonaws.com
       // in addition to lambda.amazonaws.com.
-      // Fixed role name so the role is reused across CI runs (EdgeFn is retained,
-      // so without a fixed role name the role would be deleted on teardown and
-      // the retained EdgeFn would be left without a role).
       const edgeFunctionRole = new Role(this, 'EdgeFnExecRole', {
-        roleName: 'ri-test-edge-fn-exec-role',
         assumedBy: new CompositePrincipal(
           new ServicePrincipal('lambda.amazonaws.com'),
           new ServicePrincipal('edgelambda.amazonaws.com'),
@@ -136,16 +132,8 @@ class TestingStack extends Stack {
           ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
         ],
       });
-      edgeFunctionRole.applyRemovalPolicy(RemovalPolicy.RETAIN);
 
-      // Fixed function name so only one EdgeFn exists in the account across CI
-      // runs. Without this, each run with RemovalPolicy.RETAIN creates a new
-      // function with a different CloudFormation suffix, and they accumulate.
-      // The instrumenter cannot uninstrument orphaned Lambda@Edge functions
-      // (replicas still exist after the CloudFront distribution is deleted),
-      // causing DELETE_FAILED on every subsequent teardown.
       const edgeFunction = new LambdaFunction(this, 'EdgeFn', {
-        functionName: 'ri-test-edge-fn',
         runtime: Runtime.NODEJS_24_X,
         handler: 'index.handler',
         code: Code.fromInline(`
