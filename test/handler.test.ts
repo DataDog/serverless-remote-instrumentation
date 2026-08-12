@@ -330,7 +330,7 @@ describe("stack delete events", () => {
     expect(mockedErrorStorage.emptyBucket).toHaveBeenCalledTimes(1);
   });
 
-  test("fails to uninstrument but still calls back with success", async () => {
+  test("fails to uninstrument and calls back with fail", async () => {
     const event = {
       RequestType: "Delete",
       ResponseURL: "url",
@@ -377,7 +377,10 @@ describe("stack delete events", () => {
     expect(mockedCfnResponse.send).toHaveBeenCalledWith(
       event,
       context,
-      "SUCCESS",
+      "FAILED",
+      {
+        failed: ["test"],
+      },
     );
     expect(res.uninstrument.failed.test).toStrictEqual("1");
   });
