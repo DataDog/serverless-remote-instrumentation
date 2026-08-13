@@ -57,7 +57,7 @@ const getLogsClient = (): any => {
   return logsClient;
 };
 
-const getEdgeFunctionName = async (): Promise<string> => {
+const getStackOutput = async (outputKey: string): Promise<string> => {
   const cfClient = new CloudFormationClient({
     credentials: getCredentials(arn),
     region,
@@ -66,13 +66,17 @@ const getEdgeFunctionName = async (): Promise<string> => {
     new DescribeStacksCommand({ StackName: stackName }),
   );
   const output = result.Stacks?.[0]?.Outputs?.find(
-    (o) => o.OutputKey === "EdgeFunctionName",
+    (o) => o.OutputKey === outputKey,
   );
   if (!output?.OutputValue) {
-    throw new Error(`EdgeFunctionName output not found in stack ${stackName}`);
+    throw new Error(`${outputKey} output not found in stack ${stackName}`);
   }
   return output.OutputValue;
 };
+
+const getEdgeFunctionName = () => getStackOutput("EdgeFunctionName");
+const getContainerImageFunctionName = () =>
+  getStackOutput("ContainerImageFunctionName");
 
 export {
   getSecretsManagerClient,
@@ -80,4 +84,5 @@ export {
   getS3Client,
   getLogsClient,
   getEdgeFunctionName,
+  getContainerImageFunctionName,
 };

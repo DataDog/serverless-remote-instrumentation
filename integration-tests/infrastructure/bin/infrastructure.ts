@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 import { App, CfnOutput, SecretValue, Stack, RemovalPolicy, Duration, Tags } from 'aws-cdk-lib';
 import { AccountRootPrincipal, Role, ServicePrincipal, PolicyStatement, CompositePrincipal, ManagedPolicy } from 'aws-cdk-lib/aws-iam';
-import { Function as LambdaFunction, Runtime, Code, Version, CfnFunction } from 'aws-cdk-lib/aws-lambda';
+import { Function as LambdaFunction, Runtime, Code, Version, DockerImageCode, DockerImageFunction } from 'aws-cdk-lib/aws-lambda';
 import { Distribution, LambdaEdgeEventType, ViewerProtocolPolicy } from 'aws-cdk-lib/aws-cloudfront';
 import { S3BucketOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
 import { Bucket, BlockPublicAccess } from 'aws-cdk-lib/aws-s3';
 import { CfnInclude } from 'aws-cdk-lib/cloudformation-include';
+import { Repository } from 'aws-cdk-lib/aws-ecr';
 import { Construct } from 'constructs';
 import { region, account, roleName, stackName, functionName, bucketName, testLambdaRole, ddSite, apiSecretName } from '../../config.json';
 import { readFileSync, writeFileSync } from 'fs'
@@ -73,9 +74,31 @@ class TestingStack extends Stack {
       resources: ["*"],
     }));
 
-    new Role(this, 'TestLambdaExecutionRole', {
+    const testLambdaExecutionRole = new Role(this, 'TestLambdaExecutionRole', {
       assumedBy: new ServicePrincipal("lambda.amazonaws.com"),
       roleName: testLambdaRole,
+    });
+
+    // A single container image Lambda shared across tests that verify the
+    // instrumenter skips PackageType:Image functions gracefully. Uses the
+    // self-monitoring-lambda-extension ECR repo in eu-south-1 (sandbox-layer-deployer
+    // already has push permissions there). The image must be pushed manually — see
+    // the Confluence runbook for instructions:
+    // https://datadoghq.atlassian.net/wiki/spaces/SLS/pages/3697541962/Lambda+Remote+Instrumentation
+    // Tagged foo:bar so scheduled-event targeting rules pick it up automatically.
+    const ecrRepo = Repository.fromRepositoryName(
+      this, 'ContainerImageRepo', 'self-monitoring-lambda-extension'
+    );
+    const containerImageFn = new DockerImageFunction(this, 'ContainerImageTestFn', {
+      code: DockerImageCode.fromEcr(ecrRepo, { tag: 'ci-test-container' }),
+      role: testLambdaExecutionRole,
+      memorySize: 128,
+      timeout: Duration.seconds(30),
+    });
+    Tags.of(containerImageFn).add('foo', 'bar');
+    Tags.of(containerImageFn).add('dd_serverless_service', 'remote_instrumenter_testing');
+    new CfnOutput(this, 'ContainerImageFunctionName', {
+      value: containerImageFn.functionName,
     });
 
     new CfnInclude(this, 'ImportedRemoteInstrumenterTemplate', {

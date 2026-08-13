@@ -167,9 +167,68 @@ const isFunctionInvokable = async (functionName: string): Promise<boolean> => {
   return StatusCode === 200;
 };
 
+// Creates a container image Lambda (PackageType: "Image").
+// These functions have Runtime: undefined in API responses, which is the real-world
+// scenario for functions deployed as container images rather than zip archives.
+// The image must exist in ECR and be accessible to the test account's Lambda role.
+const createContainerImageFunction = async (
+  imageUri: string,
+  extraProps: Record<string, unknown> = {},
+): Promise<any> => {
+  const lambdaClient = await getLambdaClient();
+  const functionName = generateTestFunctionName();
+  const { Tags: extraTags, ...restProps } = extraProps;
+
+  const command = new CreateFunctionCommand({
+    FunctionName: functionName,
+    Role: `arn:aws:iam::${account}:role/${testLambdaRole}`,
+    PackageType: "Image",
+    Code: { ImageUri: imageUri },
+    MemorySize: 128,
+    Tags: {
+      dd_serverless_service: "remote_instrumenter_testing",
+      ...(extraTags as Record<string, string>),
+    },
+    ...restProps,
+  });
+
+  let lambda;
+  try {
+    lambda = await lambdaClient.send(command);
+  } catch (e) {
+    if (e instanceof ResourceConflictException) {
+      await lambdaClient.send(
+        new DeleteFunctionCommand({ FunctionName: functionName }),
+      );
+      lambda = await lambdaClient.send(command);
+    } else {
+      throw e;
+    }
+  }
+
+  functionNamesToCleanUp.push(lambda.FunctionName);
+
+  // Wait for the function to leave Pending state before returning
+  let state = "Pending";
+  while (state === "Pending") {
+    const status = await lambdaClient.send(
+      new GetFunctionConfigurationCommand({
+        FunctionName: lambda.FunctionName,
+      }),
+    );
+    state = status.State ?? "Active";
+    if (state === "Pending") {
+      await sleep(1000);
+    }
+  }
+
+  return lambda;
+};
+
 export {
   createFunctions,
   createFunction,
+  createContainerImageFunction,
   deleteFunction,
   deleteTestFunctions,
   tagFunction,

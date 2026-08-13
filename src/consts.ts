@@ -113,12 +113,18 @@ export const SUPPORTED_RUNTIME_CONFIGURATIONS: Record<
   },
 };
 
+// Returns the runtime configuration for a given runtime string, or undefined if
+// the runtime is unsupported. Container image Lambdas have Runtime: undefined
+// in the AWS API response — the early return ensures they are treated as
+// unsupported rather than causing a TypeError in isSupportedRuntime.
 export const getRuntimeConfig = (
-  runtime: string,
-): RuntimeConfiguration | undefined =>
-  Object.entries(SUPPORTED_RUNTIME_CONFIGURATIONS).find(([, config]) =>
+  runtime: string | undefined,
+): RuntimeConfiguration | undefined => {
+  if (!runtime) return undefined;
+  return Object.entries(SUPPORTED_RUNTIME_CONFIGURATIONS).find(([, config]) =>
     config.isSupportedRuntime(runtime),
   )?.[1];
+};
 
 // Event Types
 export const LAMBDA_EVENT = "LambdaEvent";
