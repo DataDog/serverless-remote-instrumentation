@@ -18,6 +18,7 @@ import {
   RC_ACKNOWLEDGED,
   SCHEDULED_INVOCATION_EVENT,
   LAMBDA_EVENT,
+  getRuntimeConfig,
   type LambdaFunction,
 } from "../src/consts";
 
@@ -43,9 +44,27 @@ import { getUninstrumentedFunctionConfig } from "@datadog/datadog-ci-plugin-lamb
 import { updateLambdaFunctionConfig } from "@datadog/datadog-ci-plugin-lambda/functions/commons";
 import { waitUntilFunctionIsActive } from "../src/functions";
 
+describe("getRuntimeConfig", () => {
+  it("resolves a supported tracer runtime", () => {
+    expect(getRuntimeConfig("nodejs18.x")).toBeDefined();
+  });
+
+  it("resolves an extension-only runtime", () => {
+    expect(getRuntimeConfig("provided.al2")).toBeDefined();
+  });
+
+  it("rejects a legacy unsupported runtime", () => {
+    expect(getRuntimeConfig("nodejs14.x")).toBeUndefined();
+  });
+
+  it("rejects a family-like runtime", () => {
+    expect(getRuntimeConfig("custom-node-runtime")).toBeUndefined();
+  });
+});
+
 describe("getExtensionAndRuntimeLayerVersion", () => {
   it("should return the layer and runtime version for node", () => {
-    const runtime = "nodejs12.x";
+    const runtime = "nodejs18.x";
     const config = {
       extensionVersion: 1,
       nodeLayerVersion: 2,
@@ -403,6 +422,34 @@ describe("instrumentWithDatadogCi", () => {
     });
     (updateLambdaFunctionConfig as any).mockResolvedValue();
     vi.clearAllMocks();
+  });
+
+  test("passes none for omitted Remote Config versions", async () => {
+    const functionWithNodeRuntime: LambdaFunction = {
+      FunctionName: "node-runtime-func",
+      FunctionArn:
+        "arn:aws:lambda:us-east-2:123456789:function:node-runtime-func",
+      Runtime: "nodejs18.x",
+      Tags: new Set(),
+    };
+
+    await instrument.instrumentWithDatadogCi(
+      functionWithNodeRuntime,
+      true,
+      {},
+      baseInstrumentOutcome,
+    );
+
+    expect(getInstrumentedFunctionConfig).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      functionWithNodeRuntime,
+      "us-east-2",
+      expect.objectContaining({
+        extensionVersion: "none",
+        layerVersion: "none",
+      }),
+    );
   });
 
   test("should handle function with undefined runtime gracefully", async () => {
