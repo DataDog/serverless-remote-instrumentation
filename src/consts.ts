@@ -50,7 +50,7 @@ interface RuntimeConfiguration {
 
 type RuntimeCatalogEntry = {
   runtime: string;
-  family: string;
+  library: string;
   tracerLayerPrefix?: string;
   configField?: string;
   jsonConfigField?: string;
@@ -89,11 +89,11 @@ export const SUPPORTED_RUNTIME_CONFIGURATIONS = RUNTIME_CATALOG.reduce<
   Record<string, RuntimeConfiguration>
 >(
   (configurations, runtime) =>
-    configurations[runtime.family]
+    configurations[runtime.library]
       ? configurations
       : {
           ...configurations,
-          [runtime.family]: RUNTIME_CONFIGURATIONS_BY_RUNTIME[runtime.runtime],
+          [runtime.library]: RUNTIME_CONFIGURATIONS_BY_RUNTIME[runtime.runtime],
         },
   {},
 );
