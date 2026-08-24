@@ -1,5 +1,5 @@
 import { FunctionConfiguration } from "@aws-sdk/client-lambda";
-import { RUNTIME_CATALOG } from "./runtime-catalog";
+import { RUNTIME_CATALOG, type RuntimeCatalogGroup } from "./runtime-catalog";
 
 export interface ConfigJSON {
   config_version: number;
@@ -48,14 +48,6 @@ interface RuntimeConfiguration {
   getFromJsonConfig: (configJSON: ConfigJSON) => number | undefined;
 }
 
-type RuntimeCatalogEntry = {
-  runtime: string;
-  library: string;
-  tracerLayerPrefix?: string;
-  configField?: string;
-  jsonConfigField?: string;
-};
-
 type InstrumentationSettings = NonNullable<
   ConfigJSON["instrumentation_settings"]
 >;
@@ -70,33 +62,34 @@ const getFromJsonConfig =
       : undefined;
 
 const createRuntimeConfiguration = (
-  runtime: RuntimeCatalogEntry,
+  group: RuntimeCatalogGroup,
 ): RuntimeConfiguration => ({
-  layerName: runtime.tracerLayerPrefix,
-  configField: runtime.configField,
-  getFromJsonConfig: getFromJsonConfig(runtime.jsonConfigField),
+  layerName: group.tracerLayerPrefix,
+  configField: group.configField,
+  getFromJsonConfig: getFromJsonConfig(group.jsonConfigField),
 });
+
+const RUNTIME_CONFIGURATION_GROUPS = RUNTIME_CATALOG.map((group) => ({
+  ...group,
+  configuration: createRuntimeConfiguration(group),
+}));
+
+export const SUPPORTED_RUNTIME_CONFIGURATIONS: Record<
+  string,
+  RuntimeConfiguration
+> = Object.fromEntries(
+  RUNTIME_CONFIGURATION_GROUPS.map(({ library, configuration }) => [
+    library,
+    configuration,
+  ]),
+);
 
 const RUNTIME_CONFIGURATIONS_BY_RUNTIME: Record<string, RuntimeConfiguration> =
   Object.fromEntries(
-    RUNTIME_CATALOG.map((runtime) => [
-      runtime.runtime,
-      createRuntimeConfiguration(runtime),
-    ]),
+    RUNTIME_CONFIGURATION_GROUPS.flatMap(({ runtimes, configuration }) =>
+      runtimes.map((runtime) => [runtime, configuration]),
+    ),
   );
-
-export const SUPPORTED_RUNTIME_CONFIGURATIONS = RUNTIME_CATALOG.reduce<
-  Record<string, RuntimeConfiguration>
->(
-  (configurations, runtime) =>
-    configurations[runtime.library]
-      ? configurations
-      : {
-          ...configurations,
-          [runtime.library]: RUNTIME_CONFIGURATIONS_BY_RUNTIME[runtime.runtime],
-        },
-  {},
-);
 
 // Returns the runtime configuration for a given runtime string, or undefined if
 // the runtime is unsupported. Container image Lambdas have Runtime: undefined
@@ -105,9 +98,7 @@ export const SUPPORTED_RUNTIME_CONFIGURATIONS = RUNTIME_CATALOG.reduce<
 export const getRuntimeConfig = (
   runtime: string | undefined,
 ): RuntimeConfiguration | undefined =>
-  runtime
-    ? RUNTIME_CONFIGURATIONS_BY_RUNTIME[runtime.toLowerCase()]
-    : undefined;
+  runtime ? RUNTIME_CONFIGURATIONS_BY_RUNTIME[runtime] : undefined;
 
 // Event Types
 export const LAMBDA_EVENT = "LambdaEvent";

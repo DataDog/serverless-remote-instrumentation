@@ -1,173 +1,59 @@
 // This file is generated. Do not edit it directly.
 
+export type RuntimeCatalogGroup = {
+  library: string;
+  runtimes: readonly string[];
+  tracerLayerPrefix?: string;
+  configField?: string;
+  jsonConfigField?: string;
+};
+
 export const RUNTIME_CATALOG = [
   {
-    runtime: "dotnet10",
     library: "dotnet",
+    runtimes: ["dotnet6", "dotnet8", "dotnet10"],
     tracerLayerPrefix: "dd-trace-dotnet",
     configField: "dotnetLayerVersion",
     jsonConfigField: "dotnet_layer_version",
   },
   {
-    runtime: "dotnet6",
-    library: "dotnet",
-    tracerLayerPrefix: "dd-trace-dotnet",
-    configField: "dotnetLayerVersion",
-    jsonConfigField: "dotnet_layer_version",
-  },
-  {
-    runtime: "dotnet8",
-    library: "dotnet",
-    tracerLayerPrefix: "dd-trace-dotnet",
-    configField: "dotnetLayerVersion",
-    jsonConfigField: "dotnet_layer_version",
-  },
-  {
-    runtime: "java11",
     library: "java",
+    runtimes: ["java8", "java8.al2", "java11", "java17", "java21", "java25"],
     tracerLayerPrefix: "dd-trace-java",
     configField: "javaLayerVersion",
     jsonConfigField: "java_layer_version",
   },
   {
-    runtime: "java17",
-    library: "java",
-    tracerLayerPrefix: "dd-trace-java",
-    configField: "javaLayerVersion",
-    jsonConfigField: "java_layer_version",
-  },
-  {
-    runtime: "java21",
-    library: "java",
-    tracerLayerPrefix: "dd-trace-java",
-    configField: "javaLayerVersion",
-    jsonConfigField: "java_layer_version",
-  },
-  {
-    runtime: "java25",
-    library: "java",
-    tracerLayerPrefix: "dd-trace-java",
-    configField: "javaLayerVersion",
-    jsonConfigField: "java_layer_version",
-  },
-  {
-    runtime: "java8.al2",
-    library: "java",
-    tracerLayerPrefix: "dd-trace-java",
-    configField: "javaLayerVersion",
-    jsonConfigField: "java_layer_version",
-  },
-  {
-    runtime: "nodejs18.x",
     library: "node",
+    runtimes: ["nodejs18.x", "nodejs20.x", "nodejs22.x", "nodejs24.x"],
     tracerLayerPrefix: "Datadog-Node",
     configField: "nodeLayerVersion",
     jsonConfigField: "node_layer_version",
   },
   {
-    runtime: "nodejs20.x",
-    library: "node",
-    tracerLayerPrefix: "Datadog-Node",
-    configField: "nodeLayerVersion",
-    jsonConfigField: "node_layer_version",
-  },
-  {
-    runtime: "nodejs22.x",
-    library: "node",
-    tracerLayerPrefix: "Datadog-Node",
-    configField: "nodeLayerVersion",
-    jsonConfigField: "node_layer_version",
-  },
-  {
-    runtime: "nodejs24.x",
-    library: "node",
-    tracerLayerPrefix: "Datadog-Node",
-    configField: "nodeLayerVersion",
-    jsonConfigField: "node_layer_version",
-  },
-  {
-    runtime: "provided.al2",
     library: "extension",
+    runtimes: ["provided.al2", "provided.al2023"],
   },
   {
-    runtime: "provided.al2023",
-    library: "extension",
-  },
-  {
-    runtime: "python3.10",
     library: "python",
+    runtimes: [
+      "python3.8",
+      "python3.9",
+      "python3.10",
+      "python3.11",
+      "python3.12",
+      "python3.13",
+      "python3.14",
+    ],
     tracerLayerPrefix: "Datadog-Python",
     configField: "pythonLayerVersion",
     jsonConfigField: "python_layer_version",
   },
   {
-    runtime: "python3.11",
-    library: "python",
-    tracerLayerPrefix: "Datadog-Python",
-    configField: "pythonLayerVersion",
-    jsonConfigField: "python_layer_version",
-  },
-  {
-    runtime: "python3.12",
-    library: "python",
-    tracerLayerPrefix: "Datadog-Python",
-    configField: "pythonLayerVersion",
-    jsonConfigField: "python_layer_version",
-  },
-  {
-    runtime: "python3.13",
-    library: "python",
-    tracerLayerPrefix: "Datadog-Python",
-    configField: "pythonLayerVersion",
-    jsonConfigField: "python_layer_version",
-  },
-  {
-    runtime: "python3.14",
-    library: "python",
-    tracerLayerPrefix: "Datadog-Python",
-    configField: "pythonLayerVersion",
-    jsonConfigField: "python_layer_version",
-  },
-  {
-    runtime: "python3.8",
-    library: "python",
-    tracerLayerPrefix: "Datadog-Python",
-    configField: "pythonLayerVersion",
-    jsonConfigField: "python_layer_version",
-  },
-  {
-    runtime: "python3.9",
-    library: "python",
-    tracerLayerPrefix: "Datadog-Python",
-    configField: "pythonLayerVersion",
-    jsonConfigField: "python_layer_version",
-  },
-  {
-    runtime: "ruby3.2",
     library: "ruby",
+    runtimes: ["ruby3.2", "ruby3.3", "ruby3.4", "ruby4.0"],
     tracerLayerPrefix: "Datadog-Ruby",
     configField: "rubyLayerVersion",
     jsonConfigField: "ruby_layer_version",
   },
-  {
-    runtime: "ruby3.3",
-    library: "ruby",
-    tracerLayerPrefix: "Datadog-Ruby",
-    configField: "rubyLayerVersion",
-    jsonConfigField: "ruby_layer_version",
-  },
-  {
-    runtime: "ruby3.4",
-    library: "ruby",
-    tracerLayerPrefix: "Datadog-Ruby",
-    configField: "rubyLayerVersion",
-    jsonConfigField: "ruby_layer_version",
-  },
-  {
-    runtime: "ruby4.0",
-    library: "ruby",
-    tracerLayerPrefix: "Datadog-Ruby",
-    configField: "rubyLayerVersion",
-    jsonConfigField: "ruby_layer_version",
-  },
-] as const;
+] satisfies readonly RuntimeCatalogGroup[];

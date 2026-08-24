@@ -18,6 +18,7 @@ import {
   RC_ACKNOWLEDGED,
   SCHEDULED_INVOCATION_EVENT,
   LAMBDA_EVENT,
+  getRuntimeConfig,
   type LambdaFunction,
 } from "../src/consts";
 
@@ -44,6 +45,19 @@ import { updateLambdaFunctionConfig } from "@datadog/datadog-ci-plugin-lambda/fu
 import { waitUntilFunctionIsActive } from "../src/functions";
 
 describe("getExtensionAndRuntimeLayerVersion", () => {
+  it("supports legacy Java runtime IDs", () => {
+    expect(getRuntimeConfig("java8")).toMatchObject({
+      configField: "javaLayerVersion",
+    });
+    expect(getRuntimeConfig("java8.al2")).toMatchObject({
+      configField: "javaLayerVersion",
+    });
+  });
+
+  it("rejects runtime IDs with uppercase characters", () => {
+    expect(getRuntimeConfig("NODEJS18.X")).toBeUndefined();
+  });
+
   it("should return the layer and runtime version for node", () => {
     const runtime = "nodejs18.x";
     const config = {
@@ -430,6 +444,31 @@ describe("instrumentWithDatadogCi", () => {
         extensionVersion: "none",
         layerVersion: "none",
       }),
+    );
+  });
+
+  test("passes explicit Remote Config versions", async () => {
+    const functionWithNodeRuntime: LambdaFunction = {
+      FunctionName: "node-runtime-func",
+      FunctionArn:
+        "arn:aws:lambda:us-east-2:123456789:function:node-runtime-func",
+      Runtime: "nodejs18.x",
+      Tags: new Set(),
+    };
+
+    await instrument.instrumentWithDatadogCi(
+      functionWithNodeRuntime,
+      true,
+      { extensionVersion: 10, nodeLayerVersion: 20 },
+      baseInstrumentOutcome,
+    );
+
+    expect(getInstrumentedFunctionConfig).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      functionWithNodeRuntime,
+      "us-east-2",
+      expect.objectContaining({ extensionVersion: 10, layerVersion: 20 }),
     );
   });
 
