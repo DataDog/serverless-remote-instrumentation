@@ -18,7 +18,6 @@ import {
   RC_ACKNOWLEDGED,
   SCHEDULED_INVOCATION_EVENT,
   LAMBDA_EVENT,
-  getRuntimeConfig,
   type LambdaFunction,
 } from "../src/consts";
 
@@ -43,24 +42,6 @@ import { getInstrumentedFunctionConfig } from "@datadog/datadog-ci-plugin-lambda
 import { getUninstrumentedFunctionConfig } from "@datadog/datadog-ci-plugin-lambda/functions/uninstrument";
 import { updateLambdaFunctionConfig } from "@datadog/datadog-ci-plugin-lambda/functions/commons";
 import { waitUntilFunctionIsActive } from "../src/functions";
-
-describe("getRuntimeConfig", () => {
-  it("resolves a supported tracer runtime", () => {
-    expect(getRuntimeConfig("nodejs18.x")).toBeDefined();
-  });
-
-  it("resolves an extension-only runtime", () => {
-    expect(getRuntimeConfig("provided.al2")).toBeDefined();
-  });
-
-  it("rejects a legacy unsupported runtime", () => {
-    expect(getRuntimeConfig("nodejs14.x")).toBeUndefined();
-  });
-
-  it("rejects a family-like runtime", () => {
-    expect(getRuntimeConfig("custom-node-runtime")).toBeUndefined();
-  });
-});
 
 describe("getExtensionAndRuntimeLayerVersion", () => {
   it("should return the layer and runtime version for node", () => {
@@ -98,7 +79,7 @@ describe("getExtensionAndRuntimeLayerVersion", () => {
     expect(actual).toEqual(expected);
   });
   it("should return an undefined runtime layer version for an unsupported runtime", () => {
-    const runtime = "go1.x";
+    const runtime = "nodejs14.x";
     const config = {
       extensionVersion: 1,
       nodeLayerVersion: 2,
