@@ -1,13 +1,5 @@
 import { FunctionConfiguration } from "@aws-sdk/client-lambda";
-
-// Runtimes
-export const NODE = "node";
-export const PYTHON = "python";
-export const RUBY = "ruby";
-export const JAVA = "java";
-export const DOTNET = "dotnet";
-export const PROVIDED_AL2 = "provided.al2";
-export const PROVIDED_AL2023 = "provided.al2023";
+import { RUNTIME_CATALOG, type RuntimeCatalogGroup } from "./runtime-catalog";
 
 export interface ConfigJSON {
   config_version: number;
@@ -54,77 +46,59 @@ interface RuntimeConfiguration {
   layerName?: string;
   configField?: string;
   getFromJsonConfig: (configJSON: ConfigJSON) => number | undefined;
-  isSupportedRuntime: (runtime: string) => boolean;
 }
+
+type InstrumentationSettings = NonNullable<
+  ConfigJSON["instrumentation_settings"]
+>;
+
+const getFromJsonConfig =
+  (jsonConfigField?: string) =>
+  (configJSON: ConfigJSON): number | undefined =>
+    jsonConfigField
+      ? (configJSON.instrumentation_settings?.[
+          jsonConfigField as keyof InstrumentationSettings
+        ] as number | undefined)
+      : undefined;
+
+const createRuntimeConfiguration = (
+  group: RuntimeCatalogGroup,
+): RuntimeConfiguration => ({
+  layerName: group.tracerLayerPrefix,
+  configField: group.configField,
+  getFromJsonConfig: getFromJsonConfig(group.jsonConfigField),
+});
+
+const RUNTIME_CONFIGURATION_GROUPS = RUNTIME_CATALOG.map((group) => ({
+  ...group,
+  configuration: createRuntimeConfiguration(group),
+}));
 
 export const SUPPORTED_RUNTIME_CONFIGURATIONS: Record<
   string,
   RuntimeConfiguration
-> = {
-  [NODE]: {
-    layerName: "Datadog-Node",
-    configField: "nodeLayerVersion",
-    getFromJsonConfig: (configJSON) =>
-      configJSON.instrumentation_settings?.node_layer_version,
-    isSupportedRuntime: (runtime: string) =>
-      runtime.toLowerCase().includes(NODE),
-  },
-  [PYTHON]: {
-    layerName: "Datadog-Python",
-    configField: "pythonLayerVersion",
-    getFromJsonConfig: (configJSON) =>
-      configJSON.instrumentation_settings?.python_layer_version,
-    isSupportedRuntime: (runtime: string) =>
-      runtime.toLowerCase().includes(PYTHON),
-  },
-  [RUBY]: {
-    layerName: "Datadog-Ruby",
-    configField: "rubyLayerVersion",
-    getFromJsonConfig: (configJSON) =>
-      configJSON.instrumentation_settings?.ruby_layer_version,
-    isSupportedRuntime: (runtime: string) =>
-      runtime.toLowerCase().includes(RUBY),
-  },
-  [JAVA]: {
-    layerName: "dd-trace-java",
-    configField: "javaLayerVersion",
-    getFromJsonConfig: (configJSON) =>
-      configJSON.instrumentation_settings?.java_layer_version,
-    isSupportedRuntime: (runtime: string) =>
-      runtime.toLowerCase().includes(JAVA),
-  },
-  [DOTNET]: {
-    layerName: "dd-trace-dotnet",
-    configField: "dotnetLayerVersion",
-    getFromJsonConfig: (configJSON) =>
-      configJSON.instrumentation_settings?.dotnet_layer_version,
-    isSupportedRuntime: (runtime: string) =>
-      runtime.toLowerCase().includes(DOTNET),
-  },
-  [PROVIDED_AL2]: {
-    getFromJsonConfig: () => undefined,
-    isSupportedRuntime: (runtime: string) =>
-      runtime.toLowerCase().includes(PROVIDED_AL2),
-  },
-  [PROVIDED_AL2023]: {
-    getFromJsonConfig: () => undefined,
-    isSupportedRuntime: (runtime: string) =>
-      runtime.toLowerCase().includes(PROVIDED_AL2023),
-  },
-};
+> = Object.fromEntries(
+  RUNTIME_CONFIGURATION_GROUPS.map(({ library, configuration }) => [
+    library,
+    configuration,
+  ]),
+);
+
+const RUNTIME_CONFIGURATIONS_BY_RUNTIME: Record<string, RuntimeConfiguration> =
+  Object.fromEntries(
+    RUNTIME_CONFIGURATION_GROUPS.flatMap(({ runtimes, configuration }) =>
+      runtimes.map((runtime) => [runtime, configuration]),
+    ),
+  );
 
 // Returns the runtime configuration for a given runtime string, or undefined if
 // the runtime is unsupported. Container image Lambdas have Runtime: undefined
 // in the AWS API response — the early return ensures they are treated as
-// unsupported rather than causing a TypeError in isSupportedRuntime.
+// unsupported.
 export const getRuntimeConfig = (
   runtime: string | undefined,
-): RuntimeConfiguration | undefined => {
-  if (!runtime) return undefined;
-  return Object.entries(SUPPORTED_RUNTIME_CONFIGURATIONS).find(([, config]) =>
-    config.isSupportedRuntime(runtime),
-  )?.[1];
-};
+): RuntimeConfiguration | undefined =>
+  runtime ? RUNTIME_CONFIGURATIONS_BY_RUNTIME[runtime] : undefined;
 
 // Event Types
 export const LAMBDA_EVENT = "LambdaEvent";
