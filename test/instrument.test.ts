@@ -45,7 +45,7 @@ import { waitUntilFunctionIsActive } from "../src/functions";
 
 describe("getExtensionAndRuntimeLayerVersion", () => {
   it("should return the layer and runtime version for node", () => {
-    const runtime = "nodejs12.x";
+    const runtime = "nodejs18.x";
     const config = {
       extensionVersion: 1,
       nodeLayerVersion: 2,
