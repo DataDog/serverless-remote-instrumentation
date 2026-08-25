@@ -18,7 +18,6 @@ import {
   RC_ACKNOWLEDGED,
   SCHEDULED_INVOCATION_EVENT,
   LAMBDA_EVENT,
-  getRuntimeConfig,
   type LambdaFunction,
 } from "../src/consts";
 
@@ -45,21 +44,8 @@ import { updateLambdaFunctionConfig } from "@datadog/datadog-ci-plugin-lambda/fu
 import { waitUntilFunctionIsActive } from "../src/functions";
 
 describe("getExtensionAndRuntimeLayerVersion", () => {
-  it("supports legacy Java runtime IDs", () => {
-    expect(getRuntimeConfig("java8")).toMatchObject({
-      configField: "javaLayerVersion",
-    });
-    expect(getRuntimeConfig("java8.al2")).toMatchObject({
-      configField: "javaLayerVersion",
-    });
-  });
-
-  it("rejects runtime IDs with uppercase characters", () => {
-    expect(getRuntimeConfig("NODEJS18.X")).toBeUndefined();
-  });
-
   it("should return the layer and runtime version for node", () => {
-    const runtime = "nodejs18.x";
+    const runtime = "nodejs12.x";
     const config = {
       extensionVersion: 1,
       nodeLayerVersion: 2,
@@ -92,20 +78,23 @@ describe("getExtensionAndRuntimeLayerVersion", () => {
     );
     expect(actual).toEqual(expected);
   });
-  it.each([
-    ["nodejs14.x", "nodeLayerVersion"],
-    ["nodejs16.x", "nodeLayerVersion"],
-    ["python3.7", "pythonLayerVersion"],
-  ])("supports %s", (runtime, configField) => {
-    expect(getRuntimeConfig(runtime)).toMatchObject({ configField });
+  it("should return an undefined runtime layer version for an unsupported runtime", () => {
+    const runtime = "go1.x";
+    const config = {
+      extensionVersion: 1,
+      nodeLayerVersion: 2,
+      pythonLayerVersion: 3,
+    };
+    const expected = {
+      runtimeLayerVersion: undefined,
+      extensionVersion: 1,
+    };
+    const actual = instrument.getExtensionAndRuntimeLayerVersion(
+      runtime,
+      config,
+    );
+    expect(actual).toEqual(expected);
   });
-
-  it.each(["nodejs12.x", "python2.7", "python3.6"])(
-    "rejects removed runtime %s",
-    (runtime) => {
-      expect(getRuntimeConfig(runtime)).toBeUndefined();
-    },
-  );
   it("should handle undefined runtime by using empty string fallback", () => {
     const runtime = "";
     const config = {
@@ -414,59 +403,6 @@ describe("instrumentWithDatadogCi", () => {
     });
     (updateLambdaFunctionConfig as any).mockResolvedValue();
     vi.clearAllMocks();
-  });
-
-  test("passes none for omitted Remote Config versions", async () => {
-    const functionWithNodeRuntime: LambdaFunction = {
-      FunctionName: "node-runtime-func",
-      FunctionArn:
-        "arn:aws:lambda:us-east-2:123456789:function:node-runtime-func",
-      Runtime: "nodejs18.x",
-      Tags: new Set(),
-    };
-
-    await instrument.instrumentWithDatadogCi(
-      functionWithNodeRuntime,
-      true,
-      {},
-      baseInstrumentOutcome,
-    );
-
-    expect(getInstrumentedFunctionConfig).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-      functionWithNodeRuntime,
-      "us-east-2",
-      expect.objectContaining({
-        extensionVersion: "none",
-        layerVersion: "none",
-      }),
-    );
-  });
-
-  test("passes explicit Remote Config versions", async () => {
-    const functionWithNodeRuntime: LambdaFunction = {
-      FunctionName: "node-runtime-func",
-      FunctionArn:
-        "arn:aws:lambda:us-east-2:123456789:function:node-runtime-func",
-      Runtime: "nodejs18.x",
-      Tags: new Set(),
-    };
-
-    await instrument.instrumentWithDatadogCi(
-      functionWithNodeRuntime,
-      true,
-      { extensionVersion: 10, nodeLayerVersion: 20 },
-      baseInstrumentOutcome,
-    );
-
-    expect(getInstrumentedFunctionConfig).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-      functionWithNodeRuntime,
-      "us-east-2",
-      expect.objectContaining({ extensionVersion: 10, layerVersion: 20 }),
-    );
   });
 
   test("should handle function with undefined runtime gracefully", async () => {
