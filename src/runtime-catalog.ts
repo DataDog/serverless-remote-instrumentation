@@ -25,7 +25,14 @@ export const RUNTIME_CATALOG = [
   },
   {
     library: "node",
-    runtimes: ["nodejs18.x", "nodejs20.x", "nodejs22.x", "nodejs24.x"],
+    runtimes: [
+      "nodejs14.x",
+      "nodejs16.x",
+      "nodejs18.x",
+      "nodejs20.x",
+      "nodejs22.x",
+      "nodejs24.x",
+    ],
     tracerLayerPrefix: "Datadog-Node",
     configField: "nodeLayerVersion",
     jsonConfigField: "node_layer_version",
@@ -37,6 +44,7 @@ export const RUNTIME_CATALOG = [
   {
     library: "python",
     runtimes: [
+      "python3.7",
       "python3.8",
       "python3.9",
       "python3.10",

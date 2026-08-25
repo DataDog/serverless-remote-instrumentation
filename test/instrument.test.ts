@@ -92,23 +92,20 @@ describe("getExtensionAndRuntimeLayerVersion", () => {
     );
     expect(actual).toEqual(expected);
   });
-  it("should return an undefined runtime layer version for an unsupported runtime", () => {
-    const runtime = "nodejs14.x";
-    const config = {
-      extensionVersion: 1,
-      nodeLayerVersion: 2,
-      pythonLayerVersion: 3,
-    };
-    const expected = {
-      runtimeLayerVersion: undefined,
-      extensionVersion: 1,
-    };
-    const actual = instrument.getExtensionAndRuntimeLayerVersion(
-      runtime,
-      config,
-    );
-    expect(actual).toEqual(expected);
+  it.each([
+    ["nodejs14.x", "nodeLayerVersion"],
+    ["nodejs16.x", "nodeLayerVersion"],
+    ["python3.7", "pythonLayerVersion"],
+  ])("supports %s", (runtime, configField) => {
+    expect(getRuntimeConfig(runtime)).toMatchObject({ configField });
   });
+
+  it.each(["nodejs12.x", "python2.7", "python3.6"])(
+    "rejects removed runtime %s",
+    (runtime) => {
+      expect(getRuntimeConfig(runtime)).toBeUndefined();
+    },
+  );
   it("should handle undefined runtime by using empty string fallback", () => {
     const runtime = "";
     const config = {
