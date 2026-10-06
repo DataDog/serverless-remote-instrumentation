@@ -25,6 +25,8 @@ Metadata:
           default: Remote Instrumenter Configuration
         Parameters:
           - DdApiKey
+          - DdApiKeySecretArn
+          - DdApiKeySecretKmsKeyArn
           - EnableCodeSigningConfigurations
           - DdInstrumenterFunctionEnv
       - Label:
@@ -40,6 +42,18 @@ Conditions:
   CreateCodeSigningConfig: !Equals [ !Ref EnableCodeSigningConfigurations, "true" ]
   HasBucketName: !Not [!Equals [ !Ref BucketName, ""]]
   CreateCloudTrail: !Not [!Equals [ !Ref UseExistingCloudTrailTrail, "true" ] ]
+  HasApiKeySecretArn: !Not [!Equals [ !Ref DdApiKeySecretArn, ""]]
+  HasApiKeySecretKmsKeyArn: !Not [!Equals [ !Ref DdApiKeySecretKmsKeyArn, ""]]
+
+Rules:
+  ExactlyOneApiKeySource:
+    Assertions:
+      - Assert: !Not [!And [!Equals [!Ref DdApiKey, ""], !Equals [!Ref DdApiKeySecretArn, ""]]]
+        AssertDescription: One of DdApiKey or DdApiKeySecretArn must be set.
+      - Assert: !Or [!Equals [!Ref DdApiKey, ""], !Equals [!Ref DdApiKeySecretArn, ""]]
+        AssertDescription: Only one of DdApiKey or DdApiKeySecretArn may be set.
+      - Assert: !Or [!Equals [!Ref DdApiKeySecretKmsKeyArn, ""], !Not [!Equals [!Ref DdApiKeySecretArn, ""]]]
+        AssertDescription: DdApiKeySecretKmsKeyArn can only be set together with DdApiKeySecretArn.
 
 Parameters:
   EnableCodeSigningConfigurations:
@@ -51,11 +65,29 @@ Parameters:
     Description: Whether to enable code signing configurations.
   DdApiKey:
     Type: String
+    Default: ""
     Description: >-
       The Datadog API key, which can be found from the APIs page
-      (/organization-settings/api-keys).
-    AllowedPattern: ".+"
+      (/organization-settings/api-keys). Either DdApiKey or DdApiKeySecretArn must be set.
     NoEcho: true
+  DdApiKeySecretArn:
+    Type: String
+    Default: ""
+    Description: >-
+      The ARN of an AWS Secrets Manager secret containing the Datadog API key as plaintext. When set, instrumented
+      functions receive DD_API_KEY_SECRET_ARN instead of DD_API_KEY, and their execution roles must be allowed to
+      call secretsmanager:GetSecretValue on this secret. Either DdApiKey or DdApiKeySecretArn must be set.
+    AllowedPattern: "^$|^arn:aws(-[a-z]+)*:secretsmanager:[a-z0-9-]+:[0-9]{12}:secret:.+$"
+    ConstraintDescription: DdApiKeySecretArn must be empty or a valid Secrets Manager secret ARN
+  DdApiKeySecretKmsKeyArn:
+    Type: String
+    Default: ""
+    Description: >-
+      The ARN of the customer managed KMS key that encrypts DdApiKeySecretArn. Leave empty if the secret uses the
+      AWS managed key (aws/secretsmanager). When set, the execution roles of instrumented functions must also be
+      allowed to call kms:Decrypt on this key.
+    AllowedPattern: "^$|^arn:aws(-[a-z]+)*:kms:[a-z0-9-]+:[0-9]{12}:key/.+$"
+    ConstraintDescription: DdApiKeySecretKmsKeyArn must be empty or a valid KMS key ARN (aliases are not supported)
   DdSite:
     Type: String
     Default: datadoghq.com
@@ -100,6 +132,10 @@ Resources:
     Properties:
       ServiceToken: !GetAtt LambdaFunction.Arn
       FunctionName: !FindInMap [ Constants, InstrumenterFunctionName, Name ]
+      # CloudFormation only sends an Update event (which makes the instrumenter
+      # recheck every function) when these properties change, so this tracks the
+      # API key source. Never put the plaintext key here.
+      ApiKeySource: !If [HasApiKeySecretArn, !Ref DdApiKeySecretArn, "DD_API_KEY"]
   LambdaFunction:
     Type: 'AWS::Lambda::Function'
     Properties:
@@ -126,7 +162,11 @@ Resources:
       Environment:
         Variables:
           DD_TRACE_ENABLED: true
-          DD_API_KEY: !Ref DdApiKey
+          DD_API_KEY: !If [HasApiKeySecretArn, !Ref "AWS::NoValue", !Ref DdApiKey]
+          # Used by the instrumenter's own extension and metrics submission
+          DD_API_KEY_SECRET_ARN: !If [HasApiKeySecretArn, !Ref DdApiKeySecretArn, !Ref "AWS::NoValue"]
+          # Read by datadog-ci and set as DD_API_KEY_SECRET_ARN on instrumented functions
+          DATADOG_API_KEY_SECRET_ARN: !If [HasApiKeySecretArn, !Ref DdApiKeySecretArn, !Ref "AWS::NoValue"]
           DD_LOG_LEVEL: WARN
           DD_TRACE_DEBUG: false
           DD_SERVICE: Datadog-Instrument
@@ -200,6 +240,23 @@ Resources:
               - s3:PutObject
             Resource:
               - !Join ["", [!GetAtt S3Bucket.Arn, '*']]
+          - !If
+            - HasApiKeySecretArn
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+              Resource: !Sub "${DdApiKeySecretArn}*"
+            - !Ref "AWS::NoValue"
+          - !If
+            - HasApiKeySecretKmsKeyArn
+            - Effect: Allow
+              Action:
+                - kms:Decrypt
+              Resource: !Ref DdApiKeySecretKmsKeyArn
+              Condition:
+                StringLike:
+                  kms:ViaService: "secretsmanager.*.amazonaws.com"
+            - !Ref "AWS::NoValue"
           - Effect: Allow
             Action:
               - tag:GetResources

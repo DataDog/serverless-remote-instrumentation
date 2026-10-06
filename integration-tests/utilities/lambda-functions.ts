@@ -157,6 +157,26 @@ const tagFunction = async (
   );
 };
 
+const invokeFunction = async (
+  functionName: string,
+): Promise<{ StatusCode?: number; FunctionError?: string }> => {
+  const lambdaClient = await getLambdaClient();
+  const { StatusCode, FunctionError } = await lambdaClient.send(
+    new InvokeCommand({ FunctionName: functionName, Payload: "{}" }),
+  );
+  return { StatusCode, FunctionError };
+};
+
+const getFunctionEnvVars = async (
+  functionName: string,
+): Promise<Record<string, string>> => {
+  const lambdaClient = await getLambdaClient();
+  const { Environment } = await lambdaClient.send(
+    new GetFunctionConfigurationCommand({ FunctionName: functionName }),
+  );
+  return Environment?.Variables ?? {};
+};
+
 const isFunctionInvokable = async (functionName: string): Promise<boolean> => {
   const command = new InvokeCommand({
     FunctionName: functionName,
@@ -233,4 +253,6 @@ export {
   deleteTestFunctions,
   tagFunction,
   isFunctionInvokable,
+  invokeFunction,
+  getFunctionEnvVars,
 };

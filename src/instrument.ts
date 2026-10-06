@@ -25,6 +25,7 @@ import {
   filterFunctionsToChangeInstrumentation,
   isRemotelyInstrumented,
   waitUntilFunctionIsActive,
+  withExpectedApiKey,
 } from "./functions";
 import { tagResourcesWithSlsTag, untagResourcesOfSlsTag } from "./tag";
 import {
@@ -157,6 +158,11 @@ export async function instrumentWithDatadogCi(
         process.env.AWS_REGION!,
         settings,
       );
+      functionConfig.updateFunctionConfigurationCommandInput =
+        withExpectedApiKey(
+          functionToInstrument,
+          functionConfig.updateFunctionConfigurationCommandInput,
+        );
     } else {
       functionConfig = await getUninstrumentedFunctionConfig(
         lambdaClient,

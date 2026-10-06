@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, vi } from "vitest";
+import { describe, test, expect, beforeEach, afterEach, vi } from "vitest";
 
 import {
   satisfiesTargetingRules,
@@ -11,6 +11,9 @@ import {
   waitUntilFunctionIsActive,
   selectFunctionFieldsForLogging,
   enrichFunctionsWithTags,
+  getExpectedApiKeyEnvVar,
+  hasExpectedApiKey,
+  withExpectedApiKey,
 } from "../src/functions";
 import {
   DD_SLS_REMOTE_INSTRUMENTER_VERSION,
@@ -27,6 +30,18 @@ vi.mock("@aws-sdk/client-lambda", async () => ({
   ...(await vi.importActual("@aws-sdk/client-lambda")),
   waitUntilFunctionActiveV2: vi.fn(),
 }));
+
+// Keep the API key source checks independent of the developer's shell
+beforeEach(() => {
+  vi.stubEnv("DD_API_KEY", "");
+  vi.stubEnv("DATADOG_API_KEY", "");
+  vi.stubEnv("DATADOG_API_KEY_SECRET_ARN", "");
+  vi.stubEnv("DATADOG_KMS_API_KEY", "");
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 // Creates a test config object
 function createTestConfig({
@@ -1980,5 +1995,179 @@ describe("enrichFunctionsWithTags", () => {
       functions,
     );
     expect(enrichedFunctions[0].Tags).toEqual(new Set(["runtime:nodejs14.x"]));
+  });
+});
+
+describe("API key source", () => {
+  const SECRET_ARN =
+    "arn:aws:secretsmanager:us-east-1:123456789012:secret:dd-api-key-AbCdEf";
+  const FUNCTION_ARN =
+    "arn:aws:lambda:us-east-1:123456789012:function:functionA";
+
+  describe("hasExpectedApiKey", () => {
+    test("is true when the instrumenter has no key configured", () => {
+      expect(hasExpectedApiKey({ DD_API_KEY: "a" })).toBe(true);
+    });
+
+    test.each([
+      ["matching secret ARN", { DD_API_KEY_SECRET_ARN: SECRET_ARN }, true],
+      [
+        "different secret ARN",
+        { DD_API_KEY_SECRET_ARN: `${SECRET_ARN}-other` },
+        false,
+      ],
+      [
+        "secret ARN alongside a stale plaintext key",
+        { DD_API_KEY_SECRET_ARN: SECRET_ARN, DD_API_KEY: "a" },
+        false,
+      ],
+      ["only a plaintext key", { DD_API_KEY: "a" }, false],
+      ["no key", {}, false],
+    ])("with a secret ARN configured: %s", (_, envVars, expected) => {
+      vi.stubEnv("DATADOG_API_KEY_SECRET_ARN", SECRET_ARN);
+      expect(hasExpectedApiKey(envVars)).toBe(expected);
+    });
+
+    test.each([
+      ["matching key", { DD_API_KEY: "a" }, true],
+      ["rotated key", { DD_API_KEY: "old" }, false],
+      ["only a secret ARN", { DD_API_KEY_SECRET_ARN: SECRET_ARN }, false],
+    ])("with a plaintext key configured: %s", (_, envVars, expected) => {
+      vi.stubEnv("DD_API_KEY", "a");
+      expect(hasExpectedApiKey(envVars)).toBe(expected);
+    });
+  });
+
+  describe("getExpectedApiKeyEnvVar", () => {
+    test("follows datadog-ci's precedence: KMS, then secret ARN, then plaintext", () => {
+      vi.stubEnv("DD_API_KEY", "plain");
+      expect(getExpectedApiKeyEnvVar()).toEqual({
+        name: "DD_API_KEY",
+        value: "plain",
+      });
+      vi.stubEnv("DATADOG_API_KEY", "ci-plain");
+      expect(getExpectedApiKeyEnvVar()).toEqual({
+        name: "DD_API_KEY",
+        value: "ci-plain",
+      });
+      vi.stubEnv("DATADOG_API_KEY_SECRET_ARN", SECRET_ARN);
+      expect(getExpectedApiKeyEnvVar()).toEqual({
+        name: "DD_API_KEY_SECRET_ARN",
+        value: SECRET_ARN,
+      });
+      vi.stubEnv("DATADOG_KMS_API_KEY", "ciphertext");
+      expect(getExpectedApiKeyEnvVar()).toEqual({
+        name: "DD_KMS_API_KEY",
+        value: "ciphertext",
+      });
+    });
+  });
+
+  describe("withExpectedApiKey", () => {
+    test("drops a stale plaintext key from datadog-ci's update request", () => {
+      vi.stubEnv("DATADOG_API_KEY_SECRET_ARN", SECRET_ARN);
+      const lambdaFunc = createTestLambdaFunction({
+        functionArn: FUNCTION_ARN,
+        envVars: { DD_API_KEY: "a", FOO: "bar" },
+      });
+      const updateRequest = {
+        FunctionName: FUNCTION_ARN,
+        Layers: ["layer"],
+        Environment: {
+          Variables: {
+            DD_API_KEY: "a",
+            DD_API_KEY_SECRET_ARN: SECRET_ARN,
+            FOO: "bar",
+          },
+        },
+      };
+      expect(withExpectedApiKey(lambdaFunc, updateRequest)).toEqual({
+        FunctionName: FUNCTION_ARN,
+        Layers: ["layer"],
+        Environment: {
+          Variables: { DD_API_KEY_SECRET_ARN: SECRET_ARN, FOO: "bar" },
+        },
+      });
+    });
+
+    test("builds an update request when datadog-ci found nothing to change", () => {
+      vi.stubEnv("DATADOG_API_KEY_SECRET_ARN", SECRET_ARN);
+      const lambdaFunc = createTestLambdaFunction({
+        functionArn: FUNCTION_ARN,
+        envVars: {
+          DD_API_KEY: "a",
+          DD_API_KEY_SECRET_ARN: SECRET_ARN,
+          FOO: "bar",
+        },
+      });
+      expect(withExpectedApiKey(lambdaFunc, undefined)).toEqual({
+        FunctionName: FUNCTION_ARN,
+        Environment: {
+          Variables: { DD_API_KEY_SECRET_ARN: SECRET_ARN, FOO: "bar" },
+        },
+      });
+    });
+
+    test("leaves things alone when the key is already correct", () => {
+      vi.stubEnv("DATADOG_API_KEY_SECRET_ARN", SECRET_ARN);
+      const lambdaFunc = createTestLambdaFunction({
+        functionArn: FUNCTION_ARN,
+        envVars: { DD_API_KEY_SECRET_ARN: SECRET_ARN },
+      });
+      expect(withExpectedApiKey(lambdaFunc, undefined)).toBeUndefined();
+    });
+
+    test("leaves things alone when the instrumenter has no key configured", () => {
+      const lambdaFunc = createTestLambdaFunction({
+        functionArn: FUNCTION_ARN,
+        envVars: { DD_API_KEY: "a" },
+      });
+      expect(withExpectedApiKey(lambdaFunc, undefined)).toBeUndefined();
+    });
+  });
+
+  test("a correctly layered function with a stale key source is reinstrumented", () => {
+    vi.stubEnv("DATADOG_API_KEY_SECRET_ARN", SECRET_ARN);
+    const lambdaFunc = createTestLambdaFunction({
+      functionName: "functionA",
+      functionArn: FUNCTION_ARN,
+      runtime: "nodejs14.x",
+      tags: new Set([
+        "foo:bar",
+        `${DD_SLS_REMOTE_INSTRUMENTER_VERSION}:v${VERSION}`,
+      ]),
+      layers: [
+        { Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Node:1" },
+        {
+          Arn: "arn:aws:lambda:us-east-1:464622532012:layer:Datadog-Extension:1",
+        },
+      ],
+      envVars: {
+        [DD_TRACE_ENABLED]: "true",
+        [DD_SERVERLESS_LOGS_ENABLED]: "false",
+        DD_API_KEY: "a",
+        DD_SITE: "datadoghq.com",
+      },
+    });
+    const config = createTestConfig({
+      entityType: "lambda",
+      extensionVersion: 1,
+      nodeLayerVersion: 1,
+      pythonLayerVersion: 1,
+      ddTraceEnabled: true,
+      ddServerlessLogsEnabled: false,
+      priority: 1,
+      ruleFilters: [
+        { key: "foo", values: ["bar"], allow: true, filterType: "tag" },
+      ],
+    });
+    const { instrument, tag } = needsInstrumentationUpdate(
+      lambdaFunc,
+      config,
+      baseInstrumentOutcome,
+      false,
+    );
+    expect(instrument).toBe(true);
+    expect(tag).toBe(false);
   });
 });

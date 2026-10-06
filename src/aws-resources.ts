@@ -7,6 +7,7 @@ import {
 import { LambdaClient } from "@aws-sdk/client-lambda";
 import { ResourceGroupsTaggingAPIClient } from "@aws-sdk/client-resource-groups-tagging-api";
 import { S3Client } from "@aws-sdk/client-s3";
+import { SecretsManagerClient } from "@aws-sdk/client-secrets-manager";
 import { logger } from "./logger";
 
 let lambdaClient: LambdaClient;
@@ -111,4 +112,20 @@ export const getCloudWatchLogsClient = () => {
     });
   }
   return cloudWatchLogsClient;
+};
+
+// Secrets can live in a different region than the instrumenter, so clients are
+// cached per region.
+const secretsManagerClients = new Map<string, SecretsManagerClient>();
+export const getSecretsManagerClient = (region: string) => {
+  let client = secretsManagerClients.get(region);
+  if (!client) {
+    client = new SecretsManagerClient({
+      region,
+      retryMode: "adaptive",
+      maxAttempts: 5,
+    });
+    secretsManagerClients.set(region, client);
+  }
+  return client;
 };

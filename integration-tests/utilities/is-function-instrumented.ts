@@ -70,10 +70,19 @@ const getRemoteInstrumenterTagValue = async (
 // A function is considered instrumented if all are true:
 // 1. If the extension layer is configured, there is a Datadog-Extension with matching version
 // 2. If there is a language layer configured, there should is a matching version of the language layer
-// 3. It has the DD_API_KEY and DD_SITE environment variables
+// 3. It has the expected API key env var (DD_API_KEY by default), no other API
+//    key env var, and DD_SITE
 // 4. The function should still be invokable
+const API_KEY_ENV_VARS = [
+  "DD_API_KEY",
+  "DD_API_KEY_SECRET_ARN",
+  "DD_API_KEY_SSM_ARN",
+  "DD_KMS_API_KEY",
+];
+
 const isFunctionInstrumented = async (
   functionName: string,
+  { apiKeyEnvVar = "DD_API_KEY" }: { apiKeyEnvVar?: string } = {},
 ): Promise<boolean> => {
   const lambdaClient = await getLambdaClient();
   const funConfig = await lambdaClient.send(
@@ -144,8 +153,9 @@ const isFunctionInstrumented = async (
 
   if (
     !(
-      hasEnvVar(funConfig, "DD_API_KEY") &&
-      hasEnvVarMatching(funConfig, "DD_SITE", ddSite)
+      API_KEY_ENV_VARS.every(
+        (name) => hasEnvVar(funConfig, name) === (name === apiKeyEnvVar),
+      ) && hasEnvVarMatching(funConfig, "DD_SITE", ddSite)
     )
   ) {
     return false;
@@ -168,7 +178,7 @@ const isFunctionUninstrumented = async (
     !hasLayer(funConfig, "Datadog-Python") &&
     !hasLayer(funConfig, "Datadog-Node") &&
     !hasLayer(funConfig, "Datadog-Extension") &&
-    !hasEnvVar(funConfig, "DD_API_KEY") &&
+    API_KEY_ENV_VARS.every((name) => !hasEnvVar(funConfig, name)) &&
     !hasEnvVar(funConfig, "DD_SITE")
   );
 };
