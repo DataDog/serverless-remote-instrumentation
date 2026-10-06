@@ -20,43 +20,11 @@ The template accepts the Datadog API key either as plaintext (`DdApiKey`) or as 
 
 Store the API key as a **plaintext** secret value (not a JSON key/value pair), then pass its ARN as `DdApiKeySecretArn`. The plaintext key is never written to your functions' configuration; the Datadog Lambda Extension fetches it from Secrets Manager at startup.
 
-The template grants the remote instrumenter permission to read the secret, but it does not modify the IAM roles of the functions it instruments. **Each instrumented function's execution role must be able to call `secretsmanager:GetSecretValue` on the secret.** If it can't, the function keeps running but its telemetry is dropped. One way to grant this to every function in the account without editing each role is a resource policy on the secret:
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": "*",
-      "Action": "secretsmanager:GetSecretValue",
-      "Resource": "*",
-      "Condition": {
-        "StringEquals": { "aws:PrincipalAccount": "<YOUR_ACCOUNT_ID>" }
-      }
-    }
-  ]
-}
-```
+The template grants the remote instrumenter permission to read the secret, but it does not modify the IAM roles of the functions it instruments. **Each instrumented function's execution role must be able to call `secretsmanager:GetSecretValue` on the secret.** If it can't, the function keeps running but its telemetry is dropped.
 
 ### Secrets encrypted with a customer managed KMS key
 
-If the secret is encrypted with a customer managed KMS key rather than the default `aws/secretsmanager` key, also pass the key's ARN (not an alias) as `DdApiKeySecretKmsKeyArn`. The template grants the remote instrumenter `kms:Decrypt` on that key for Secrets Manager use. As with the secret itself, each instrumented function's execution role must also be allowed to call `kms:Decrypt` on the key, for example through the key policy:
-
-```json
-{
-  "Effect": "Allow",
-  "Principal": { "AWS": "*" },
-  "Action": "kms:Decrypt",
-  "Resource": "*",
-  "Condition": {
-    "StringEquals": {
-      "aws:PrincipalAccount": "<YOUR_ACCOUNT_ID>",
-      "kms:ViaService": "secretsmanager.<SECRET_REGION>.amazonaws.com"
-    }
-  }
-}
-```
+If the secret is encrypted with a customer managed KMS key rather than the default `aws/secretsmanager` key, also pass the key's ARN (not an alias) as `DdApiKeySecretKmsKeyArn`. The template grants the remote instrumenter `kms:Decrypt` on that key for Secrets Manager use. As with the secret itself, each instrumented function's execution role must also be allowed to call `kms:Decrypt` on the key.
 
 ### Switching or rotating the key
 

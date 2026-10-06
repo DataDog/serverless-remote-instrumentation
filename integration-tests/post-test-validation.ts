@@ -14,7 +14,7 @@ const assertNoSecretsInLogs = async (): Promise<void> => {
   ];
 
   const queryResults = await runQuery(
-    `fields @message, @timestamp | filter @message like /"(${secretKeys.join("|")})":"[A-Za-z0-9_-]{5+}"/ | limit 10`,
+    `fields @message, @timestamp | filter @message like /"(${secretKeys.join("|")})":"[A-Za-z0-9_-]{5,}"/ | limit 10`,
   );
 
   if (queryResults.length) {
