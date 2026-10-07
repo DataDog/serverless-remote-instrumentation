@@ -1,4 +1,4 @@
-import { describe, it, test, expect, beforeEach, vi } from "vitest";
+import { describe, it, test, expect, beforeEach, afterEach, vi } from "vitest";
 
 import * as instrument from "../src/instrument";
 import * as applyState from "../src/apply-state";
@@ -20,6 +20,18 @@ import {
   LAMBDA_EVENT,
   type LambdaFunction,
 } from "../src/consts";
+
+// Keep the API key handling independent of the developer's shell
+beforeEach(() => {
+  vi.stubEnv("DD_API_KEY", "");
+  vi.stubEnv("DATADOG_API_KEY", "");
+  vi.stubEnv("DATADOG_API_KEY_SECRET_ARN", "");
+  vi.stubEnv("DATADOG_KMS_API_KEY", "");
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 vi.mock("../src/functions", async () => ({
   ...(await vi.importActual("../src/functions")),
@@ -181,6 +193,42 @@ describe("instrumentFunctions", () => {
     (updateLambdaFunctionConfig as any).mockResolvedValue();
 
     vi.clearAllMocks();
+  });
+
+  test("should drop a stale plaintext key when instrumenting with a secret ARN", async () => {
+    const secretArn =
+      "arn:aws:secretsmanager:us-east-2:123456789:secret:dd-api-key-AbCdEf";
+    vi.stubEnv("DATADOG_API_KEY_SECRET_ARN", secretArn);
+    const staleFunction: LambdaFunction = {
+      ...functionFoo,
+      Environment: { Variables: { DD_API_KEY: "old", FOO: "bar" } },
+    };
+    (getInstrumentedFunctionConfig as any).mockResolvedValueOnce({
+      functionARN: staleFunction.FunctionArn,
+      lambdaConfig: staleFunction,
+      updateFunctionConfigurationCommandInput: {
+        FunctionName: staleFunction.FunctionArn,
+        Environment: {
+          Variables: {
+            DD_API_KEY: "old",
+            DD_API_KEY_SECRET_ARN: secretArn,
+            FOO: "bar",
+          },
+        },
+      },
+    });
+
+    await instrument.instrumentWithDatadogCi(
+      staleFunction,
+      true,
+      rcConfig,
+      structuredClone(baseInstrumentOutcome),
+    );
+
+    expect(
+      (updateLambdaFunctionConfig as any).mock.calls[0][2]
+        .updateFunctionConfigurationCommandInput.Environment.Variables,
+    ).toEqual({ DD_API_KEY_SECRET_ARN: secretArn, FOO: "bar" });
   });
 
   test("should instrument and tag functions that need it", async () => {

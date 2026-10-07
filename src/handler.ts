@@ -140,11 +140,21 @@ export const handler = async (
     await emptyBucketResponsePromise;
 
     if (failedToUninstrument.length) {
-      await cfnResponse.send(event, context, "FAILED", {
-        failed: failedToUninstrument,
-      });
+      await cfnResponse.send(
+        event,
+        context,
+        "FAILED",
+        { failed: failedToUninstrument },
+        event.PhysicalResourceId as string,
+      );
     } else {
-      await cfnResponse.send(event, context, "SUCCESS");
+      await cfnResponse.send(
+        event,
+        context,
+        "SUCCESS",
+        undefined,
+        event.PhysicalResourceId as string,
+      );
     }
   } else if (isStackUpdatedEvent(event)) {
     // On a stack update, delete the config hash so the next scheduled
@@ -156,7 +166,17 @@ export const handler = async (
       logger.error(e instanceof Error ? e.message : String(e));
     }
     // Always respond to CloudFormation so the custom resource update completes.
-    await cfnResponse.send(event, context, "SUCCESS");
+    // Echo the existing physical ID: cfn-response otherwise falls back to the
+    // log stream name, which differs between execution environments, and
+    // CloudFormation would treat the changed ID as a replacement and send a
+    // Delete for the old resource, uninstrumenting every function.
+    await cfnResponse.send(
+      event,
+      context,
+      "SUCCESS",
+      undefined,
+      event.PhysicalResourceId as string,
+    );
   }
 
   // Else if it's a Lambda Management event, validate the event and instrument the function

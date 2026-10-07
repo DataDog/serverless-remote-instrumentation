@@ -325,6 +325,8 @@ describe("stack delete events", () => {
       event,
       context,
       "SUCCESS",
+      undefined,
+      "fakePhysicalResourceId",
     );
     expect(res.uninstrument.succeeded.test).toStrictEqual("1");
     expect(mockedErrorStorage.emptyBucket).toHaveBeenCalledTimes(1);
@@ -381,6 +383,7 @@ describe("stack delete events", () => {
       {
         failed: ["test"],
       },
+      "fakePhysicalResourceId",
     );
     expect(res.uninstrument.failed.test).toStrictEqual("1");
   });
@@ -419,6 +422,10 @@ describe("stack update events", () => {
       event,
       context,
       "SUCCESS",
+      undefined,
+      // Keeps the physical ID so CloudFormation doesn't treat the update as a
+      // replacement and send a Delete
+      "fakePhysicalResourceId",
     );
   });
 
@@ -440,6 +447,10 @@ describe("stack update events", () => {
       event,
       context,
       "SUCCESS",
+      undefined,
+      // Keeps the physical ID so CloudFormation doesn't treat the update as a
+      // replacement and send a Delete
+      "fakePhysicalResourceId",
     );
   });
 });

@@ -13,6 +13,7 @@ import {
 import type {
   FunctionConfiguration,
   GetFunctionCommandOutput,
+  UpdateFunctionConfigurationCommandInput,
   ListFunctionsCommandOutput,
 } from "@aws-sdk/client-lambda";
 import { getLambdaClient } from "./aws-resources";
@@ -24,6 +25,10 @@ import {
   DD_KMS_API_KEY,
   DD_API_KEY_SECRET_ARN,
   DD_API_KEY_SSM_ARN,
+  DATADOG_KMS_API_KEY,
+  DATADOG_API_KEY_SECRET_ARN,
+  DATADOG_API_KEY,
+  API_KEY_ENV_VARS,
   DD_SITE,
   VERSION,
   INSTRUMENT,
@@ -365,6 +370,81 @@ export function isInstrumented(lambdaFunc: LambdaFunction): boolean {
   return false;
 }
 
+/**
+ * The API key env var (and value) the instrumenter is configured to set on
+ * instrumented functions, or undefined if it has no API key configured. Mirrors
+ * datadog-ci's precedence (KMS > Secrets Manager > plaintext) so that this never
+ * disagrees with, and strips, the key datadog-ci just set.
+ */
+export function getExpectedApiKeyEnvVar():
+  | { name: string; value: string }
+  | undefined {
+  const kmsApiKey = process.env[DATADOG_KMS_API_KEY];
+  if (kmsApiKey) {
+    return { name: DD_KMS_API_KEY, value: kmsApiKey };
+  }
+  const secretArn = process.env[DATADOG_API_KEY_SECRET_ARN];
+  if (secretArn) {
+    return { name: DD_API_KEY_SECRET_ARN, value: secretArn };
+  }
+  const apiKey = process.env[DATADOG_API_KEY] || process.env[DD_API_KEY];
+  if (apiKey) {
+    return { name: DD_API_KEY, value: apiKey };
+  }
+  return undefined;
+}
+
+/**
+ * Whether the function carries exactly the API key source the instrumenter is
+ * configured with, and no other. A function instrumented before the key source
+ * was switched (e.g. from DD_API_KEY to a secret ARN) or rotated fails this.
+ */
+export function hasExpectedApiKey(
+  envVars: Record<string, string> | undefined,
+): boolean {
+  const expected = getExpectedApiKeyEnvVar();
+  if (!expected) {
+    return true;
+  }
+  return API_KEY_ENV_VARS.every((name) =>
+    name === expected.name
+      ? envVars?.[name] === expected.value
+      : envVars?.[name] === undefined,
+  );
+}
+
+/**
+ * datadog-ci only adds the configured API key env var and never removes other
+ * key sources, so a function switched from DD_API_KEY to a secret ARN would keep
+ * its plaintext key. Returns an update request that sets the expected key and
+ * drops the others, building one if datadog-ci found nothing to update.
+ */
+export function withExpectedApiKey(
+  lambdaFunc: LambdaFunction,
+  updateRequest: UpdateFunctionConfigurationCommandInput | undefined,
+): UpdateFunctionConfigurationCommandInput | undefined {
+  const expected = getExpectedApiKeyEnvVar();
+  if (!expected) {
+    return updateRequest;
+  }
+  const currentEnvVars = lambdaFunc.Environment?.Variables;
+  if (!updateRequest && hasExpectedApiKey(currentEnvVars)) {
+    return updateRequest;
+  }
+  const request = updateRequest ?? { FunctionName: lambdaFunc.FunctionArn };
+  const envVars = {
+    ...(request.Environment?.Variables ?? currentEnvVars),
+  };
+  for (const name of API_KEY_ENV_VARS) {
+    delete envVars[name];
+  }
+  envVars[expected.name] = expected.value;
+  return {
+    ...request,
+    Environment: { ...request.Environment, Variables: envVars },
+  };
+}
+
 export function isCorrectlyInstrumented({
   layers,
   config,
@@ -617,6 +697,7 @@ export function needsInstrumentationUpdate(
   // If it's already instrumented correctly, don't reinstrument but tag if necessary
   const layers = lambdaFunc.Layers || [];
   if (
+    hasExpectedApiKey(lambdaFunc.Environment?.Variables) &&
     isCorrectlyInstrumented({
       layers: layers,
       config: config,

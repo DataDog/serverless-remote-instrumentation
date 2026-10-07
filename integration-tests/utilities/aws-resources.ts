@@ -57,11 +57,19 @@ const getLogsClient = (): any => {
   return logsClient;
 };
 
+let cloudFormationClient: CloudFormationClient;
+const getCloudFormationClient = (): CloudFormationClient => {
+  if (!cloudFormationClient) {
+    cloudFormationClient = new CloudFormationClient({
+      credentials: getCredentials(arn),
+      region,
+    });
+  }
+  return cloudFormationClient;
+};
+
 const getStackOutput = async (outputKey: string): Promise<string> => {
-  const cfClient = new CloudFormationClient({
-    credentials: getCredentials(arn),
-    region,
-  });
+  const cfClient = getCloudFormationClient();
   const result = await cfClient.send(
     new DescribeStacksCommand({ StackName: stackName }),
   );
@@ -83,6 +91,7 @@ export {
   getLambdaClient,
   getS3Client,
   getLogsClient,
+  getCloudFormationClient,
   getEdgeFunctionName,
   getContainerImageFunctionName,
 };

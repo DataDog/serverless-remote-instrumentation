@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { App, CfnOutput, SecretValue, Stack, RemovalPolicy, Duration, Tags } from 'aws-cdk-lib';
+import { App, CfnOutput, CfnParameter, SecretValue, Stack, RemovalPolicy, Duration, Tags } from 'aws-cdk-lib';
 import { AccountRootPrincipal, Role, ServicePrincipal, PolicyStatement, CompositePrincipal, ManagedPolicy } from 'aws-cdk-lib/aws-iam';
 import { Function as LambdaFunction, Runtime, Code, Version, DockerImageCode, DockerImageFunction } from 'aws-cdk-lib/aws-lambda';
 import { Distribution, LambdaEdgeEventType, ViewerProtocolPolicy } from 'aws-cdk-lib/aws-cloudfront';
@@ -69,6 +69,18 @@ class TestingStack extends Stack {
       resources: ["*"],
     }));
 
+    // The API key tests switch DdApiKeySecretArn with a stack update, the same
+    // way a customer would. CDK deployed the stack with its CloudFormation
+    // execution role, which CloudFormation reuses for updates.
+    assumedRole.addToPolicy(new PolicyStatement({
+      actions: ["cloudformation:UpdateStack"],
+      resources: [`arn:aws:cloudformation:${region}:${account}:stack/${stackName}/*`],
+    }));
+    assumedRole.addToPolicy(new PolicyStatement({
+      actions: ["iam:PassRole"],
+      resources: [`arn:aws:iam::${account}:role/cdk-*-cfn-exec-role-${account}-${region}`],
+    }));
+
     assumedRole.addToPolicy(new PolicyStatement({
       actions: ["cloudfront:ListDistributions"],
       resources: ["*"],
@@ -101,13 +113,22 @@ class TestingStack extends Stack {
       value: containerImageFn.functionName,
     });
 
+    // Left as a real stack parameter (rather than a fixed value like the
+    // others) so the API key tests can switch it with a stack update
+    const apiKeySecretArn = new CfnParameter(this, 'DdApiKeySecretArn', {
+      type: 'String',
+      default: '',
+    });
+
     new CfnInclude(this, 'ImportedRemoteInstrumenterTemplate', {
       templateFile: this.modifyTemplate(),
       parameters: {
         EnableCodeSigningConfigurations: false,
         UseExistingCloudTrailTrail: true,
         DdSite: ddSite,
+        // Always passed; the template drops DD_API_KEY when DdApiKeySecretArn is set
         DdApiKey: SecretValue.secretsManager(apiSecretName),
+        DdApiKeySecretArn: apiKeySecretArn.valueAsString,
         BucketName: bucketName,
       },
     });
@@ -190,6 +211,10 @@ exports.handler = (event, context, callback) => {
     template.Resources.CloudFormationLifeCycle.Properties.ServiceTimeout = 300;
     template.Mappings.Constants.DdCIBypassSiteValidation.Bypass = true;
     template.Mappings.Constants.DdInternalSendDebugInformation.Enabled = true;
+    // The rules require exactly one of DdApiKey and DdApiKeySecretArn, but this
+    // stack always passes DdApiKey (as a secret dynamic reference, which rules
+    // can't evaluate) so it can switch to DdApiKeySecretArn with a stack update
+    delete template.Rules;
     writeFileSync(modifiedPath, yamlDump(template));
     return modifiedPath;
   }

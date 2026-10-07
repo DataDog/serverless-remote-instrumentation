@@ -146,6 +146,17 @@ export const DD_API_KEY = "DD_API_KEY";
 export const DD_KMS_API_KEY = "DD_KMS_API_KEY";
 export const DD_API_KEY_SECRET_ARN = "DD_API_KEY_SECRET_ARN";
 export const DD_API_KEY_SSM_ARN = "DD_API_KEY_SSM_ARN";
+// Read by datadog-ci from the instrumenter's environment and copied to
+// instrumented functions as DD_KMS_API_KEY, DD_API_KEY_SECRET_ARN and DD_API_KEY
+export const DATADOG_KMS_API_KEY = "DATADOG_KMS_API_KEY";
+export const DATADOG_API_KEY_SECRET_ARN = "DATADOG_API_KEY_SECRET_ARN";
+export const DATADOG_API_KEY = "DATADOG_API_KEY";
+export const API_KEY_ENV_VARS = [
+  DD_API_KEY,
+  DD_KMS_API_KEY,
+  DD_API_KEY_SECRET_ARN,
+  DD_API_KEY_SSM_ARN,
+];
 export const DD_SITE = "DD_SITE";
 export const DD_INTERNAL_SEND_DEBUG_INFORMATION =
   "DD_INTERNAL_SEND_DEBUG_INFORMATION";

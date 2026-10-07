@@ -6,10 +6,20 @@ import { getLambdaClient } from "./aws-resources";
 import { functionName } from "../config.json";
 import { createPresignedUrl, deleteObject } from "./s3-helpers";
 
-const invokeLambdaWithScheduledEvent = async (): Promise<any> => {
+interface InvokeLambdaWithScheduledEventOptions {
+  // Pass false to keep the stored config hash, so the instrumenter only checks
+  // every function if it detects a config change on its own
+  resetConfigHash?: boolean;
+}
+
+const invokeLambdaWithScheduledEvent = async ({
+  resetConfigHash = true,
+}: InvokeLambdaWithScheduledEventOptions = {}): Promise<any> => {
   // Delete the last hash so that the remote instrumenter will more consistently check
   // if the function is supposed to be instrumented or not, instead of skipping it
-  await deleteObject("datadog_remote_instrumentation_config.txt");
+  if (resetConfigHash) {
+    await deleteObject("datadog_remote_instrumentation_config.txt");
+  }
   const command = new InvokeCommand({
     FunctionName: functionName,
     Payload: JSON.stringify({
