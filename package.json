@@ -22,7 +22,7 @@
     "@types/aws-lambda": "^8.10.161",
     "@types/cfn-response": "^1.0.9",
     "@types/node": "^25.9.1",
-    "aws-cdk": "^2.1123.0",
+    "aws-cdk": "^2.1146.1",
     "aws-cdk-lib": "^2.274.0",
     "cfn-response": "^1.0.1",
     "constructs": "^10.6.0",
