@@ -53,5 +53,8 @@
     "metrics-validations": "vitest run --config metrics-validations/vitest.config.ts",
     "integ-test-setup": "bash -c 'if [ -n \"$CI_PROJECT_DIR\" ]; then node ${SCRIPTS_PATH}/test_setup.js; else node scripts/test_setup.js; fi'",
     "integ-test-teardown": "bash -c 'if [ -n \"$CI_PROJECT_DIR\" ]; then node ${SCRIPTS_PATH}/test_teardown.js; else node scripts/test_teardown.js; fi'"
+  },
+  "resolutions": {
+    "fast-xml-parser@npm:5.7.3": "npm:^5.12.1"
   }
 }
