@@ -554,6 +554,72 @@ describe("removeRemoteInstrumentation", () => {
     expect(mockedApplyState.deleteApplyState).toHaveBeenCalledTimes(1);
   });
 
+  test("should skip, not fail, remotely tagged functions with an unsupported runtime (e.g. container images) and still untag them", async () => {
+    const supported: LambdaFunction = {
+      FunctionName: "supported",
+      FunctionArn: "arn:aws:lambda:us-east-2:123456789:function:supported",
+      Runtime: "nodejs18.x",
+      Tags: new Set([`${DD_SLS_REMOTE_INSTRUMENTER_VERSION}:${VERSION}`]),
+    };
+    const containerImage: LambdaFunction = {
+      FunctionName: "container-image",
+      FunctionArn:
+        "arn:aws:lambda:us-east-2:123456789:function:container-image",
+      Runtime: undefined,
+      Tags: new Set([`${DD_SLS_REMOTE_INSTRUMENTER_VERSION}:${VERSION}`]),
+    };
+    const deprecatedRuntime: LambdaFunction = {
+      FunctionName: "deprecated",
+      FunctionArn: "arn:aws:lambda:us-east-2:123456789:function:deprecated",
+      Runtime: "nodejs4.3",
+      Tags: new Set([`${DD_SLS_REMOTE_INSTRUMENTER_VERSION}:${VERSION}`]),
+    };
+    const outcome = {
+      instrument: { succeeded: {}, failed: {}, skipped: {} },
+      uninstrument: { succeeded: {}, failed: {}, skipped: {} },
+    } as any;
+
+    await instrument.removeRemoteInstrumentation(
+      mockS3Client,
+      [supported, containerImage, deprecatedRuntime],
+      outcome,
+      mockTaggingClient,
+    );
+
+    // Only the supported function goes through datadog-ci
+    expect(getUninstrumentedFunctionConfig).toHaveBeenCalledTimes(1);
+    expect(updateLambdaFunctionConfig).toHaveBeenCalledTimes(1);
+    expect(outcome.uninstrument.succeeded["supported"]).toBeDefined();
+
+    // The unsupported ones are skipped, and nothing is reported as failed, so
+    // the stack delete handler responds SUCCESS to CloudFormation
+    expect(outcome.uninstrument.failed).toEqual({});
+    expect(outcome.uninstrument.skipped["container-image"]).toMatchObject({
+      functionArn: containerImage.FunctionArn,
+      reasonCode: "unsupported-runtime",
+    });
+    expect(outcome.uninstrument.skipped["deprecated"]).toMatchObject({
+      functionArn: deprecatedRuntime.FunctionArn,
+      reasonCode: "unsupported-runtime",
+    });
+
+    // All three get the remote instrumentation tag removed
+    expect(mockTaggingClient.send).toHaveBeenCalledTimes(1);
+    expect(mockTaggingClient.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: {
+          ResourceARNList: [
+            supported.FunctionArn,
+            containerImage.FunctionArn,
+            deprecatedRuntime.FunctionArn,
+          ],
+          TagKeys: [DD_SLS_REMOTE_INSTRUMENTER_VERSION],
+        },
+      }),
+    );
+    expect(mockedApplyState.deleteApplyState).toHaveBeenCalledTimes(1);
+  });
+
   test("should not uninstrument or untag functions that are not remotely instrumented", async () => {
     const functionFoo: LambdaFunction = {
       FunctionName: "foo",
