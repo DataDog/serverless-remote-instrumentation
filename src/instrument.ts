@@ -107,6 +107,31 @@ export async function instrumentWithDatadogCi(
   const functionArn = functionToInstrument.FunctionArn;
   const runtime = functionToInstrument.Runtime;
 
+  // datadog-ci throws when asked to un-instrument a function whose runtime it
+  // doesn't support (e.g. container image Lambdas, which have no Runtime). That
+  // failure would be recorded as `uninstrument.failed`, which makes the stack
+  // delete handler respond FAILED to CloudFormation (leaving the stack stuck in
+  // DELETE_FAILED) and makes scheduled runs retry forever. Skip such functions
+  // instead; callers still untag anything that isn't in `uninstrument.failed`.
+  if (!instrument && !getRuntimeConfig(runtime)) {
+    const reason = `Function's runtime '${runtime}' not supported.`;
+    logger.logInstrumentOutcome({
+      ddSlsEventName: UNINSTRUMENT,
+      outcome: SKIPPED,
+      targetFunctionName: functionName,
+      targetFunctionArn: functionArn,
+      runtime,
+      reason,
+      reasonCode: UNSUPPORTED_RUNTIME,
+    });
+    instrumentOutcome.uninstrument.skipped[functionName] = {
+      functionArn,
+      reason,
+      reasonCode: UNSUPPORTED_RUNTIME,
+    };
+    return;
+  }
+
   const { extensionVersion, runtimeLayerVersion } =
     getExtensionAndRuntimeLayerVersion(runtime ?? "", config);
 
@@ -357,39 +382,7 @@ export async function removeRemoteInstrumentation(
   const remotelyInstrumentedFunctions = functionsToCheck.filter((lambdaFunc) =>
     isRemotelyInstrumented(lambdaFunc),
   );
-
-  // datadog-ci throws when asked to un-instrument a function whose runtime it
-  // doesn't support (e.g. container image Lambdas, which have no Runtime). That
-  // failure is recorded as `uninstrument.failed`, which makes the stack delete
-  // handler respond FAILED to CloudFormation and leaves the stack stuck in
-  // DELETE_FAILED. Such a function can't be instrumented by us, so there is
-  // nothing to remove: skip it (but still untag it below) rather than fail.
-  const functionsToUninstrument: LambdaFunction[] = [];
   for (const lambdaFunc of remotelyInstrumentedFunctions) {
-    if (getRuntimeConfig(lambdaFunc.Runtime)) {
-      functionsToUninstrument.push(lambdaFunc);
-      continue;
-    }
-    const functionName = lambdaFunc.FunctionName;
-    const functionArn = lambdaFunc.FunctionArn;
-    const reason = `Function's runtime '${lambdaFunc.Runtime}' not supported, nothing to uninstrument.`;
-    instrumentOutcome.uninstrument.skipped[functionName] = {
-      functionArn,
-      reason,
-      reasonCode: UNSUPPORTED_RUNTIME,
-    };
-    logger.logInstrumentOutcome({
-      ddSlsEventName: UNINSTRUMENT,
-      outcome: SKIPPED,
-      targetFunctionName: functionName,
-      targetFunctionArn: functionArn,
-      runtime: lambdaFunc.Runtime,
-      reason,
-      reasonCode: UNSUPPORTED_RUNTIME,
-    });
-  }
-
-  for (const lambdaFunc of functionsToUninstrument) {
     await instrumentWithDatadogCi(
       lambdaFunc,
       false,

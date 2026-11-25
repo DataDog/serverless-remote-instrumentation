@@ -453,6 +453,43 @@ describe("instrumentWithDatadogCi", () => {
     vi.clearAllMocks();
   });
 
+  test.each([
+    ["a container image (undefined runtime)", undefined],
+    ["a runtime outside the catalog", "nodejs4.3"],
+  ])(
+    "should skip, not fail, un-instrumenting %s",
+    async (_description, runtime) => {
+      const lambdaFunction: LambdaFunction = {
+        FunctionName: "unsupported-func",
+        FunctionArn:
+          "arn:aws:lambda:us-east-2:123456789:function:unsupported-func",
+        Runtime: runtime as LambdaFunction["Runtime"],
+        Tags: new Set([`${DD_SLS_REMOTE_INSTRUMENTER_VERSION}:${VERSION}`]),
+      };
+      const outcome = {
+        instrument: { succeeded: {}, failed: {}, skipped: {} },
+        uninstrument: { succeeded: {}, failed: {}, skipped: {} },
+      } as any;
+
+      await instrument.instrumentWithDatadogCi(
+        lambdaFunction,
+        false,
+        { awsRegion: "us-east-2" } as any,
+        outcome,
+      );
+
+      expect(getUninstrumentedFunctionConfig).not.toHaveBeenCalled();
+      expect(updateLambdaFunctionConfig).not.toHaveBeenCalled();
+      expect(outcome.uninstrument.failed).toEqual({});
+      expect(outcome.uninstrument.succeeded).toEqual({});
+      expect(outcome.uninstrument.skipped["unsupported-func"]).toEqual({
+        functionArn: lambdaFunction.FunctionArn,
+        reason: `Function's runtime '${runtime}' not supported.`,
+        reasonCode: "unsupported-runtime",
+      });
+    },
+  );
+
   test("should handle function with undefined runtime gracefully", async () => {
     const config = {
       extensionVersion: 10,
