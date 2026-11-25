@@ -9,6 +9,7 @@ import {
   ResourceNotFoundException,
   Runtime,
   TagResourceCommand,
+  UntagResourceCommand,
 } from "@aws-sdk/client-lambda";
 import { account, region, namingSeed, testLambdaRole } from "../config.json";
 import { getLambdaClient } from "./aws-resources";
@@ -157,6 +158,19 @@ const tagFunction = async (
   );
 };
 
+const untagFunction = async (
+  functionName: string,
+  tagKeys: string[],
+): Promise<void> => {
+  const lambdaClient = await getLambdaClient();
+  await lambdaClient.send(
+    new UntagResourceCommand({
+      Resource: `arn:aws:lambda:${region}:${account}:function:${functionName}`,
+      TagKeys: tagKeys,
+    }),
+  );
+};
+
 const invokeFunction = async (
   functionName: string,
 ): Promise<{ StatusCode?: number; FunctionError?: string }> => {
@@ -252,6 +266,7 @@ export {
   deleteFunction,
   deleteTestFunctions,
   tagFunction,
+  untagFunction,
   isFunctionInvokable,
   invokeFunction,
   getFunctionEnvVars,

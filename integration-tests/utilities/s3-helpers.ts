@@ -1,4 +1,5 @@
 import {
+  GetObjectCommand,
   PutObjectCommand,
   HeadObjectCommand,
   DeleteObjectCommand,
@@ -31,6 +32,14 @@ const doesObjectExist = async (key: string): Promise<boolean> => {
   }
 };
 
+const getObjectBody = async (key: string): Promise<string> => {
+  const s3 = await getS3Client();
+  const { Body } = await s3.send(
+    new GetObjectCommand({ Bucket: bucketName, Key: key }),
+  );
+  return Body!.transformToString();
+};
+
 const deleteObject = async (key: string): Promise<any> => {
   const s3 = await getS3Client();
   const command = new DeleteObjectCommand({
@@ -52,4 +61,10 @@ const putObject = async (key: string, body: string): Promise<any> => {
   return s3.send(command);
 };
 
-export { createPresignedUrl, doesObjectExist, deleteObject, putObject };
+export {
+  createPresignedUrl,
+  doesObjectExist,
+  deleteObject,
+  putObject,
+  getObjectBody,
+};

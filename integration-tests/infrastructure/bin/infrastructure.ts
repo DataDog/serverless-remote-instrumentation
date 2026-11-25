@@ -41,6 +41,7 @@ class TestingStack extends Stack {
         'lambda:CreateFunction',
         'lambda:DeleteFunction',
         'lambda:TagResource',
+        'lambda:UntagResource',
         'lambda:GetLayerVersion',
         'lambda:ListTags',
         'lambda:GetPolicy',

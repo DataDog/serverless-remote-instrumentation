@@ -9,6 +9,8 @@ import {
   IN_PROGRESS,
   SUCCEEDED,
   FAILED,
+  SKIPPED,
+  UNSUPPORTED_RUNTIME,
   LAMBDA_EVENT,
   CLOUDFORMATION_DELETE_EVENT,
   DATADOG_CI_ERROR,
@@ -104,6 +106,31 @@ export async function instrumentWithDatadogCi(
   const functionName = functionToInstrument.FunctionName;
   const functionArn = functionToInstrument.FunctionArn;
   const runtime = functionToInstrument.Runtime;
+
+  // datadog-ci throws when asked to un-instrument a function whose runtime it
+  // doesn't support (e.g. container image Lambdas, which have no Runtime). That
+  // failure would be recorded as `uninstrument.failed`, which makes the stack
+  // delete handler respond FAILED to CloudFormation (leaving the stack stuck in
+  // DELETE_FAILED) and makes scheduled runs retry forever. Skip such functions
+  // instead; callers still untag anything that isn't in `uninstrument.failed`.
+  if (!instrument && !getRuntimeConfig(runtime)) {
+    const reason = `Function's runtime '${runtime}' not supported.`;
+    logger.logInstrumentOutcome({
+      ddSlsEventName: UNINSTRUMENT,
+      outcome: SKIPPED,
+      targetFunctionName: functionName,
+      targetFunctionArn: functionArn,
+      runtime,
+      reason,
+      reasonCode: UNSUPPORTED_RUNTIME,
+    });
+    instrumentOutcome.uninstrument.skipped[functionName] = {
+      functionArn,
+      reason,
+      reasonCode: UNSUPPORTED_RUNTIME,
+    };
+    return;
+  }
 
   const { extensionVersion, runtimeLayerVersion } =
     getExtensionAndRuntimeLayerVersion(runtime ?? "", config);

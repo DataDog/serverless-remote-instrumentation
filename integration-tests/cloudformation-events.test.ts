@@ -12,6 +12,7 @@ import { pollUntilTrue } from "./utilities/poll-until-true";
 import {
   isFunctionInstrumented,
   isFunctionUninstrumented,
+  hasRemoteInstrumenterTag,
 } from "./utilities/is-function-instrumented";
 import {
   setRemoteConfig,
@@ -23,11 +24,16 @@ import {
   doesObjectExist,
   deleteObject,
   putObject,
+  getObjectBody,
 } from "./utilities/s3-helpers";
 import {
   createFunction,
   deleteTestFunctions,
+  tagFunction,
+  untagFunction,
 } from "./utilities/lambda-functions";
+import { getContainerImageFunctionName } from "./utilities/aws-resources";
+import { account, region, version } from "./config.json";
 import {
   invokeLambdaWithCFNCreateEvent,
   invokeLambdaWithCFNDeleteEvent,
@@ -83,6 +89,76 @@ describe("Remote instrumenter cloudformation event tests", () => {
 
     const isUninstrumented = await isFunctionUninstrumented(functionName);
     expect(isUninstrumented).toStrictEqual(true);
+  });
+
+  // Container image Lambdas have Runtime: undefined, so datadog-ci throws when
+  // asked to un-instrument them. If that were recorded as a failure, the Delete
+  // handler would respond FAILED and the customer's stack would be stuck in
+  // DELETE_FAILED (the custom resource can't be deleted).
+  it("responds SUCCESS on delete when a remotely tagged container image Lambda can't be un-instrumented", async () => {
+    // Given a remote config. This must be set before tagging: tagging emits a
+    // TagResource event that invokes the instrumenter, and without a config
+    // visible yet the instrumenter would remove the tag itself. With the config
+    // set, that event just skips the function, so the tag stays until the delete.
+    await setRemoteConfig();
+
+    // And a container image Lambda (pre-created in CDK) that carries the
+    // remote instrumenter tag, e.g. tagged by an older version of the instrumenter
+    const containerImageFunctionName = await getContainerImageFunctionName();
+    const containerImageFunctionArn = `arn:aws:lambda:${region}:${account}:function:${containerImageFunctionName}`;
+    await tagFunction(containerImageFunctionName, {
+      dd_sls_remote_instrumenter_version: version,
+    });
+
+    try {
+      expect(
+        await hasRemoteInstrumenterTag(containerImageFunctionArn),
+      ).toStrictEqual(true);
+
+      // And a zip-based function that is remotely instrumented, to check that
+      // supported functions are still un-instrumented in the same delete
+      const { FunctionName: zipFunctionName } = await createFunction({
+        Tags: { foo: "bar" },
+      });
+      const isInstrumented = await pollUntilTrue(60000, 5000, () =>
+        isFunctionInstrumented(zipFunctionName),
+      );
+      expect(isInstrumented).toStrictEqual(true);
+
+      // Wait until the lambda stops being updated
+      await sleep(20000);
+
+      // When the remote instrumenter is invoked like it would be on stack delete
+      const { s3Key, payload } = await invokeLambdaWithCFNDeleteEvent();
+      keysToDelete.push(s3Key);
+
+      // Then the container image Lambda is skipped as unsupported, not failed
+      expect(Object.keys(payload.uninstrument.failed)).toStrictEqual([]);
+      expect(
+        payload.uninstrument.skipped[containerImageFunctionName].reasonCode,
+      ).toStrictEqual("unsupported-runtime");
+
+      // And CloudFormation is told the delete succeeded, so the stack can delete
+      expect(await doesObjectExist(s3Key)).toStrictEqual(true);
+      expect(JSON.parse(await getObjectBody(s3Key)).Status).toStrictEqual(
+        "SUCCESS",
+      );
+
+      // And the supported function is still un-instrumented
+      expect(await isFunctionUninstrumented(zipFunctionName)).toStrictEqual(
+        true,
+      );
+
+      // And the remote instrumenter tag is removed from the container image Lambda
+      expect(
+        await hasRemoteInstrumenterTag(containerImageFunctionArn),
+      ).toStrictEqual(false);
+    } finally {
+      // The container image Lambda is shared across tests: never leave it tagged
+      await untagFunction(containerImageFunctionName, [
+        "dd_sls_remote_instrumenter_version",
+      ]);
+    }
   });
 
   it("instruments functions on stack creation", async () => {
